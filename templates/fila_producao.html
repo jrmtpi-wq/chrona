@@ -1,0 +1,657 @@
+{% extends 'base.html' %}
+{% block title %}Fila de Produção{% endblock %}
+{% block content %}
+<style>
+.card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:20px;margin-bottom:16px}
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1a1a2e;color:#fff}.btn-primary:hover{background:#2d3a6e}
+.btn-success{background:#15803d;color:#fff}.btn-success:hover{background:#166534}
+.btn-danger{background:#dc2626;color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-light{background:#f0f2f5;color:#374151}.btn-light:hover{background:#e5e7eb}
+.btn-purple{background:#7c3aed;color:#fff}.btn-purple:hover{background:#6d28d9}
+.btn-sm{padding:5px 10px;font-size:11px}
+.form-group label{display:block;font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid #e0e6f0;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+.form-group input:focus,.form-group select:focus{border-color:#1a1a2e}
+.form-row{display:grid;gap:12px}
+.cols-2{grid-template-columns:1fr 1fr}
+.cols-3{grid-template-columns:1fr 1fr 1fr}
+.cols-4{grid-template-columns:1fr 1fr 1fr 1fr}
+.cols-5{grid-template-columns:1fr 1fr 1fr 1fr 1fr}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;width:640px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-header{padding:16px 20px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.modal-title{font-size:15px;font-weight:700;color:#1a1a2e}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid #f0f2f5;display:flex;justify-content:flex-end;gap:8px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#15803d}
+.toast.error{background:#dc2626}
+
+/* CONFIG BANNER */
+.cfg-banner{background:#1a1a2e;border-radius:12px;padding:12px 20px;margin-bottom:14px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.cfg-item{text-align:center}
+.cfg-item-lbl{color:#9ca3af;font-size:9px;font-weight:700;text-transform:uppercase}
+.cfg-item-val{color:#fff;font-size:13px;font-weight:700;margin-top:1px}
+.cfg-item-val.dest{color:#f5a623;font-size:16px;font-weight:800}
+
+/* RESUMO */
+.resumo-bar{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.res-card{background:#fff;border-radius:10px;border:1px solid #e0e6f0;padding:10px 14px;display:flex;align-items:center;gap:10px}
+.res-icon{font-size:22px}
+.res-val{font-size:18px;font-weight:800;color:#1a1a2e}
+.res-lbl{font-size:10px;color:#9ca3af;text-transform:uppercase}
+
+/* TABELA FILA */
+.fila-table-wrap{overflow-x:auto;border-radius:10px;border:1px solid #e0e6f0}
+.fila-table{width:100%;border-collapse:collapse;min-width:1100px}
+.fila-table thead{background:#1a1a2e;position:sticky;top:0;z-index:2}
+.fila-table thead th{padding:9px 10px;color:#fff;font-size:10px;font-weight:700;text-align:left;white-space:nowrap;letter-spacing:.3px}
+.fila-table tbody tr{border-bottom:1px solid #f0f2f5;transition:.1s}
+.fila-table tbody tr:hover{background:#f8f9fb}
+.fila-table tbody td{padding:7px 10px;font-size:12px;vertical-align:middle}
+
+/* STATUS */
+.status-badge{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap}
+.s-aguardando{background:#f0f2f5;color:#6b7280}
+.s-producao{background:#dcfce7;color:#15803d}
+.s-concluida{background:#e0e0e0;color:#9ca3af}
+.s-proxima{background:#dbeafe;color:#1d4ed8}
+
+/* POS NUMERO */
+.pos-num{width:24px;height:24px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0}
+.pos-aguardando{background:#9ca3af}
+.pos-producao{background:#15803d}
+.pos-concluida{background:#d1d5db;color:#6b7280}
+.pos-proxima{background:#1d4ed8}
+
+/* ENTRADA/SAIDA */
+.dt-cell{line-height:1.3}
+.dt-data{font-size:11px;color:#6b7280}
+.dt-hora{font-size:13px;font-weight:800}
+.dt-hora.entrada{color:#1d4ed8}
+.dt-hora.saida{color:#15803d}
+
+/* EXTRA */
+.extra-input{width:55px;padding:3px 6px;border:1px solid #e0e6f0;border-radius:5px;font-size:11px;text-align:center;outline:none}
+.extra-input:focus{border-color:#1a1a2e}
+.obs-input{width:120px;padding:3px 6px;border:1px solid #e0e6f0;border-radius:5px;font-size:10px;outline:none}
+.obs-input:focus{border-color:#1a1a2e}
+
+/* ATRAVESSAMENTO */
+.atrav-badge{background:#fef9c3;color:#854d0e;padding:2px 7px;border-radius:8px;font-size:10px;font-weight:700;white-space:nowrap}
+
+/* PRINT */
+@media print {
+  body * { visibility: hidden; }
+  #area-impressao, #area-impressao * { visibility: visible; }
+  #area-impressao { position: fixed; inset: 0; z-index: 99999; background: #fff; padding: 12px; }
+}
+
+.empty-fila{text-align:center;padding:60px;color:#9ca3af}
+</style>
+
+<!-- HEADER -->
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+  <div style="font-size:18px;font-weight:700;color:#1a1a2e">📅 Fila de Produção</div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-light btn-sm" onclick="abrirModalConfig()">⚙️ Configurar Turno</button>
+    <button class="btn btn-primary btn-sm" onclick="abrirModalAddOP()">➕ Adicionar OP</button>
+    <button class="btn btn-success btn-sm" onclick="recalcularTudo()">🔄 Recalcular</button>
+    <button class="btn btn-purple btn-sm" onclick="imprimirFila()">🖨️ Imprimir</button>
+  </div>
+</div>
+
+<!-- CONFIG BANNER -->
+<div class="cfg-banner">
+  <div class="cfg-item">
+    <div class="cfg-item-lbl">Turno</div>
+    <div class="cfg-item-val" id="cfg-turno-nome">Não configurado</div>
+  </div>
+  <div class="cfg-item">
+    <div class="cfg-item-lbl">Min/Dia</div>
+    <div class="cfg-item-val dest" id="cfg-mins">—</div>
+  </div>
+  <div class="cfg-item">
+    <div class="cfg-item-lbl">Entrada</div>
+    <div class="cfg-item-val" id="cfg-he">—</div>
+  </div>
+  <div class="cfg-item">
+    <div class="cfg-item-lbl">Saída</div>
+    <div class="cfg-item-val" id="cfg-hs">—</div>
+  </div>
+  <div class="cfg-item">
+    <div class="cfg-item-lbl">Início da Fila</div>
+    <div class="cfg-item-val" id="cfg-inicio">—</div>
+  </div>
+  <div style="margin-left:auto">
+    <button class="btn btn-light btn-sm" onclick="abrirModalConfig()" style="font-size:11px">✏️ Editar</button>
+  </div>
+</div>
+
+<!-- RESUMO -->
+<div class="resumo-bar" id="resumo-bar" style="display:none">
+  <div class="res-card"><div class="res-icon">📋</div><div><div class="res-val" id="res-ops">0</div><div class="res-lbl">OPs na Fila</div></div></div>
+  <div class="res-card"><div class="res-icon">👕</div><div><div class="res-val" id="res-pecas">0</div><div class="res-lbl">Total Peças</div></div></div>
+  <div class="res-card"><div class="res-icon">📅</div><div><div class="res-val" id="res-dias">0</div><div class="res-lbl">Dias Produção</div></div></div>
+  <div class="res-card"><div class="res-icon">🏁</div><div><div class="res-val" id="res-termino">—</div><div class="res-lbl">Término Previsto</div></div></div>
+  <div class="res-card"><div class="res-icon">💰</div><div><div class="res-val" id="res-fat">R$ 0</div><div class="res-lbl">Faturamento Total</div></div></div>
+</div>
+
+<!-- TABELA FILA -->
+<div id="fila-container">
+  <div class="empty-fila">
+    <div style="font-size:40px;margin-bottom:10px">📅</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:4px">Fila vazia</div>
+    <div style="font-size:12px">Configure o turno e adicione OPs para começar</div>
+  </div>
+</div>
+
+<!-- ÁREA DE IMPRESSÃO (oculta) -->
+<div id="area-impressao" style="display:none"></div>
+
+<!-- MODAL CONFIG TURNO -->
+<div class="modal-overlay" id="modal-config">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Configurar Turno e Início</div>
+      <button class="modal-close" onclick="fecharModal('modal-config')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Turno *</label>
+          <select id="cfg-sel-turno" onchange="turnoSelecionado()">
+            <option value="">Selecione...</option>
+            {% for t in turnos %}
+            <option value="{{ t.id }}" data-mins="{{ t.minutos_normal }}" data-nome="{{ t.nome }}" data-he="{{ t.hora_entrada }}" data-hs="{{ t.hora_saida }}">
+              {{ t.nome }} ({{ t.minutos_normal }}min)
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Data/Hora Início da Fila *</label>
+          <input type="datetime-local" id="cfg-dt-inicio">
+        </div>
+      </div>
+      <div class="form-row cols-3">
+        <div class="form-group">
+          <label>Min disponíveis/dia</label>
+          <input type="number" id="cfg-mins-input" readonly style="background:#f8f9fb;font-weight:700">
+        </div>
+        <div class="form-group">
+          <label>Hora Entrada</label>
+          <input type="time" id="cfg-he-input" readonly style="background:#f8f9fb">
+        </div>
+        <div class="form-group">
+          <label>Hora Saída</label>
+          <input type="time" id="cfg-hs-input" readonly style="background:#f8f9fb">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-config')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarConfig()">✅ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADD OP -->
+<div class="modal-overlay" id="modal-add-op">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Adicionar OP na Fila</div>
+      <button class="modal-close" onclick="fecharModal('modal-add-op')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Ordem de Produção *</label>
+          <select id="add-op-sel" onchange="opSelecionada()">
+            <option value="">Selecione...</option>
+            {% for op in ops %}
+            <option value="{{ op.id }}" data-num="{{ op.numero }}" data-ref="{{ op.ref_codigo or '' }}" data-desc="{{ op.descricao or '' }}" data-qtd="{{ op.quantidade_total or 0 }}" data-unit="{{ op.valor_unitario or 0 }}">
+              OP {{ op.numero }} — {{ op.ref_codigo or '' }} {% if op.descricao %}| {{ op.descricao }}{% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Qtd de Peças *</label>
+          <input type="number" id="add-qtd" min="1" oninput="calcularPreviewOP()">
+        </div>
+      </div>
+      <div class="form-row cols-3" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Nº Operadores *</label>
+          <input type="number" id="add-operadores" min="1" value="20" oninput="calcularPreviewOP()">
+        </div>
+        <div class="form-group">
+          <label>Nº de Times *</label>
+          <input type="number" id="add-times" min="1" value="10" oninput="calcularPreviewOP()">
+        </div>
+        <div class="form-group">
+          <label>Ciclo (min) *</label>
+          <select id="add-ciclo" onchange="calcularPreviewOP()">
+            <option value="10">10 min</option>
+            <option value="15" selected>15 min</option>
+            <option value="20">20 min</option>
+            <option value="25">25 min</option>
+            <option value="30">30 min</option>
+          </select>
+        </div>
+      </div>
+      <div id="seq-preview" style="display:none;background:#f0f4ff;border:1px solid #1d4ed8;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#1d4ed8;font-weight:600"></div>
+      <!-- Preview -->
+      <div style="background:#f8f9fb;border-radius:10px;padding:12px">
+        <div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:8px">Preview</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">
+          <div><div style="font-size:9px;color:#9ca3af;text-transform:uppercase">Tempo/Peça</div><div style="font-size:16px;font-weight:800;color:#1a1a2e" id="prev-tempo">—</div></div>
+          <div><div style="font-size:9px;color:#9ca3af;text-transform:uppercase">Meta/Dia</div><div style="font-size:16px;font-weight:800;color:#1a1a2e" id="prev-meta-dia">—</div></div>
+          <div><div style="font-size:9px;color:#9ca3af;text-transform:uppercase">Meta/Ciclo</div><div style="font-size:16px;font-weight:800;color:#1a1a2e" id="prev-meta-ciclo">—</div></div>
+          <div><div style="font-size:9px;color:#9ca3af;text-transform:uppercase">Atravessamento</div><div style="font-size:16px;font-weight:800;color:#d97706" id="prev-atrav">—</div></div>
+          <div><div style="font-size:9px;color:#9ca3af;text-transform:uppercase">Total Ciclos</div><div style="font-size:16px;font-weight:800;color:#1a1a2e" id="prev-ciclos">—</div></div>
+          <div><div style="font-size:9px;color:#9ca3af;text-transform:uppercase">Dias Produção</div><div style="font-size:16px;font-weight:800;color:#1d4ed8" id="prev-dias">—</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-add-op')">Cancelar</button>
+      <button class="btn btn-primary" onclick="adicionarOP()">➕ Adicionar na Fila</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let config = { turnoId:null, turnoNome:'', minutos:540, horaEntrada:'07:00', horaSaida:'17:00', dtInicio:null };
+let fila = [];
+let tempSeqOp = {};
+
+function toast(msg,tipo='success'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+tipo+' show';setTimeout(()=>t.classList.remove('show'),2800)}
+function fecharModal(id){document.getElementById(id).classList.remove('open')}
+function abrirModal(id){document.getElementById(id).classList.add('open')}
+function fmtN(v){return Number(v||0).toLocaleString('pt-BR')}
+function fmtR(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+function pad(n){return String(n).padStart(2,'0')}
+function fmtDT(dt){if(!dt)return'—';return dt.toLocaleDateString('pt-BR')+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+function fmtData(dt){if(!dt)return'—';return dt.toLocaleDateString('pt-BR')}
+function fmtHora(dt){if(!dt)return'—';return dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+
+function avancarTempo(dt, minutos) {
+  let rest = minutos, cur = new Date(dt);
+  while (rest > 0) {
+    while (cur.getDay()===0||cur.getDay()===6){cur.setDate(cur.getDate()+1);const[h,m]=config.horaEntrada.split(':').map(Number);cur.setHours(h,m,0,0)}
+    const[hs,ms]=config.horaSaida.split(':').map(Number);
+    const fim=new Date(cur);fim.setHours(hs,ms,0,0);
+    const disp=Math.max(0,(fim-cur)/60000);
+    if(rest<=disp){cur=new Date(cur.getTime()+rest*60000);rest=0}
+    else{rest-=disp;cur.setDate(cur.getDate()+1);const[he,me]=config.horaEntrada.split(':').map(Number);cur.setHours(he,me,0,0);while(cur.getDay()===0||cur.getDay()===6)cur.setDate(cur.getDate()+1)}
+  }
+  return cur;
+}
+
+// CONFIG
+function abrirModalConfig(){
+  const agora=new Date();
+  document.getElementById('cfg-dt-inicio').value=`${agora.getFullYear()}-${pad(agora.getMonth()+1)}-${pad(agora.getDate())}T${config.horaEntrada}`;
+  abrirModal('modal-config');
+}
+function turnoSelecionado(){
+  const sel=document.getElementById('cfg-sel-turno');
+  const opt=sel.options[sel.selectedIndex];
+  if(!opt||!opt.value)return;
+  document.getElementById('cfg-mins-input').value=opt.dataset.mins;
+  document.getElementById('cfg-he-input').value=opt.dataset.he;
+  document.getElementById('cfg-hs-input').value=opt.dataset.hs;
+}
+function confirmarConfig(){
+  const sel=document.getElementById('cfg-sel-turno');
+  const opt=sel.options[sel.selectedIndex];
+  const dtStr=document.getElementById('cfg-dt-inicio').value;
+  if(!opt||!opt.value||!dtStr){toast('Preencha todos os campos','error');return}
+  config={turnoId:opt.value,turnoNome:opt.dataset.nome,minutos:parseInt(opt.dataset.mins)||540,horaEntrada:opt.dataset.he||'07:00',horaSaida:opt.dataset.hs||'17:00',dtInicio:new Date(dtStr)};
+  fecharModal('modal-config');
+  atualizarBanner();
+  recalcularTudo();
+  toast('Configuração salva!');
+}
+function atualizarBanner(){
+  document.getElementById('cfg-turno-nome').textContent=config.turnoNome||'Não configurado';
+  document.getElementById('cfg-mins').textContent=config.minutos?config.minutos+'min':'—';
+  document.getElementById('cfg-he').textContent=config.horaEntrada||'—';
+  document.getElementById('cfg-hs').textContent=config.horaSaida||'—';
+  document.getElementById('cfg-inicio').textContent=config.dtInicio?fmtDT(config.dtInicio):'—';
+}
+
+// ADD OP
+function abrirModalAddOP(){
+  if(!config.turnoId){toast('Configure o turno primeiro','error');abrirModalConfig();return}
+  document.getElementById('add-op-sel').value='';
+  document.getElementById('add-qtd').value='';
+  document.getElementById('add-operadores').value=20;
+  document.getElementById('add-times').value=10;
+  document.getElementById('add-ciclo').value=15;
+  document.getElementById('seq-preview').style.display='none';
+  ['prev-tempo','prev-meta-dia','prev-meta-ciclo','prev-atrav','prev-ciclos','prev-dias'].forEach(id=>document.getElementById(id).textContent='—');
+  abrirModal('modal-add-op');
+}
+async function opSelecionada(){
+  const sel=document.getElementById('add-op-sel');
+  const opt=sel.options[sel.selectedIndex];
+  if(!opt||!opt.value)return;
+  document.getElementById('add-qtd').value=opt.dataset.qtd||'';
+  const seq=await fetch('/api/op/sequencia/'+opt.value).then(r=>r.json());
+  tempSeqOp[opt.value]=seq;
+  const tempo=seq.reduce((s,o)=>s+parseFloat(o.tempo_padrao||0),0);
+  const div=document.getElementById('seq-preview');
+  div.style.display='';
+  div.textContent=`📋 ${seq.length} operações — Tempo total: ${tempo.toFixed(2)} min/peça`;
+  calcularPreviewOP();
+}
+function calcularPreviewOP(){
+  const sel=document.getElementById('add-op-sel');
+  const opt=sel.options[sel.selectedIndex];
+  if(!opt||!opt.value)return;
+  const seq=tempSeqOp[opt.value]||[];
+  const tempo=seq.reduce((s,o)=>s+parseFloat(o.tempo_padrao||0),0);
+  const operadores=parseInt(document.getElementById('add-operadores').value)||1;
+  const nTimes=parseInt(document.getElementById('add-times').value)||1;
+  const ciclo=parseInt(document.getElementById('add-ciclo').value)||15;
+  const qtd=parseInt(document.getElementById('add-qtd').value)||0;
+  const mins=config.minutos;
+  if(tempo<=0)return;
+  const metaDia=Math.floor((mins/tempo)*operadores);
+  const ciclosDia=Math.floor(mins/ciclo);
+  const metaCiclo=ciclosDia>0?Math.round(metaDia/ciclosDia):0;
+  const atrav=nTimes*ciclo;
+  const totalCiclos=metaCiclo>0?Math.ceil(qtd/metaCiclo):0;
+  const diasProd=ciclosDia>0?(totalCiclos/ciclosDia).toFixed(1):'—';
+  document.getElementById('prev-tempo').textContent=tempo.toFixed(2)+'min';
+  document.getElementById('prev-meta-dia').textContent=fmtN(metaDia);
+  document.getElementById('prev-meta-ciclo').textContent=fmtN(metaCiclo);
+  document.getElementById('prev-atrav').textContent=atrav+'min';
+  document.getElementById('prev-ciclos').textContent=fmtN(totalCiclos);
+  document.getElementById('prev-dias').textContent=diasProd;
+}
+function adicionarOP(){
+  const sel=document.getElementById('add-op-sel');
+  const opt=sel.options[sel.selectedIndex];
+  if(!opt||!opt.value){toast('Selecione uma OP','error');return}
+  const seq=tempSeqOp[opt.value]||[];
+  const tempo=seq.reduce((s,o)=>s+parseFloat(o.tempo_padrao||0),0);
+  const qtd=parseInt(document.getElementById('add-qtd').value)||0;
+  if(!qtd){toast('Informe a quantidade','error');return}
+  if(tempo<=0){toast('OP sem sequência cadastrada','error');return}
+  fila.push({opId:opt.value,opNum:opt.dataset.num,opRef:opt.dataset.ref,opDesc:opt.dataset.desc,valorUnit:parseFloat(opt.dataset.unit)||0,qtd,operadores:parseInt(document.getElementById('add-operadores').value)||1,nTimes:parseInt(document.getElementById('add-times').value)||1,ciclo:parseInt(document.getElementById('add-ciclo').value)||15,tempoPeca:tempo,horasExtra:0,obsExtra:''});
+  fecharModal('modal-add-op');
+  recalcularTudo();
+  toast('OP adicionada!');
+}
+
+// RECALCULAR
+function recalcularTudo(){
+  if(!config.dtInicio){renderFila();return}
+  let cur=new Date(config.dtInicio);
+  fila.forEach(item=>{
+    const mins=config.minutos;
+    const metaDia=Math.floor((mins/item.tempoPeca)*item.operadores);
+    const ciclosDia=Math.floor(mins/item.ciclo);
+    const metaCiclo=ciclosDia>0?Math.round(metaDia/ciclosDia):0;
+    const atrav=item.nTimes*item.ciclo;
+    const totalCiclos=metaCiclo>0?Math.ceil(item.qtd/metaCiclo):0;
+    const minsTotais=totalCiclos*item.ciclo+(item.horasExtra*60);
+    item.metaDia=metaDia;item.ciclosDia=ciclosDia;item.metaCiclo=metaCiclo;
+    item.atravessamento=atrav;item.totalCiclos=totalCiclos;
+    item.dtEntrada=new Date(cur);
+    item.dtPrimeiraPeca=avancarTempo(cur,atrav);
+    item.dtSaida=avancarTempo(cur,minsTotais);
+    cur=new Date(item.dtSaida);
+  });
+  renderFila();
+  atualizarResumo();
+}
+
+// RENDER TABELA
+function renderFila(){
+  const container=document.getElementById('fila-container');
+  if(!fila.length){
+    container.innerHTML='<div class="empty-fila"><div style="font-size:40px;margin-bottom:10px">📅</div><div style="font-size:14px;font-weight:700;margin-bottom:4px">Fila vazia</div><div style="font-size:12px">Configure o turno e adicione OPs para começar</div></div>';
+    document.getElementById('resumo-bar').style.display='none';
+    return;
+  }
+  document.getElementById('resumo-bar').style.display='grid';
+  const agora=new Date();
+  const rows=fila.map((item,i)=>{
+    let status='aguardando';
+    if(item.dtSaida&&agora>item.dtSaida)status='concluida';
+    else if(item.dtEntrada&&agora>=item.dtEntrada)status='producao';
+    else if(i===0||(fila[i-1]&&fila[i-1].dtSaida))status='proxima';
+    const statusTxt={aguardando:'Aguardando',producao:'Em Produção',concluida:'Concluída',proxima:'Próxima'}[status];
+    return `
+    <tr>
+      <td><div class="pos-num pos-${status}">${i+1}</div></td>
+      <td><span class="status-badge s-${status}">${statusTxt}</span></td>
+      <td><div style="font-weight:700;color:#1a1a2e;font-size:12px">OP ${item.opNum}</div><div style="font-size:10px;color:#6b7280">${item.opRef}</div></td>
+      <td><div style="font-size:11px;color:#374151;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.opDesc||'—'}</div></td>
+      <td style="text-align:right;font-weight:700">${fmtN(item.qtd)}</td>
+      <td style="text-align:center">${item.operadores}</td>
+      <td style="text-align:center">${item.nTimes}×${item.ciclo}min</td>
+      <td style="text-align:right">${item.tempoPeca.toFixed(2)}</td>
+      <td style="text-align:right;font-weight:700">${fmtN(item.metaDia)}</td>
+      <td style="text-align:right;font-weight:700">${fmtN(item.metaCiclo)}</td>
+      <td><span class="atrav-badge">${item.atravessamento}min</span></td>
+      <td>
+        <div class="dt-cell">
+          <div class="dt-data">${fmtData(item.dtEntrada)}</div>
+          <div class="dt-hora entrada">${fmtHora(item.dtEntrada)}</div>
+        </div>
+      </td>
+      <td>
+        <div class="dt-cell">
+          <div class="dt-data">${fmtData(item.dtPrimeiraPeca)}</div>
+          <div class="dt-hora" style="color:#d97706">${fmtHora(item.dtPrimeiraPeca)}</div>
+        </div>
+      </td>
+      <td>
+        <div class="dt-cell">
+          <div class="dt-data">${fmtData(item.dtSaida)}</div>
+          <div class="dt-hora saida">${fmtHora(item.dtSaida)}</div>
+        </div>
+      </td>
+      <td>
+        <input type="number" class="extra-input" value="${item.horasExtra||0}" min="0" step="0.5"
+          onchange="setHorasExtra(${i},this.value)" title="Horas extras/perdas">
+      </td>
+      <td>
+        <input type="text" class="obs-input" value="${item.obsExtra||''}"
+          onchange="setObsExtra(${i},this.value)" placeholder="Obs...">
+      </td>
+      <td>
+        <button class="btn btn-danger btn-sm" onclick="removerOP(${i})" style="padding:2px 7px;font-size:10px">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  container.innerHTML=`
+  <div class="fila-table-wrap">
+    <table class="fila-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Status</th>
+          <th>OP</th>
+          <th>Descrição</th>
+          <th>Peças</th>
+          <th>Oper.</th>
+          <th>Times×Ciclo</th>
+          <th>T.Peça(min)</th>
+          <th>Meta/Dia</th>
+          <th>Meta/Ciclo</th>
+          <th>Atrav.</th>
+          <th>📅 Entrada</th>
+          <th>⚡ 1ª Peça</th>
+          <th>🏁 Saída</th>
+          <th>+Horas</th>
+          <th>Observação</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+function atualizarResumo(){
+  const totalPecas=fila.reduce((s,i)=>s+i.qtd,0);
+  const totalFat=fila.reduce((s,i)=>s+(i.qtd*(i.valorUnit||0)),0);
+  const ultima=fila[fila.length-1];
+  const primeira=fila[0];
+  let dias=0;
+  if(primeira&&ultima&&primeira.dtEntrada&&ultima.dtSaida)
+    dias=Math.ceil((ultima.dtSaida-primeira.dtEntrada)/(1000*60*60*24));
+  document.getElementById('res-ops').textContent=fila.length;
+  document.getElementById('res-pecas').textContent=fmtN(totalPecas);
+  document.getElementById('res-dias').textContent=dias;
+  document.getElementById('res-termino').textContent=ultima&&ultima.dtSaida?fmtData(ultima.dtSaida):'—';
+  document.getElementById('res-fat').textContent=fmtR(totalFat);
+}
+
+function removerOP(idx){
+  if(!confirm('Remover esta OP da fila?'))return;
+  fila.splice(idx,1);
+  recalcularTudo();
+  toast('OP removida');
+}
+function setHorasExtra(idx,val){fila[idx].horasExtra=parseFloat(val)||0;recalcularTudo()}
+function setObsExtra(idx,val){fila[idx].obsExtra=val}
+
+// IMPRIMIR
+function imprimirFila(){
+  if(!fila.length){toast('Fila vazia','error');return}
+  const agora=new Date();
+  const dataStr=agora.toLocaleDateString('pt-BR');
+  const horaStr=agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const totalPecas=fila.reduce((s,i)=>s+i.qtd,0);
+  const totalFat=fila.reduce((s,i)=>s+(i.qtd*(i.valorUnit||0)),0);
+  const ultima=fila[fila.length-1];
+
+  const rows=fila.map((item,i)=>`
+    <tr style="border-bottom:1px solid #e0e6f0">
+      <td style="padding:6px 8px;text-align:center;font-weight:800">${i+1}</td>
+      <td style="padding:6px 8px;font-weight:700">OP ${item.opNum}<br><span style="font-size:10px;color:#6b7280;font-weight:400">${item.opRef}</span></td>
+      <td style="padding:6px 8px;font-size:11px;color:#374151">${item.opDesc||'—'}</td>
+      <td style="padding:6px 8px;text-align:right;font-weight:700">${fmtN(item.qtd)}</td>
+      <td style="padding:6px 8px;text-align:center">${item.operadores}</td>
+      <td style="padding:6px 8px;text-align:center">${item.nTimes}×${item.ciclo}min</td>
+      <td style="padding:6px 8px;text-align:right">${item.tempoPeca.toFixed(2)}</td>
+      <td style="padding:6px 8px;text-align:right;font-weight:700">${fmtN(item.metaDia)}</td>
+      <td style="padding:6px 8px;text-align:right;font-weight:700">${fmtN(item.metaCiclo)}</td>
+      <td style="padding:6px 8px;text-align:center;background:#fef9c3;font-weight:700">${item.atravessamento}min</td>
+      <td style="padding:6px 8px;color:#1d4ed8;font-weight:700">${fmtData(item.dtEntrada)}<br><strong>${fmtHora(item.dtEntrada)}</strong></td>
+      <td style="padding:6px 8px;color:#d97706;font-weight:700">${fmtData(item.dtPrimeiraPeca)}<br><strong>${fmtHora(item.dtPrimeiraPeca)}</strong></td>
+      <td style="padding:6px 8px;color:#15803d;font-weight:700">${fmtData(item.dtSaida)}<br><strong>${fmtHora(item.dtSaida)}</strong></td>
+      <td style="padding:6px 8px;text-align:center">${item.horasExtra||0}h</td>
+      <td style="padding:6px 8px;font-size:10px;color:#6b7280">${item.obsExtra||'—'}</td>
+    </tr>`).join('');
+
+  const html=`<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Fila de Produção — CHRONA</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',Arial,sans-serif;background:#fff;color:#1a1a2e;font-size:12px}
+.page{padding:16px;max-width:1200px;margin:0 auto}
+.header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:3px solid #1a1a2e;padding-bottom:12px;margin-bottom:14px}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:40px;height:40px;background:#1a1a2e;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.logo h1{font-size:20px;font-weight:800;letter-spacing:1px}
+.logo small{font-size:10px;color:#6b7280;display:block}
+.info{text-align:right;font-size:11px;color:#374151}
+.info strong{display:block;font-size:13px;color:#1a1a2e;margin-bottom:2px}
+.cfg-bar{background:#1a1a2e;border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;gap:24px;flex-wrap:wrap}
+.cfg-it{text-align:center}
+.cfg-it-lbl{color:#9ca3af;font-size:9px;font-weight:700;text-transform:uppercase}
+.cfg-it-val{color:#fff;font-size:12px;font-weight:700;margin-top:1px}
+.cfg-it-val.dest{color:#f5a623;font-size:15px;font-weight:800}
+.resumo{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+.res-card{background:#f8f9fb;border:1px solid #e0e6f0;border-radius:8px;padding:8px 12px;text-align:center}
+.res-val{font-size:16px;font-weight:800;color:#1a1a2e}
+.res-lbl{font-size:9px;color:#9ca3af;text-transform:uppercase;margin-top:2px}
+table{width:100%;border-collapse:collapse;border:1px solid #e0e6f0;border-radius:8px;overflow:hidden}
+thead{background:#1a1a2e}
+thead th{padding:8px 8px;color:#fff;font-size:9px;font-weight:700;text-align:left;white-space:nowrap}
+tbody tr:nth-child(even){background:#f8f9fb}
+.footer{margin-top:14px;padding-top:10px;border-top:1px solid #e0e6f0;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af}
+.no-print{display:flex;justify-content:center;gap:12px;margin-bottom:16px}
+.no-print button{padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}
+.btn-imp{background:#1a1a2e;color:#fff}
+.btn-fec{background:#f0f2f5;color:#374151}
+@media print{.no-print{display:none!important}@page{margin:8mm;size:landscape}}
+</style></head><body>
+<div class="page">
+  <div class="no-print">
+    <button class="btn-imp" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+    <button class="btn-fec" onclick="window.close()">✕ Fechar</button>
+  </div>
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">⏱</div>
+      <div><h1>CHRONA</h1><small>Sistema de Produção</small></div>
+    </div>
+    <div class="info">
+      <strong>Fila de Produção</strong>
+      ${dataStr} às ${horaStr}
+    </div>
+  </div>
+  <div class="cfg-bar">
+    <div class="cfg-it"><div class="cfg-it-lbl">Turno</div><div class="cfg-it-val">${config.turnoNome}</div></div>
+    <div class="cfg-it"><div class="cfg-it-lbl">Min/Dia</div><div class="cfg-it-val dest">${config.minutos}min</div></div>
+    <div class="cfg-it"><div class="cfg-it-lbl">Entrada</div><div class="cfg-it-val">${config.horaEntrada}</div></div>
+    <div class="cfg-it"><div class="cfg-it-lbl">Saída</div><div class="cfg-it-val">${config.horaSaida}</div></div>
+    <div class="cfg-it"><div class="cfg-it-lbl">Início da Fila</div><div class="cfg-it-val">${config.dtInicio?fmtDT(config.dtInicio):'—'}</div></div>
+    <div class="cfg-it"><div class="cfg-it-lbl">Término Previsto</div><div class="cfg-it-val dest">${ultima&&ultima.dtSaida?fmtData(ultima.dtSaida):'—'}</div></div>
+  </div>
+  <div class="resumo">
+    <div class="res-card"><div class="res-val">${fila.length}</div><div class="res-lbl">OPs na Fila</div></div>
+    <div class="res-card"><div class="res-val">${fmtN(totalPecas)}</div><div class="res-lbl">Total Peças</div></div>
+    <div class="res-card"><div class="res-val">${ultima&&ultima.dtSaida?Math.ceil((ultima.dtSaida-fila[0].dtEntrada)/(1000*60*60*24)):0}</div><div class="res-lbl">Dias Produção</div></div>
+    <div class="res-card"><div class="res-val">${ultima&&ultima.dtSaida?fmtData(ultima.dtSaida):'—'}</div><div class="res-lbl">Término</div></div>
+    <div class="res-card"><div class="res-val">${fmtR(totalFat)}</div><div class="res-lbl">Faturamento Total</div></div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>OP</th><th>Descrição</th><th>Peças</th><th>Oper.</th>
+        <th>Times×Ciclo</th><th>T.Peça(min)</th><th>Meta/Dia</th><th>Meta/Ciclo</th>
+        <th>Atrav.</th><th>📅 Entrada</th><th>⚡ 1ª Peça</th><th>🏁 Saída</th>
+        <th>+Horas</th><th>Observação</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="footer">
+    <span>CHRONA — Sistema de Produção</span>
+    <span>Gerado em ${dataStr} às ${horaStr}</span>
+  </div>
+</div></body></html>`;
+
+  const j=window.open('','_blank','width=1200,height=800');
+  j.document.write(html);j.document.close();
+}
+
+// Init
+const agora=new Date();
+document.getElementById('cfg-dt-inicio') && (document.getElementById('cfg-dt-inicio').value=`${agora.getFullYear()}-${pad(agora.getMonth()+1)}-${pad(agora.getDate())}T07:00`);
+</script>
+{% endblock %}

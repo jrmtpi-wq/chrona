@@ -1,0 +1,635 @@
+{% extends 'base.html' %}
+{% block title %}Sequência OP{% endblock %}
+{% block content %}
+<style>
+.seq-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.seq-title{font-size:18px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px}
+.card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:20px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1a1a2e;color:#fff}.btn-primary:hover{background:#2d3a6e}
+.btn-success{background:#15803d;color:#fff}.btn-success:hover{background:#166534}
+.btn-danger{background:#dc2626;color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-warning{background:#d97706;color:#fff}
+.btn-light{background:#f0f2f5;color:#374151}.btn-light:hover{background:#e5e7eb}
+.btn-purple{background:#7c3aed;color:#fff}.btn-purple:hover{background:#6d28d9}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-xs{padding:3px 8px;font-size:10px;border-radius:5px}
+.form-group label{display:block;font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid #e0e6f0;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+.form-group input:focus,.form-group select:focus{border-color:#1a1a2e}
+.form-row{display:grid;gap:12px}
+.cols-2{grid-template-columns:1fr 1fr}
+.cols-3{grid-template-columns:1fr 1fr 1fr}
+.cols-4{grid-template-columns:1fr 1fr 1fr 1fr}
+.cols-5{grid-template-columns:1fr 1fr 1fr 1fr 1fr}
+
+/* LAYOUT PRINCIPAL */
+.seq-layout{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* BANCO DE OPERAÇÕES */
+.banco-filtros{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.filtro-btn{padding:5px 12px;border:1.5px solid #e0e6f0;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;color:#374151;transition:all .15s}
+.filtro-btn:hover{border-color:#1a1a2e;color:#1a1a2e}
+.filtro-btn.active{background:#1a1a2e;color:#fff;border-color:#1a1a2e}
+.banco-search{flex:1;min-width:160px;padding:6px 12px;border:1.5px solid #e0e6f0;border-radius:8px;font-size:12px;outline:none}
+.banco-search:focus{border-color:#1a1a2e}
+
+.op-banco-item{background:#f8f9fb;border:1.5px solid #e0e6f0;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px;transition:all .15s;cursor:grab}
+.op-banco-item:hover{border-color:#1a1a2e;background:#f0f2f5}
+.op-banco-item.dragging{opacity:.4}
+.op-banco-item .drag-icon{color:#d1d5db;font-size:14px;flex-shrink:0}
+.op-banco-num{width:22px;height:22px;background:#1a1a2e;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+.op-banco-info{flex:1;min-width:0}
+.op-banco-nome{font-size:12px;font-weight:700;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.op-banco-sub{font-size:10px;color:#6b7280;display:flex;gap:6px;margin-top:1px;flex-wrap:wrap}
+.op-banco-tempo{font-size:11px;font-weight:700;color:#1a1a2e;flex-shrink:0}
+.tag-modelo{padding:2px 6px;border-radius:10px;font-size:9px;font-weight:700}
+.tag-masc{background:#dbeafe;color:#1d4ed8}
+.tag-fem{background:#fce7f3;color:#9d174d}
+.tag-adulto{background:#dcfce7;color:#15803d}
+.tag-infantil{background:#fef9c3;color:#854d0e}
+.tag-univ{background:#f3e8ff;color:#7c3aed}
+.tag-maq{background:#f0f2f5;color:#374151}
+
+/* SEQUÊNCIA MONTADA */
+.seq-drop-area{min-height:400px;border:2px dashed #e0e6f0;border-radius:10px;padding:8px;transition:all .2s}
+.seq-drop-area.drag-over{border-color:#1a1a2e;background:#f8f9fb}
+.seq-item{background:#fff;border:1.5px solid #e0e6f0;border-radius:8px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:8px;cursor:grab;transition:all .15s}
+.seq-item:hover{border-color:#1a1a2e;background:#f8f9fb}
+.seq-item.dragging{opacity:.3}
+.seq-item.drag-over-item{border-top:3px solid #1a1a2e}
+.seq-num-input{width:36px;padding:3px 4px;border:1px solid #e0e6f0;border-radius:5px;font-size:11px;font-weight:700;text-align:center;outline:none}
+.seq-num-input:focus{border-color:#1a1a2e}
+.seq-info{flex:1;min-width:0}
+.seq-nome{font-size:12px;font-weight:700;color:#1a1a2e}
+.seq-sub{font-size:10px;color:#6b7280;margin-top:1px}
+.seq-tempo{font-size:11px;font-weight:700;color:#1a1a2e;flex-shrink:0}
+
+/* TOTAL */
+.seq-total{background:#1a1a2e;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;margin-top:10px}
+.seq-total-lbl{font-size:12px;color:#9ca3af}
+.seq-total-val{font-size:18px;font-weight:800;color:#f5a623}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-header{padding:16px 20px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.modal-title{font-size:15px;font-weight:700;color:#1a1a2e}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid #f0f2f5;display:flex;justify-content:flex-end;gap:8px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#15803d}
+.toast.error{background:#dc2626}
+
+.empty-state{text-align:center;padding:48px 20px;color:#9ca3af}
+.empty-icon{font-size:40px;display:block;margin-bottom:8px}
+.badge{padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block}
+</style>
+
+<div class="seq-header">
+  <div class="seq-title">⚙️ Banco de Sequências</div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-primary btn-sm" onclick="abrirModalNovaOp()">➕ Nova Operação</button>
+    <button class="btn btn-purple btn-sm" onclick="abrirModalSalvarSeq()">💾 Salvar Sequência</button>
+    <button class="btn btn-success btn-sm" onclick="abrirModalCarregarSeq()">📂 Carregar Sequência</button>
+  </div>
+</div>
+
+<div class="seq-layout">
+  <!-- BANCO DE OPERAÇÕES -->
+  <div>
+    <div class="card">
+      <div class="card-title">📦 Banco de Operações</div>
+
+      <!-- Filtros -->
+      <div class="banco-filtros">
+        <input type="text" class="banco-search" id="busca-op" placeholder="🔍 Buscar operação..." oninput="filtrarBanco()">
+      </div>
+      <div class="banco-filtros" id="filtros-modelo">
+        <button class="filtro-btn active" data-modelo="TODOS" onclick="setFiltro('TODOS',this)">Todos</button>
+        <button class="filtro-btn" data-modelo="MASCULINO" onclick="setFiltro('MASCULINO',this)">👔 Masculino</button>
+        <button class="filtro-btn" data-modelo="FEMININO" onclick="setFiltro('FEMININO',this)">👗 Feminino</button>
+        <button class="filtro-btn" data-modelo="ADULTO" onclick="setFiltro('ADULTO',this)">🧑 Adulto</button>
+        <button class="filtro-btn" data-modelo="INFANTIL" onclick="setFiltro('INFANTIL',this)">👦 Infantil</button>
+        <button class="filtro-btn" data-modelo="UNIVERSAL" onclick="setFiltro('UNIVERSAL',this)">🌐 Universal</button>
+      </div>
+
+      <!-- Lista -->
+      <div id="banco-lista" style="max-height:500px;overflow-y:auto">
+        <div class="empty-state"><span class="empty-icon">📦</span>Carregando operações...</div>
+      </div>
+
+      <div style="margin-top:10px;font-size:11px;color:#9ca3af" id="banco-count"></div>
+    </div>
+  </div>
+
+  <!-- SEQUÊNCIA MONTADA -->
+  <div>
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between">
+        <span>📋 Sequência Montada</span>
+        <button class="btn btn-danger btn-xs" onclick="limparSequencia()">🗑️ Limpar</button>
+      </div>
+
+      <!-- Info da sequência -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="flex:1;min-width:120px">
+          <label style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase">Nome da Sequência</label>
+          <input type="text" id="seq-nome" placeholder="Ex: Calça Social Masculino..." style="width:100%;padding:6px 10px;border:1px solid #e0e6f0;border-radius:7px;font-size:12px;outline:none;margin-top:3px">
+        </div>
+        <div style="min-width:120px">
+          <label style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase">Modelo</label>
+          <select id="seq-modelo" style="width:100%;padding:6px 10px;border:1px solid #e0e6f0;border-radius:7px;font-size:12px;outline:none;margin-top:3px">
+            <option value="">Selecione...</option>
+            <option value="MASCULINO">👔 Masculino</option>
+            <option value="FEMININO">👗 Feminino</option>
+            <option value="ADULTO">🧑 Adulto</option>
+            <option value="INFANTIL">👦 Infantil</option>
+            <option value="UNIVERSAL">🌐 Universal</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Drop area -->
+      <div class="seq-drop-area" id="seq-drop"
+           ondragover="allowDrop(event)" ondrop="dropNaSeq(event)"
+           ondragenter="this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')">
+        <div id="seq-lista">
+          <div class="empty-state"><span class="empty-icon">👆</span>Arraste operações do banco para cá</div>
+        </div>
+      </div>
+
+      <!-- Total -->
+      <div class="seq-total">
+        <span class="seq-total-lbl">⏱ Tempo Total da Peça</span>
+        <span class="seq-total-val" id="seq-total-val">0.00 min</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOVA OPERAÇÃO -->
+<div class="modal-overlay" id="modal-nova-op">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-op-title">➕ Nova Operação</div>
+      <button class="modal-close" onclick="fecharModal('modal-nova-op')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="op-edit-id">
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Código</label>
+          <input type="text" id="op-codigo" placeholder="Ex: OV001">
+        </div>
+        <div class="form-group">
+          <label>Tempo Padrão (min) *</label>
+          <input type="number" id="op-tempo" step="0.01" min="0" placeholder="0.00">
+        </div>
+      </div>
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Descrição da Operação *</label>
+          <input type="text" id="op-descricao" placeholder="Ex: Overloquear vista">
+        </div>
+      </div>
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Máquina / Equipamento</label>
+          <select id="op-equipamento">
+            <option value="">Selecione...</option>
+            {% for e in equipamentos %}
+            <option value="{{ e.id }}">{{ e.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Modelo</label>
+          <select id="op-modelo">
+            <option value="UNIVERSAL">🌐 Universal (todos)</option>
+            <option value="MASCULINO">👔 Masculino</option>
+            <option value="FEMININO">👗 Feminino</option>
+            <option value="ADULTO">🧑 Adulto</option>
+            <option value="INFANTIL">👦 Infantil</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Tipo</label>
+          <select id="op-tipo">
+            <option value="C">Costura</option>
+            <option value="A">Acabamento</option>
+            <option value="P">Preparação</option>
+            <option value="Q">Qualidade</option>
+            <option value="O">Outro</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-nova-op')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarOperacao()">💾 Salvar Operação</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SALVAR SEQUÊNCIA -->
+<div class="modal-overlay" id="modal-salvar-seq">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <div class="modal-title">💾 Salvar Sequência</div>
+      <button class="modal-close" onclick="fecharModal('modal-salvar-seq')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:#6b7280;margin-bottom:16px">A sequência montada será salva no banco para uso futuro no Balanceamento.</p>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Nome da Sequência *</label>
+        <input type="text" id="save-seq-nome" placeholder="Ex: Calça Social Masculino Adulto">
+      </div>
+      <div class="form-group">
+        <label>Modelo *</label>
+        <select id="save-seq-modelo">
+          <option value="">Selecione...</option>
+          <option value="MASCULINO">👔 Masculino</option>
+          <option value="FEMININO">👗 Feminino</option>
+          <option value="ADULTO">🧑 Adulto</option>
+          <option value="INFANTIL">👦 Infantil</option>
+          <option value="UNIVERSAL">🌐 Universal</option>
+        </select>
+      </div>
+      <div id="save-seq-count" style="margin-top:12px;font-size:12px;color:#6b7280"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-salvar-seq')">Cancelar</button>
+      <button class="btn btn-success" onclick="salvarSequencia()">✅ Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CARREGAR SEQUÊNCIA -->
+<div class="modal-overlay" id="modal-carregar-seq">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <div class="modal-title">📂 Sequências Salvas</div>
+      <button class="modal-close" onclick="fecharModal('modal-carregar-seq')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap" id="filtros-seq-salvas">
+        <button class="filtro-btn active" data-m="TODOS" onclick="filtrarSeqSalvas('TODOS',this)">Todos</button>
+        <button class="filtro-btn" data-m="MASCULINO" onclick="filtrarSeqSalvas('MASCULINO',this)">👔 Masculino</button>
+        <button class="filtro-btn" data-m="FEMININO" onclick="filtrarSeqSalvas('FEMININO',this)">👗 Feminino</button>
+        <button class="filtro-btn" data-m="ADULTO" onclick="filtrarSeqSalvas('ADULTO',this)">🧑 Adulto</button>
+        <button class="filtro-btn" data-m="INFANTIL" onclick="filtrarSeqSalvas('INFANTIL',this)">👦 Infantil</button>
+        <button class="filtro-btn" data-m="UNIVERSAL" onclick="filtrarSeqSalvas('UNIVERSAL',this)">🌐 Universal</button>
+      </div>
+      <div id="lista-seq-salvas">
+        <div class="empty-state"><span class="empty-icon">📂</span>Carregando...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-carregar-seq')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ── ESTADO ────────────────────────────────────────
+let banco = [];         // todas as operações do banco
+let sequencia = [];     // operações na sequência montada
+let filtroAtual = 'TODOS';
+let dragBancoIdx = null;
+let dragSeqIdx = null;
+let dragSource = null; // 'banco' | 'seq'
+let seqSalvas = [];
+
+// ── UTILS ─────────────────────────────────────────
+function toast(msg, tipo='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast '+tipo+' show';
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+function fecharModal(id) { document.getElementById(id).classList.remove('open') }
+function abrirModal(id) { document.getElementById(id).classList.add('open') }
+function allowDrop(e) { e.preventDefault(); }
+
+const tagModelo = {
+  'MASCULINO':'<span class="tag-modelo tag-masc">👔 Masc</span>',
+  'FEMININO':'<span class="tag-modelo tag-fem">👗 Fem</span>',
+  'ADULTO':'<span class="tag-modelo tag-adulto">🧑 Adulto</span>',
+  'INFANTIL':'<span class="tag-modelo tag-infantil">👦 Infantil</span>',
+  'UNIVERSAL':'<span class="tag-modelo tag-univ">🌐 Universal</span>',
+};
+
+// ── CARREGAR BANCO ────────────────────────────────
+async function carregarBanco() {
+  const rows = await fetch('/api/operacoes/banco').then(r => r.json());
+  banco = rows;
+  renderBanco();
+}
+
+function setFiltro(modelo, btn) {
+  filtroAtual = modelo;
+  document.querySelectorAll('#filtros-modelo .filtro-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderBanco();
+}
+
+function filtrarBanco() { renderBanco(); }
+
+function renderBanco() {
+  const busca = document.getElementById('busca-op').value.toLowerCase();
+  const lista = document.getElementById('banco-lista');
+  const count = document.getElementById('banco-count');
+
+  let items = banco.filter(op => {
+    const matchModelo = filtroAtual === 'TODOS' || op.modelo === filtroAtual;
+    const matchBusca = !busca || op.descricao.toLowerCase().includes(busca) || (op.codigo||'').toLowerCase().includes(busca);
+    return matchModelo && matchBusca;
+  });
+
+  count.textContent = `${items.length} operação(ões) encontrada(s)`;
+
+  if (!items.length) {
+    lista.innerHTML = '<div class="empty-state"><span class="empty-icon">🔍</span>Nenhuma operação encontrada</div>';
+    return;
+  }
+
+  lista.innerHTML = items.map((op, i) => `
+    <div class="op-banco-item" draggable="true"
+         ondragstart="dragDoBanco(event, ${op.id})"
+         ondblclick="adicionarNaSeq(${op.id})">
+      <span class="drag-icon">⠿</span>
+      <div class="op-banco-num">${op.codigo || (i+1)}</div>
+      <div class="op-banco-info">
+        <div class="op-banco-nome">${op.descricao}</div>
+        <div class="op-banco-sub">
+          ${tagModelo[op.modelo] || ''}
+          ${op.equip_nome ? `<span class="tag-modelo tag-maq">🔧 ${op.equip_nome}</span>` : ''}
+          <span style="color:#9ca3af">${op.tipo_label||''}</span>
+        </div>
+      </div>
+      <span class="op-banco-tempo">${parseFloat(op.tempo_padrao||0).toFixed(2)}min</span>
+      <div style="display:flex;gap:3px;flex-shrink:0">
+        <button class="btn btn-xs btn-light" onclick="editarOp(${op.id})" title="Editar">✏️</button>
+        <button class="btn btn-xs btn-danger" onclick="excluirOp(${op.id})" title="Excluir">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── DRAG DO BANCO ─────────────────────────────────
+function dragDoBanco(e, id) {
+  dragSource = 'banco';
+  dragBancoIdx = id;
+  e.dataTransfer.effectAllowed = 'copy';
+}
+
+function adicionarNaSeq(id) {
+  const op = banco.find(o => o.id === id);
+  if (!op) return;
+  sequencia.push({...op, seq_ordem: sequencia.length + 1});
+  renderSequencia();
+  toast(`${op.descricao} adicionada!`);
+}
+
+// ── DROP NA SEQUÊNCIA ─────────────────────────────
+function dropNaSeq(e) {
+  e.preventDefault();
+  document.getElementById('seq-drop').classList.remove('drag-over');
+  if (dragSource === 'banco' && dragBancoIdx) {
+    adicionarNaSeq(dragBancoIdx);
+    dragBancoIdx = null; dragSource = null;
+  }
+}
+
+// ── DRAG DENTRO DA SEQUÊNCIA ──────────────────────
+function dragSeqItem(e, idx) {
+  dragSource = 'seq';
+  dragSeqIdx = idx;
+  e.dataTransfer.effectAllowed = 'move';
+}
+
+function dropSeqItem(e, idx) {
+  e.preventDefault();
+  if (dragSource !== 'seq' || dragSeqIdx === null || dragSeqIdx === idx) return;
+  const item = sequencia.splice(dragSeqIdx, 1)[0];
+  sequencia.splice(idx, 0, item);
+  dragSeqIdx = null; dragSource = null;
+  renderSequencia();
+}
+
+// ── RENDER SEQUÊNCIA ──────────────────────────────
+function renderSequencia() {
+  const lista = document.getElementById('seq-lista');
+  const total = sequencia.reduce((s, o) => s + parseFloat(o.tempo_padrao||0), 0);
+  document.getElementById('seq-total-val').textContent = total.toFixed(2) + ' min';
+
+  if (!sequencia.length) {
+    lista.innerHTML = '<div class="empty-state"><span class="empty-icon">👆</span>Arraste operações do banco para cá<br><small style="font-size:11px">ou dê duplo clique na operação</small></div>';
+    return;
+  }
+
+  lista.innerHTML = sequencia.map((op, i) => `
+    <div class="seq-item" draggable="true"
+         ondragstart="dragSeqItem(event, ${i})"
+         ondragover="allowDrop(event)"
+         ondrop="dropSeqItem(event, ${i})"
+         ondragenter="this.classList.add('drag-over-item')"
+         ondragleave="this.classList.remove('drag-over-item')">
+      <span class="drag-icon" style="color:#d1d5db;font-size:14px">⠿</span>
+      <input type="number" class="seq-num-input" value="${i+1}" min="1" max="${sequencia.length}"
+             onchange="reordenarPorNumero(${i}, this.value)" title="Mude o número para reordenar">
+      <div class="seq-info">
+        <div class="seq-nome">${op.descricao}</div>
+        <div class="seq-sub">
+          ${tagModelo[op.modelo]||''}
+          ${op.equip_nome ? `<span class="tag-modelo tag-maq">🔧 ${op.equip_nome}</span>` : ''}
+        </div>
+      </div>
+      <span class="seq-tempo">${parseFloat(op.tempo_padrao||0).toFixed(2)}min</span>
+      <button onclick="removerDaSeq(${i})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:14px;padding:0 4px" title="Remover">✕</button>
+    </div>
+  `).join('');
+}
+
+function reordenarPorNumero(idx, novaPos) {
+  novaPos = Math.max(1, Math.min(sequencia.length, parseInt(novaPos)||1)) - 1;
+  if (novaPos === idx) { renderSequencia(); return; }
+  const item = sequencia.splice(idx, 1)[0];
+  sequencia.splice(novaPos, 0, item);
+  renderSequencia();
+}
+
+function removerDaSeq(idx) {
+  sequencia.splice(idx, 1);
+  renderSequencia();
+}
+
+function limparSequencia() {
+  if (sequencia.length && !confirm('Limpar a sequência montada?')) return;
+  sequencia = [];
+  renderSequencia();
+}
+
+// ── NOVA / EDITAR OPERAÇÃO ────────────────────────
+function abrirModalNovaOp() {
+  document.getElementById('op-edit-id').value = '';
+  document.getElementById('modal-op-title').textContent = '➕ Nova Operação';
+  document.getElementById('op-codigo').value = '';
+  document.getElementById('op-descricao').value = '';
+  document.getElementById('op-tempo').value = '';
+  document.getElementById('op-equipamento').value = '';
+  document.getElementById('op-modelo').value = 'UNIVERSAL';
+  document.getElementById('op-tipo').value = 'C';
+  abrirModal('modal-nova-op');
+}
+
+async function editarOp(id) {
+  const op = banco.find(o => o.id === id);
+  if (!op) return;
+  document.getElementById('op-edit-id').value = op.id;
+  document.getElementById('modal-op-title').textContent = '✏️ Editar Operação';
+  document.getElementById('op-codigo').value = op.codigo || '';
+  document.getElementById('op-descricao').value = op.descricao;
+  document.getElementById('op-tempo').value = op.tempo_padrao;
+  document.getElementById('op-equipamento').value = op.equipamento_id || '';
+  document.getElementById('op-modelo').value = op.modelo || 'UNIVERSAL';
+  document.getElementById('op-tipo').value = op.tipo || 'C';
+  abrirModal('modal-nova-op');
+}
+
+async function salvarOperacao() {
+  const id = document.getElementById('op-edit-id').value;
+  const desc = document.getElementById('op-descricao').value.trim();
+  if (!desc) { toast('Descrição obrigatória', 'error'); return; }
+  const d = {
+    id: id || null,
+    codigo: document.getElementById('op-codigo').value.trim(),
+    descricao: desc,
+    tempo_padrao: parseFloat(document.getElementById('op-tempo').value) || 0,
+    equipamento_id: document.getElementById('op-equipamento').value || null,
+    modelo: document.getElementById('op-modelo').value,
+    tipo: document.getElementById('op-tipo').value,
+  };
+  const r = await fetch('/api/operacao/salvar', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d)
+  }).then(r => r.json());
+  if (r.ok) {
+    fecharModal('modal-nova-op');
+    await carregarBanco();
+    toast(id ? 'Operação atualizada!' : 'Operação cadastrada!');
+  } else toast(r.erro || 'Erro ao salvar', 'error');
+}
+
+async function excluirOp(id) {
+  if (!confirm('Excluir esta operação do banco?')) return;
+  const r = await fetch(`/api/operacao/excluir/${id}`, {method:'DELETE'}).then(r => r.json());
+  if (r.ok) { await carregarBanco(); toast('Operação excluída!'); }
+  else toast(r.erro || 'Erro', 'error');
+}
+
+// ── SALVAR SEQUÊNCIA ──────────────────────────────
+function abrirModalSalvarSeq() {
+  if (!sequencia.length) { toast('Monte uma sequência primeiro', 'error'); return; }
+  document.getElementById('save-seq-nome').value = document.getElementById('seq-nome').value || '';
+  document.getElementById('save-seq-modelo').value = document.getElementById('seq-modelo').value || '';
+  document.getElementById('save-seq-count').textContent = `${sequencia.length} operação(ões) na sequência`;
+  abrirModal('modal-salvar-seq');
+}
+
+async function salvarSequencia() {
+  const nome = document.getElementById('save-seq-nome').value.trim();
+  const modelo = document.getElementById('save-seq-modelo').value;
+  if (!nome) { toast('Nome obrigatório', 'error'); return; }
+  if (!modelo) { toast('Selecione o modelo', 'error'); return; }
+  if (!sequencia.length) { toast('Sequência vazia', 'error'); return; }
+  const d = {
+    nome, modelo,
+    operacoes: sequencia.map((op, i) => ({
+      operacao_id: op.id,
+      ordem: i+1,
+      tempo_padrao: op.tempo_padrao,
+      equipamento_id: op.equipamento_id,
+    }))
+  };
+  const r = await fetch('/api/sequencia/salvar', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d)
+  }).then(r => r.json());
+  if (r.ok) {
+    fecharModal('modal-salvar-seq');
+    toast('Sequência salva com sucesso!');
+    document.getElementById('seq-nome').value = nome;
+    document.getElementById('seq-modelo').value = modelo;
+  } else toast(r.erro || 'Erro ao salvar', 'error');
+}
+
+// ── CARREGAR SEQUÊNCIA ────────────────────────────
+async function abrirModalCarregarSeq() {
+  abrirModal('modal-carregar-seq');
+  await carregarSeqSalvas('TODOS');
+}
+
+async function carregarSeqSalvas(modelo) {
+  const url = modelo && modelo !== 'TODOS' ? `/api/sequencias?modelo=${modelo}` : '/api/sequencias';
+  seqSalvas = await fetch(url).then(r => r.json());
+  renderSeqSalvas();
+}
+
+function filtrarSeqSalvas(modelo, btn) {
+  document.querySelectorAll('#filtros-seq-salvas .filtro-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  carregarSeqSalvas(modelo);
+}
+
+function renderSeqSalvas() {
+  const lista = document.getElementById('lista-seq-salvas');
+  if (!seqSalvas.length) {
+    lista.innerHTML = '<div class="empty-state"><span class="empty-icon">📂</span>Nenhuma sequência salva</div>';
+    return;
+  }
+  lista.innerHTML = seqSalvas.map(seq => `
+    <div style="background:#f8f9fb;border:1px solid #e0e6f0;border-radius:8px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:#1a1a2e">${seq.nome}</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px">
+          ${tagModelo[seq.modelo]||''}
+          <span style="margin-left:4px">${seq.total_ops} operações • ${parseFloat(seq.tempo_total||0).toFixed(2)} min</span>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="carregarSeqNaTela(${seq.id})">📥 Carregar</button>
+      <button class="btn btn-danger btn-sm" onclick="excluirSeq(${seq.id})">✕</button>
+    </div>
+  `).join('');
+}
+
+async function carregarSeqNaTela(id) {
+  const ops = await fetch(`/api/sequencia/${id}`).then(r => r.json());
+  if (!ops.length) { toast('Sequência vazia', 'error'); return; }
+  if (sequencia.length && !confirm('Substituir a sequência atual?')) return;
+  sequencia = ops.map((op, i) => ({...op, seq_ordem: i+1}));
+  renderSequencia();
+  fecharModal('modal-carregar-seq');
+  toast('Sequência carregada!');
+}
+
+async function excluirSeq(id) {
+  if (!confirm('Excluir esta sequência?')) return;
+  const r = await fetch(`/api/sequencia/excluir/${id}`, {method:'DELETE'}).then(r => r.json());
+  if (r.ok) { await carregarSeqSalvas('TODOS'); toast('Sequência excluída!'); }
+  else toast(r.erro || 'Erro', 'error');
+}
+
+// Inicializar
+carregarBanco();
+renderSequencia();
+</script>
+{% endblock %}

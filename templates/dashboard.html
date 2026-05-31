@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}📊 Dashboard{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Visão Geral</h1>
+    <p>{{ hoje }} — Dados em tempo real</p>
+  </div>
+</div>
+<div class="grid grid-4" style="margin-bottom:20px">
+  <div class="stat-card azul">
+    <div class="stat-icon azul">👷</div>
+    <div class="stat-val">{{ stats.funcionarios }}</div>
+    <div class="stat-label">Funcionários Ativos</div>
+  </div>
+  <div class="stat-card verde">
+    <div class="stat-icon verde">🔧</div>
+    <div class="stat-val">{{ stats.equipamentos }}</div>
+    <div class="stat-label">Equipamentos Ativos</div>
+  </div>
+  <div class="stat-card amar">
+    <div class="stat-icon amar">📋</div>
+    <div class="stat-val">{{ stats.ops_abertas }}</div>
+    <div class="stat-label">OPs em Aberto</div>
+  </div>
+  <div class="stat-card verm">
+    <div class="stat-icon verm">💰</div>
+    <div class="stat-val" style="font-size:18px">R$ {{ "%.0f"|format(stats.fat_mes|float) }}</div>
+    <div class="stat-label">Faturamento do Mês</div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">⚡ Últimos Lançamentos de Produção</div>
+  </div>
+  {% if ultimos %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Data</th><th>Hora</th><th>Fábrica</th><th>OP</th>
+        <th>Operadores</th><th>Produzido</th><th>Projetado</th><th>Eficiência</th><th>Resultado/h</th></tr></thead>
+      <tbody>
+        {% for u in ultimos %}
+        <tr>
+          <td>{{ u.data }}</td><td>{{ u.hora }}</td>
+          <td><strong>{{ u.fab }}</strong></td><td>{{ u.numero }}</td>
+          <td>{{ u.operadores }}</td><td><strong>{{ u.qtd_produzida }}</strong></td>
+          <td>{{ "%.0f"|format(u.qtd_projetada|float) }}</td>
+          <td>{{ u.eficiencia|round(1) }}%</td>
+          <td>R$ {{ "%.2f"|format(u.resultado_hora|float) if u.resultado_hora else '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><span class="empty-icon">📊</span>Nenhum lançamento ainda. Comece cadastrando funcionários e equipamentos!</div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function semTag(ef){
+  if(!ef||ef==0)return '<span class="sem sem-neutro">—</span>';
+  if(ef<85)return `<span class="sem sem-verm">🔴 ${ef.toFixed(1)}%</span>`;
+  if(ef<90)return `<span class="sem sem-amar">🟡 ${ef.toFixed(1)}%</span>`;
+  if(ef<=100)return `<span class="sem sem-verd">🟢 ${ef.toFixed(1)}%</span>`;
+  return `<span class="sem sem-azul">🔵 ${ef.toFixed(1)}%</span>`;
+}
+function fmtR(v){return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2})}
+</script>
+{% endblock %}

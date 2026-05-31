@@ -1,0 +1,381 @@
+{% extends 'base.html' %}
+{% block title %}DRE{% endblock %}
+{% block content %}
+<style>
+.card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:20px;margin-bottom:16px}
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1a1a2e;color:#fff}.btn-primary:hover{background:#2d3a6e}
+.btn-light{background:#f0f2f5;color:#374151}.btn-light:hover{background:#e5e7eb}
+.btn-purple{background:#7c3aed;color:#fff}.btn-purple:hover{background:#6d28d9}
+.btn-sm{padding:5px 10px;font-size:11px}
+.filtro-sel{padding:6px 12px;border:1.5px solid #e0e6f0;border-radius:8px;font-size:12px;outline:none;background:#fff}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:#f0f2f5;border-radius:10px;padding:4px}
+.tab{padding:8px 16px;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#6b7280;transition:.15s}
+.tab.active{background:#fff;color:#1a1a2e;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+
+/* DRE TABLE */
+.dre-table{width:100%;border-collapse:collapse}
+.dre-table tr{border-bottom:1px solid #f0f2f5}
+.dre-table td{padding:10px 16px;font-size:13px}
+.dre-table .dre-section{background:#1a1a2e;color:#fff;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.dre-table .dre-section td{padding:8px 16px}
+.dre-table .dre-item td:first-child{padding-left:32px;color:#374151}
+.dre-table .dre-item td:last-child{font-weight:700;text-align:right}
+.dre-table .dre-subtotal td{background:#f8f9fb;font-weight:700}
+.dre-table .dre-subtotal td:last-child{text-align:right}
+.dre-table .dre-total td{background:#1a1a2e;color:#fff;font-size:15px;font-weight:800}
+.dre-table .dre-total td:last-child{text-align:right}
+.dre-table .dre-resultado-pos td{background:#dcfce7;color:#15803d;font-size:15px;font-weight:800}
+.dre-table .dre-resultado-pos td:last-child{text-align:right}
+.dre-table .dre-resultado-neg td{background:#fee2e2;color:#dc2626;font-size:15px;font-weight:800}
+.dre-table .dre-resultado-neg td:last-child{text-align:right}
+
+/* MÉTRICAS */
+.metricas{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.metrica{background:#fff;border-radius:10px;border:1px solid #e0e6f0;padding:14px;position:relative;overflow:hidden;text-align:center}
+.metrica::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.metrica.verde::before{background:#15803d}
+.metrica.verm::before{background:#dc2626}
+.metrica.azul::before{background:#1d4ed8}
+.metrica.amar::before{background:#d97706}
+.metrica.roxo::before{background:#7c3aed}
+.metrica-val{font-size:18px;font-weight:800;color:#1a1a2e}
+.metrica-lbl{font-size:10px;color:#6b7280;margin-top:3px;text-transform:uppercase}
+
+/* FAB CARDS */
+.fab-dre{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:16px}
+.fab-dre-card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;overflow:hidden}
+.fab-dre-header{background:#1a1a2e;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+.fab-dre-nome{color:#fff;font-size:13px;font-weight:700}
+.fab-dre-resultado{font-size:15px;font-weight:800}
+.fab-dre-resultado.pos{color:#4ade80}
+.fab-dre-resultado.neg{color:#f87171}
+
+/* GRÁFICO */
+.chart-container{position:relative;height:280px;margin-top:8px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+  <div style="font-size:18px;font-weight:700;color:#1a1a2e">📉 DRE — Demonstrativo de Resultado</div>
+  <div style="display:flex;gap:8px">
+    <select class="filtro-sel" id="fil-mes" onchange="carregarDRE()">
+      {% for m in meses %}
+      <option value="{{ m.valor }}" {% if m.atual %}selected{% endif %}>{{ m.label }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-purple btn-sm" onclick="imprimirDRE()">🖨️ Imprimir</button>
+  </div>
+</div>
+
+<!-- MÉTRICAS -->
+<div class="metricas">
+  <div class="metrica verde">
+    <div class="metrica-val" id="m-receita">R$ 0</div>
+    <div class="metrica-lbl">Receita Total</div>
+  </div>
+  <div class="metrica azul">
+    <div class="metrica-val" id="m-fixo">R$ 0</div>
+    <div class="metrica-lbl">Custo Fixo</div>
+  </div>
+  <div class="metrica amar">
+    <div class="metrica-val" id="m-variavel">R$ 0</div>
+    <div class="metrica-lbl">Custo Variável</div>
+  </div>
+  <div class="metrica roxo">
+    <div class="metrica-val" id="m-folha">R$ 0</div>
+    <div class="metrica-lbl">Folha</div>
+  </div>
+  <div class="metrica verde" id="m-resultado-card">
+    <div class="metrica-val" id="m-resultado">R$ 0</div>
+    <div class="metrica-lbl">Resultado</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="setTab('consolidado',this)">📊 Consolidado</button>
+  <button class="tab" onclick="setTab('fabricas',this)">🏭 Por Fábrica</button>
+  <button class="tab" onclick="setTab('evolucao',this)">📈 Evolução</button>
+</div>
+
+<!-- TAB CONSOLIDADO -->
+<div id="tab-consolidado">
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="dre-table" id="dre-consolidado">
+      <tr><td colspan="2" style="text-align:center;color:#9ca3af;padding:40px">Carregando...</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- TAB FÁBRICAS -->
+<div id="tab-fabricas" style="display:none">
+  <div class="fab-dre" id="fab-dre-grid">
+    <div style="text-align:center;color:#9ca3af;padding:40px;grid-column:span 2">Carregando...</div>
+  </div>
+</div>
+
+<!-- TAB EVOLUÇÃO -->
+<div id="tab-evolucao" style="display:none">
+  <div class="card">
+    <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:16px">📈 Evolução dos Últimos 12 Meses</div>
+    <div class="chart-container">
+      <canvas id="chart-evolucao"></canvas>
+    </div>
+  </div>
+  <div class="card" style="margin-top:0">
+    <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:16px">📊 Resultado Mensal</div>
+    <div class="chart-container">
+      <canvas id="chart-resultado"></canvas>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let dadosDRE = {};
+let chartEvolucao = null;
+let chartResultado = null;
+
+function toast(msg,tipo='success'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show';setTimeout(()=>t.classList.remove('show'),2800)}
+function fmtR(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtRk(v){const n=Number(v||0);if(Math.abs(n)>=1000)return 'R$ '+(n/1000).toFixed(1)+'k';return fmtR(n)}
+
+function setTab(tab,btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['consolidado','fabricas','evolucao'].forEach(t=>document.getElementById('tab-'+t).style.display='none');
+  document.getElementById('tab-'+tab).style.display='';
+  if(tab==='evolucao') renderGraficos();
+}
+
+async function carregarDRE(){
+  const mes = document.getElementById('fil-mes').value;
+  const r = await fetch(`/api/dre?mes=${mes}`).then(r=>r.json());
+  dadosDRE = r;
+  renderConsolidado(r.consolidado);
+  renderFabricas(r.fabricas);
+  atualizarMetricas(r.consolidado);
+}
+
+function atualizarMetricas(d){
+  if(!d) return;
+  const resultado = d.receita - d.custo_fixo - d.custo_variavel - d.folha;
+  document.getElementById('m-receita').textContent = fmtR(d.receita);
+  document.getElementById('m-fixo').textContent = fmtR(d.custo_fixo);
+  document.getElementById('m-variavel').textContent = fmtR(d.custo_variavel);
+  document.getElementById('m-folha').textContent = fmtR(d.folha);
+  document.getElementById('m-resultado').textContent = fmtR(resultado);
+  const card = document.getElementById('m-resultado-card');
+  card.className = `metrica ${resultado >= 0 ? 'verde' : 'verm'}`;
+  card.style.setProperty('--before-bg', resultado >= 0 ? '#15803d' : '#dc2626');
+}
+
+function renderConsolidado(d){
+  if(!d){document.getElementById('dre-consolidado').innerHTML='<tr><td colspan="2" style="text-align:center;color:#9ca3af;padding:40px">Sem dados no período</td></tr>';return}
+  const resultado = d.receita - d.custo_fixo - d.custo_variavel - d.folha;
+  const margem = d.receita > 0 ? (resultado/d.receita*100).toFixed(1) : 0;
+  const resClass = resultado >= 0 ? 'dre-resultado-pos' : 'dre-resultado-neg';
+
+  const rows = `
+    <tr class="dre-section"><td colspan="2">💰 Receita</td></tr>
+    <tr class="dre-item"><td>Faturamento do Mês</td><td>${fmtR(d.receita)}</td></tr>
+    <tr class="dre-subtotal"><td>Total Receita</td><td>${fmtR(d.receita)}</td></tr>
+
+    <tr class="dre-section"><td colspan="2">🔵 Custo Fixo</td></tr>
+    ${(d.itens_fixo||[]).map(i=>`<tr class="dre-item"><td>${i.nome}</td><td>${fmtR(i.valor)}</td></tr>`).join('')}
+    <tr class="dre-subtotal"><td>Total Custo Fixo</td><td>(${fmtR(d.custo_fixo)})</td></tr>
+
+    <tr class="dre-section"><td colspan="2">🟡 Custo Variável</td></tr>
+    ${(d.itens_variavel||[]).map(i=>`<tr class="dre-item"><td>${i.nome}</td><td>${fmtR(i.valor)}</td></tr>`).join('')}
+    <tr class="dre-subtotal"><td>Total Custo Variável</td><td>(${fmtR(d.custo_variavel)})</td></tr>
+
+    <tr class="dre-section"><td colspan="2">👥 Folha de Pagamento</td></tr>
+    ${(d.itens_folha||[]).map(i=>`<tr class="dre-item"><td>${i.nome}</td><td>${fmtR(i.valor)}</td></tr>`).join('')}
+    <tr class="dre-subtotal"><td>Total Folha</td><td>(${fmtR(d.folha)})</td></tr>
+
+    <tr class="dre-section"><td colspan="2">📊 Resumo</td></tr>
+    <tr class="dre-item"><td>Receita Total</td><td>${fmtR(d.receita)}</td></tr>
+    <tr class="dre-item"><td>Total Despesas</td><td>(${fmtR(d.custo_fixo + d.custo_variavel + d.folha)})</td></tr>
+    <tr class="dre-item"><td>Margem %</td><td>${margem}%</td></tr>
+    <tr class="${resClass}"><td>RESULTADO DO MÊS</td><td>${fmtR(resultado)}</td></tr>
+  `;
+  document.getElementById('dre-consolidado').innerHTML = rows;
+}
+
+function renderFabricas(fabs){
+  const grid = document.getElementById('fab-dre-grid');
+  if(!fabs||!fabs.length){grid.innerHTML='<div style="text-align:center;color:#9ca3af;padding:40px;grid-column:span 2">Sem dados</div>';return}
+  grid.innerHTML = fabs.map(f=>{
+    const resultado = f.receita - f.custo_fixo - f.custo_variavel - f.folha;
+    const margem = f.receita > 0 ? (resultado/f.receita*100).toFixed(1) : 0;
+    const cls = resultado >= 0 ? 'pos' : 'neg';
+    return `
+    <div class="fab-dre-card">
+      <div class="fab-dre-header">
+        <div class="fab-dre-nome">🏭 ${f.nome}</div>
+        <div class="fab-dre-resultado ${cls}">${fmtR(resultado)}</div>
+      </div>
+      <div style="padding:12px 16px">
+        <table style="width:100%;font-size:12px;border-collapse:collapse">
+          <tr style="border-bottom:1px solid #f0f2f5"><td style="padding:6px 0;color:#6b7280">Receita</td><td style="text-align:right;font-weight:700;color:#15803d">${fmtR(f.receita)}</td></tr>
+          <tr style="border-bottom:1px solid #f0f2f5"><td style="padding:6px 0;color:#6b7280">Custo Fixo</td><td style="text-align:right;color:#dc2626">(${fmtR(f.custo_fixo)})</td></tr>
+          <tr style="border-bottom:1px solid #f0f2f5"><td style="padding:6px 0;color:#6b7280">Custo Variável</td><td style="text-align:right;color:#dc2626">(${fmtR(f.custo_variavel)})</td></tr>
+          <tr style="border-bottom:1px solid #f0f2f5"><td style="padding:6px 0;color:#6b7280">Folha</td><td style="text-align:right;color:#dc2626">(${fmtR(f.folha)})</td></tr>
+          <tr><td style="padding:6px 0;color:#6b7280">Margem</td><td style="text-align:right;font-weight:700;color:${resultado>=0?'#15803d':'#dc2626'}">${margem}%</td></tr>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function renderGraficos(){
+  const r = await fetch('/api/dre/evolucao').then(r=>r.json());
+  const labels = r.map(m=>m.mes);
+  const receitas = r.map(m=>m.receita);
+  const despesas = r.map(m=>m.despesas);
+  const resultados = r.map(m=>m.resultado);
+
+  // Gráfico evolução
+  if(chartEvolucao) chartEvolucao.destroy();
+  const ctx1 = document.getElementById('chart-evolucao').getContext('2d');
+  chartEvolucao = new Chart(ctx1, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {label:'Receita', data:receitas, backgroundColor:'rgba(21,128,61,0.8)', borderRadius:6},
+        {label:'Despesas', data:despesas, backgroundColor:'rgba(220,38,38,0.8)', borderRadius:6},
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top'}},
+      scales:{y:{ticks:{callback:v=>'R$ '+Number(v).toLocaleString('pt-BR')}}}
+    }
+  });
+
+  // Gráfico resultado
+  if(chartResultado) chartResultado.destroy();
+  const ctx2 = document.getElementById('chart-resultado').getContext('2d');
+  chartResultado = new Chart(ctx2, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label:'Resultado',
+        data: resultados,
+        borderColor:'#1a1a2e',
+        backgroundColor: resultados.map(v=>v>=0?'rgba(21,128,61,0.2)':'rgba(220,38,38,0.2)'),
+        borderWidth:2, pointRadius:5, fill:true, tension:0.3,
+        pointBackgroundColor: resultados.map(v=>v>=0?'#15803d':'#dc2626'),
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'top'}},
+      scales:{y:{ticks:{callback:v=>'R$ '+Number(v).toLocaleString('pt-BR')}}}
+    }
+  });
+}
+
+function imprimirDRE(){
+  const mes = document.getElementById('fil-mes').value;
+  const d = dadosDRE.consolidado;
+  if(!d){toast('Sem dados para imprimir');return}
+  const resultado = d.receita - d.custo_fixo - d.custo_variavel - d.folha;
+  const margem = d.receita > 0 ? (resultado/d.receita*100).toFixed(1) : 0;
+  const agora = new Date();
+  const dataStr = agora.toLocaleDateString('pt-BR');
+  const horaStr = agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const mesLabel = document.getElementById('fil-mes').options[document.getElementById('fil-mes').selectedIndex].text;
+
+  const fabRows = (dadosDRE.fabricas||[]).map(f=>{
+    const res = f.receita - f.custo_fixo - f.custo_variavel - f.folha;
+    const marg = f.receita > 0 ? (res/f.receita*100).toFixed(1) : 0;
+    return `<tr style="border-bottom:1px solid #e0e6f0">
+      <td style="padding:8px 12px;font-weight:700">${f.nome}</td>
+      <td style="padding:8px 12px;text-align:right;color:#15803d;font-weight:700">${fmtR(f.receita)}</td>
+      <td style="padding:8px 12px;text-align:right;color:#dc2626">(${fmtR(f.custo_fixo)})</td>
+      <td style="padding:8px 12px;text-align:right;color:#dc2626">(${fmtR(f.custo_variavel)})</td>
+      <td style="padding:8px 12px;text-align:right;color:#dc2626">(${fmtR(f.folha)})</td>
+      <td style="padding:8px 12px;text-align:right;font-weight:800;color:${res>=0?'#15803d':'#dc2626'}">${fmtR(res)}</td>
+      <td style="padding:8px 12px;text-align:right;color:${res>=0?'#15803d':'#dc2626'}">${marg}%</td>
+    </tr>`;
+  }).join('');
+
+  const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>DRE ${mesLabel} — Giassi Confecções</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',Arial,sans-serif;background:#fff;color:#1a1a2e;font-size:12px}
+.page{padding:20px;max-width:960px;margin:0 auto}
+.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1a1a2e;padding-bottom:12px;margin-bottom:16px}
+.logo{display:flex;align-items:center;gap:10px}.logo-icon{width:40px;height:40px;background:#1a1a2e;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.logo h1{font-size:20px;font-weight:800}.logo small{font-size:10px;color:#6b7280;display:block}
+.info{text-align:right;font-size:11px;color:#374151}.info strong{display:block;font-size:14px;color:#1a1a2e}
+.metricas{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px}
+.met{background:#f8f9fb;border:1px solid #e0e6f0;border-radius:8px;padding:10px;text-align:center}
+.met-val{font-size:15px;font-weight:800;color:#1a1a2e}.met-lbl{font-size:9px;color:#9ca3af;text-transform:uppercase;margin-top:2px}
+.sec-title{font-size:13px;font-weight:700;color:#1a1a2e;margin:16px 0 8px;padding-bottom:6px;border-bottom:2px solid #e0e6f0}
+table{width:100%;border-collapse:collapse}thead{background:#1a1a2e}thead th{padding:8px 12px;color:#fff;font-size:10px;font-weight:700;text-align:left}
+.dre-t tr{border-bottom:1px solid #f0f2f5}.dre-t td{padding:7px 12px;font-size:12px}
+.dre-sec{background:#f0f2f5;font-weight:700;font-size:11px;text-transform:uppercase}
+.dre-item td:first-child{padding-left:28px;color:#374151}.dre-sub td{background:#f8f9fb;font-weight:700}
+.dre-sub td:last-child,.dre-item td:last-child{text-align:right}
+.dre-res-pos td{background:#dcfce7;color:#15803d;font-size:14px;font-weight:800}.dre-res-pos td:last-child{text-align:right}
+.dre-res-neg td{background:#fee2e2;color:#dc2626;font-size:14px;font-weight:800}.dre-res-neg td:last-child{text-align:right}
+.footer{margin-top:16px;padding-top:10px;border-top:1px solid #e0e6f0;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af}
+.no-print{display:flex;justify-content:center;gap:12px;margin-bottom:16px}
+.btn-imp{padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;background:#1a1a2e;color:#fff}
+.btn-fec{padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;background:#f0f2f5;color:#374151}
+@media print{.no-print{display:none!important}@page{margin:10mm}}</style></head><body>
+<div class="page">
+<div class="no-print"><button class="btn-imp" onclick="window.print()">🖨️ Imprimir / PDF</button><button class="btn-fec" onclick="window.close()">✕ Fechar</button></div>
+<div class="header">
+  <div class="logo"><div class="logo-icon">⏱</div><div><h1>GIASSI CONFECÇÕES</h1><small>Sistema de Produção</small></div></div>
+  <div class="info"><strong>DRE — ${mesLabel}</strong>Gerado em ${dataStr} às ${horaStr}<br>Uso interno — Reunião Gerencial</div>
+</div>
+<div class="metricas">
+  <div class="met"><div class="met-val" style="color:#15803d">${fmtR(d.receita)}</div><div class="met-lbl">Receita</div></div>
+  <div class="met"><div class="met-val" style="color:#1d4ed8">${fmtR(d.custo_fixo)}</div><div class="met-lbl">Custo Fixo</div></div>
+  <div class="met"><div class="met-val" style="color:#d97706">${fmtR(d.custo_variavel)}</div><div class="met-lbl">Custo Variável</div></div>
+  <div class="met"><div class="met-val" style="color:#7c3aed">${fmtR(d.folha)}</div><div class="met-lbl">Folha</div></div>
+  <div class="met"><div class="met-val" style="color:${resultado>=0?'#15803d':'#dc2626'}">${fmtR(resultado)}</div><div class="met-lbl">Resultado</div></div>
+</div>
+<div class="sec-title">📊 DRE Consolidado</div>
+<table class="dre-t">
+  <tr class="dre-sec"><td colspan="2">💰 RECEITA</td></tr>
+  <tr class="dre-item"><td>Faturamento do Mês</td><td>${fmtR(d.receita)}</td></tr>
+  <tr class="dre-sub"><td>Total Receita</td><td>${fmtR(d.receita)}</td></tr>
+  <tr class="dre-sec"><td colspan="2">🔵 CUSTO FIXO</td></tr>
+  ${(d.itens_fixo||[]).map(i=>`<tr class="dre-item"><td>${i.nome}</td><td>(${fmtR(i.valor)})</td></tr>`).join('')}
+  <tr class="dre-sub"><td>Total Custo Fixo</td><td>(${fmtR(d.custo_fixo)})</td></tr>
+  <tr class="dre-sec"><td colspan="2">🟡 CUSTO VARIÁVEL</td></tr>
+  ${(d.itens_variavel||[]).map(i=>`<tr class="dre-item"><td>${i.nome}</td><td>(${fmtR(i.valor)})</td></tr>`).join('')}
+  <tr class="dre-sub"><td>Total Custo Variável</td><td>(${fmtR(d.custo_variavel)})</td></tr>
+  <tr class="dre-sec"><td colspan="2">👥 FOLHA DE PAGAMENTO</td></tr>
+  ${(d.itens_folha||[]).map(i=>`<tr class="dre-item"><td>${i.nome}</td><td>(${fmtR(i.valor)})</td></tr>`).join('')}
+  <tr class="dre-sub"><td>Total Folha</td><td>(${fmtR(d.folha)})</td></tr>
+  <tr class="${resultado>=0?'dre-res-pos':'dre-res-neg'}"><td>RESULTADO DO MÊS — Margem ${margem}%</td><td>${fmtR(resultado)}</td></tr>
+</table>
+${fabRows?`<div class="sec-title" style="margin-top:20px">🏭 Por Fábrica</div>
+<table><thead><tr><th>Fábrica</th><th>Receita</th><th>C. Fixo</th><th>C. Variável</th><th>Folha</th><th>Resultado</th><th>Margem</th></tr></thead>
+<tbody>${fabRows}</tbody></table>`:''}
+<div class="footer"><span>Giassi Confecções — Uso Interno</span><span>DRE ${mesLabel} — ${dataStr}</span></div>
+</div></body></html>`;
+
+  const j=window.open('','_blank','width=1000,height=800');
+  j.document.write(html); j.document.close();
+}
+
+carregarDRE();
+</script>
+{% endblock %}

@@ -1,0 +1,595 @@
+{% extends 'base.html' %}
+{% block title %}Ocorrências{% endblock %}
+{% block content %}
+<style>
+.card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:20px;margin-bottom:16px}
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1a1a2e;color:#fff}.btn-primary:hover{background:#2d3a6e}
+.btn-success{background:#15803d;color:#fff}.btn-success:hover{background:#166534}
+.btn-danger{background:#dc2626;color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-light{background:#f0f2f5;color:#374151}.btn-light:hover{background:#e5e7eb}
+.btn-purple{background:#7c3aed;color:#fff}.btn-purple:hover{background:#6d28d9}
+.btn-sm{padding:5px 10px;font-size:11px}
+.form-group label{display:block;font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 12px;border:1px solid #e0e6f0;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+.form-group input:focus,.form-group select:focus{border-color:#1a1a2e}
+.form-row{display:grid;gap:12px}
+.cols-2{grid-template-columns:1fr 1fr}
+.cols-3{grid-template-columns:1fr 1fr 1fr}
+.cols-4{grid-template-columns:1fr 1fr 1fr 1fr}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:#f0f2f5;border-radius:10px;padding:4px}
+.tab{padding:8px 16px;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#6b7280;transition:.15s}
+.tab.active{background:#fff;color:#1a1a2e;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+
+/* FILTROS */
+.filtros{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.filtro-sel{padding:6px 12px;border:1.5px solid #e0e6f0;border-radius:8px;font-size:12px;outline:none;background:#fff}
+
+/* MÉTRICAS */
+.metricas{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+.metrica{background:#fff;border-radius:10px;border:1px solid #e0e6f0;padding:12px;text-align:center;position:relative;overflow:hidden}
+.metrica::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.metrica.verm::before{background:#dc2626}
+.metrica.amar::before{background:#d97706}
+.metrica.azul::before{background:#1d4ed8}
+.metrica.verde::before{background:#15803d}
+.metrica.roxo::before{background:#7c3aed}
+.metrica-val{font-size:20px;font-weight:800;color:#1a1a2e}
+.metrica-lbl{font-size:10px;color:#6b7280;margin-top:2px;text-transform:uppercase}
+
+/* TABELA */
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid #e0e6f0}
+table{width:100%;border-collapse:collapse}
+thead{background:#1a1a2e}
+thead th{padding:9px 12px;color:#fff;font-size:10px;font-weight:700;text-align:left;white-space:nowrap}
+tbody tr{border-bottom:1px solid #f0f2f5;transition:.1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f8f9fb}
+tbody td{padding:8px 12px;font-size:12px;vertical-align:middle}
+tfoot td{padding:9px 12px;font-size:12px;font-weight:700;background:#f8f9fb;border-top:2px solid #e0e6f0}
+
+/* BADGE */
+.badge{padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;display:inline-block}
+.b-falta{background:#fee2e2;color:#dc2626}
+.b-atestado{background:#dbeafe;color:#1d4ed8}
+.b-ferias{background:#dcfce7;color:#15803d}
+.b-meia{background:#fef9c3;color:#854d0e}
+.b-suspensao{background:#f3e8ff;color:#7c3aed}
+.b-banco{background:#e0f2fe;color:#0369a1}
+.b-licenca{background:#fff7ed;color:#c2410c}
+.b-obito{background:#f1f5f9;color:#475569}
+.b-inss{background:#fdf4ff;color:#9333ea}
+.b-nao{background:#f0f2f5;color:#6b7280}
+.b-advert{background:#fef3c7;color:#92400e}
+
+/* FAB CARDS */
+.fab-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
+.fab-card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;overflow:hidden}
+.fab-card-header{background:#1a1a2e;padding:10px 16px;display:flex;justify-content:space-between;align-items:center}
+.fab-card-nome{color:#fff;font-size:13px;font-weight:700}
+.fab-card-abs{font-size:16px;font-weight:800}
+.fab-card-abs.ok{color:#4ade80}
+.fab-card-abs.warn{color:#fbbf24}
+.fab-card-abs.bad{color:#f87171}
+
+/* CHART */
+.chart-container{position:relative;height:260px}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;width:580px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-header{padding:16px 20px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.modal-title{font-size:15px;font-weight:700;color:#1a1a2e}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid #f0f2f5;display:flex;justify-content:flex-end;gap:8px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#15803d}
+.toast.error{background:#dc2626}
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+  <div style="font-size:18px;font-weight:700;color:#1a1a2e">🚫 Ocorrências e Absenteísmo</div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-primary btn-sm" onclick="abrirModalOcorrencia()">➕ Lançar Ocorrência</button>
+    <button class="btn btn-purple btn-sm" onclick="imprimirRelatorio()">🖨️ Relatório Gerencial</button>
+  </div>
+</div>
+
+<!-- FILTROS -->
+<div class="filtros">
+  <select class="filtro-sel" id="fil-mes" onchange="carregarDados()">
+    {% for m in meses %}
+    <option value="{{ m.valor }}" {% if m.atual %}selected{% endif %}>{{ m.label }}</option>
+    {% endfor %}
+  </select>
+  <select class="filtro-sel" id="fil-fabrica" onchange="carregarDados()">
+    <option value="">Todas as Fábricas</option>
+    {% for f in fabricas %}
+    <option value="{{ f.id }}">{{ f.nome }}</option>
+    {% endfor %}
+  </select>
+  <select class="filtro-sel" id="fil-tipo" onchange="carregarDados()">
+    <option value="">Todos os Tipos</option>
+    {% for t in tipos %}
+    <option value="{{ t.id }}">{{ t.nome }}</option>
+    {% endfor %}
+  </select>
+</div>
+
+<!-- MÉTRICAS -->
+<div class="metricas">
+  <div class="metrica verm"><div class="metrica-val" id="m-faltas">0</div><div class="metrica-lbl">Total Ocorrências</div></div>
+  <div class="metrica amar"><div class="metrica-val" id="m-horas">0h</div><div class="metrica-lbl">Horas Perdidas</div></div>
+  <div class="metrica azul"><div class="metrica-val" id="m-abs">0%</div><div class="metrica-lbl">Absenteísmo</div></div>
+  <div class="metrica verde"><div class="metrica-val" id="m-func">0</div><div class="metrica-lbl">Funcionários</div></div>
+  <div class="metrica roxo"><div class="metrica-val" id="m-ferias">0</div><div class="metrica-lbl">Em Férias</div></div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="setTab('lista',this)">📋 Lançamentos</button>
+  <button class="tab" onclick="setTab('resumo',this)">📊 Resumo por Tipo</button>
+  <button class="tab" onclick="setTab('fabricas',this)">🏭 Por Fábrica</button>
+  <button class="tab" onclick="setTab('evolucao',this)">📈 Evolução</button>
+</div>
+
+<!-- TAB LISTA -->
+<div id="tab-lista">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th><th>Funcionário</th><th>Fábrica</th><th>Tipo</th>
+          <th>Horas</th><th>Direto/Indireto</th><th>Obs</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody-oc">
+        <tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:24px">Nenhuma ocorrência no período</td></tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4">TOTAL</td>
+          <td id="tf-horas">0h</td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- TAB RESUMO -->
+<div id="tab-resumo" style="display:none">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Tipo de Ocorrência</th><th>Qtd</th><th>Horas</th><th>% do Total</th></tr>
+      </thead>
+      <tbody id="tbody-resumo">
+        <tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:24px">Carregando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- TAB FÁBRICAS -->
+<div id="tab-fabricas" style="display:none">
+  <div class="fab-cards" id="fab-cards-container">
+    <div style="text-align:center;color:#9ca3af;padding:40px;grid-column:span 2">Carregando...</div>
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:12px">📊 Comparativo por Fábrica</div>
+    <div class="chart-container"><canvas id="chart-fabricas"></canvas></div>
+  </div>
+</div>
+
+<!-- TAB EVOLUÇÃO -->
+<div id="tab-evolucao" style="display:none">
+  <div class="card">
+    <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:12px">📈 Evolução do Absenteísmo — Últimos 6 Meses</div>
+    <div class="chart-container"><canvas id="chart-evolucao"></canvas></div>
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:12px">📊 Horas Perdidas por Mês</div>
+    <div class="chart-container"><canvas id="chart-horas"></canvas></div>
+  </div>
+</div>
+
+<!-- MODAL OCORRÊNCIA -->
+<div class="modal-overlay" id="modal-oc">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-oc-title">➕ Lançar Ocorrência</div>
+      <button class="modal-close" onclick="fecharModal('modal-oc')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="oc-edit-id">
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Funcionário *</label>
+          <select id="oc-func">
+            <option value="">Selecione...</option>
+            {% for f in funcionarios %}
+            <option value="{{ f.id }}" data-fab="{{ f.fabrica_id }}" data-tipo="{{ f.tipo or 'DIRETO' }}">{{ f.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Data *</label>
+          <input type="date" id="oc-data" value="{{ hoje }}">
+        </div>
+      </div>
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Tipo de Ocorrência *</label>
+          <select id="oc-tipo" onchange="calcularHoras()">
+            <option value="">Selecione...</option>
+            {% for t in tipos %}
+            <option value="{{ t.id }}" data-horas="{{ t.horas_padrao }}">{{ t.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Horas</label>
+          <input type="number" id="oc-horas" step="0.5" min="0" placeholder="0">
+        </div>
+      </div>
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Fábrica</label>
+          <select id="oc-fabrica">
+            {% for f in fabricas %}
+            <option value="{{ f.id }}">{{ f.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Direto / Indireto</label>
+          <select id="oc-direto">
+            <option value="DIRETO">Direto</option>
+            <option value="INDIRETO">Indireto</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Observação</label>
+        <input type="text" id="oc-obs" placeholder="Opcional...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-oc')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarOcorrencia()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let chartFabricas=null, chartEvolucao=null, chartHoras=null;
+let dadosOc=[], dadosResumo=[], dadosFab=[];
+
+function toast(msg,tipo='success'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+tipo+' show';setTimeout(()=>t.classList.remove('show'),2800)}
+function fecharModal(id){document.getElementById(id).classList.remove('open')}
+function abrirModal(id){document.getElementById(id).classList.add('open')}
+function fmtN(v){return Number(v||0).toLocaleString('pt-BR')}
+function fmtH(v){const n=parseFloat(v||0);return n.toFixed(1)+'h'}
+
+const BADGE_MAP={
+  'FALTA':'b-falta','MEIA FALTA':'b-meia','ATESTADO':'b-atestado',
+  'MEIO ATESTADO':'b-atestado','FÉRIAS':'b-ferias','FERIAS':'b-ferias',
+  'SUSPENSÃO':'b-suspensao','SUSPENSAO':'b-suspensao',
+  'BANCO DE HORA':'b-banco','B.H. MEIO DIA':'b-banco',
+  'LICENÇA':'b-licenca','LICENCA':'b-licenca',
+  'ÓBITO':'b-obito','OBITO':'b-obito',
+  'INSS':'b-inss','NÃO TRAB.':'b-nao','NAO TRAB.':'b-nao',
+  'ADVERTÊNCIA':'b-advert','ADVERTENCIA':'b-advert',
+};
+function badgeClass(nome){return BADGE_MAP[nome?.toUpperCase()]||'b-falta'}
+
+function setTab(tab,btn){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['lista','resumo','fabricas','evolucao'].forEach(t=>document.getElementById('tab-'+t).style.display='none');
+  document.getElementById('tab-'+tab).style.display='';
+  if(tab==='fabricas') renderFabricas();
+  if(tab==='evolucao') carregarEvolucao();
+  if(tab==='resumo') renderResumo();
+}
+
+async function carregarDados(){
+  const mes=document.getElementById('fil-mes').value;
+  const fabId=document.getElementById('fil-fabrica').value;
+  const tipoId=document.getElementById('fil-tipo').value;
+  let url=`/api/ocorrencias?mes=${mes}`;
+  if(fabId) url+=`&fabrica_id=${fabId}`;
+  if(tipoId) url+=`&tipo_id=${tipoId}`;
+  dadosOc=await fetch(url).then(r=>r.json());
+  renderLista();
+  atualizarMetricas();
+}
+
+function atualizarMetricas(){
+  const total=dadosOc.length;
+  const horas=dadosOc.reduce((s,r)=>s+parseFloat(r.horas||0),0);
+  const ferias=dadosOc.filter(r=>r.tipo_nome?.toUpperCase().includes('FERIA')).length;
+  const funcs=new Set(dadosOc.map(r=>r.funcionario_id)).size;
+  document.getElementById('m-faltas').textContent=total;
+  document.getElementById('m-horas').textContent=fmtH(horas);
+  document.getElementById('m-func').textContent=funcs;
+  document.getElementById('m-ferias').textContent=ferias;
+  // Absenteísmo = horas falta / horas disponíveis (estimado)
+  const horasDisp=funcs*9*22; // estimativa
+  const abs=horasDisp>0?(horas/horasDisp*100):0;
+  document.getElementById('m-abs').textContent=abs.toFixed(2)+'%';
+}
+
+function renderLista(){
+  const tbody=document.getElementById('tbody-oc');
+  if(!dadosOc.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:24px">Nenhuma ocorrência no período</td></tr>';document.getElementById('tf-horas').textContent='0h';return}
+  const totalH=dadosOc.reduce((s,r)=>s+parseFloat(r.horas||0),0);
+  tbody.innerHTML=dadosOc.map(r=>`
+    <tr>
+      <td>${r.data}</td>
+      <td><strong>${r.func_nome||'—'}</strong></td>
+      <td>${r.fab_nome||'—'}</td>
+      <td><span class="badge ${badgeClass(r.tipo_nome)}">${r.tipo_nome||'—'}</span></td>
+      <td>${fmtH(r.horas)}</td>
+      <td><span style="font-size:10px;color:#6b7280">${r.direto||'DIRETO'}</span></td>
+      <td style="font-size:11px;color:#6b7280">${r.obs||'—'}</td>
+      <td>
+        <button class="btn btn-light btn-sm" onclick="editarOc(${r.id})" style="padding:3px 7px;font-size:10px">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="excluirOc(${r.id})" style="padding:3px 7px;font-size:10px">✕</button>
+      </td>
+    </tr>`).join('');
+  document.getElementById('tf-horas').textContent=fmtH(totalH);
+}
+
+function renderResumo(){
+  const porTipo={};
+  dadosOc.forEach(r=>{
+    const n=r.tipo_nome||'Outros';
+    if(!porTipo[n]) porTipo[n]={qtd:0,horas:0};
+    porTipo[n].qtd++; porTipo[n].horas+=parseFloat(r.horas||0);
+  });
+  const totalH=dadosOc.reduce((s,r)=>s+parseFloat(r.horas||0),0);
+  const items=Object.entries(porTipo).sort((a,b)=>b[1].horas-a[1].horas);
+  const tbody=document.getElementById('tbody-resumo');
+  if(!items.length){tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#9ca3af;padding:24px">Sem dados</td></tr>';return}
+  tbody.innerHTML=items.map(([nome,d])=>`
+    <tr>
+      <td><span class="badge ${badgeClass(nome)}">${nome}</span></td>
+      <td style="font-weight:700">${d.qtd}</td>
+      <td>${fmtH(d.horas)}</td>
+      <td>${totalH>0?(d.horas/totalH*100).toFixed(1)+'%':'—'}</td>
+    </tr>`).join('');
+}
+
+async function renderFabricas(){
+  const mes=document.getElementById('fil-mes').value;
+  const r=await fetch(`/api/ocorrencias/fabricas?mes=${mes}`).then(r=>r.json());
+  dadosFab=r;
+  const container=document.getElementById('fab-cards-container');
+  if(!r.length){container.innerHTML='<div style="text-align:center;color:#9ca3af;padding:40px;grid-column:span 2">Sem dados</div>';return}
+  container.innerHTML=r.map(f=>{
+    const cls=f.abs_pct<5?'ok':f.abs_pct<8?'warn':'bad';
+    return `<div class="fab-card">
+      <div class="fab-card-header">
+        <div class="fab-card-nome">🏭 ${f.nome}</div>
+        <div class="fab-card-abs ${cls}">${f.abs_pct.toFixed(2)}%</div>
+      </div>
+      <div style="padding:12px 16px">
+        <table style="width:100%;font-size:12px;border-collapse:collapse">
+          <tr style="border-bottom:1px solid #f0f2f5"><td style="padding:5px 0;color:#6b7280">Funcionários</td><td style="text-align:right;font-weight:700">${f.total_func}</td></tr>
+          <tr style="border-bottom:1px solid #f0f2f5"><td style="padding:5px 0;color:#6b7280">Ocorrências</td><td style="text-align:right;font-weight:700">${f.total_oc}</td></tr>
+          <tr style="border-bottom:1px solid #f0f2f5"><td style="padding:5px 0;color:#6b7280">Horas Perdidas</td><td style="text-align:right;color:#dc2626;font-weight:700">${fmtH(f.horas)}</td></tr>
+          <tr style="border-bottom:1px solid #f0f2f5"><td style="padding:5px 0;color:#6b7280">Em Férias</td><td style="text-align:right">${f.ferias}</td></tr>
+          <tr><td style="padding:5px 0;color:#6b7280">Absenteísmo</td><td style="text-align:right;font-weight:800;color:${f.abs_pct<5?'#15803d':f.abs_pct<8?'#d97706':'#dc2626'}">${f.abs_pct.toFixed(2)}%</td></tr>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Gráfico comparativo
+  if(chartFabricas) chartFabricas.destroy();
+  const ctx=document.getElementById('chart-fabricas').getContext('2d');
+  chartFabricas=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:r.map(f=>f.nome),
+      datasets:[
+        {label:'Absenteísmo %',data:r.map(f=>f.abs_pct),backgroundColor:r.map(f=>f.abs_pct<5?'rgba(21,128,61,0.8)':f.abs_pct<8?'rgba(217,119,6,0.8)':'rgba(220,38,38,0.8)'),borderRadius:6,yAxisID:'y1'},
+        {label:'Horas Perdidas',data:r.map(f=>f.horas),backgroundColor:'rgba(29,78,216,0.5)',borderRadius:6,yAxisID:'y2'},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},
+      scales:{y1:{type:'linear',position:'left',ticks:{callback:v=>v+'%'}},y2:{type:'linear',position:'right',ticks:{callback:v=>v+'h'}}}}
+  });
+}
+
+async function carregarEvolucao(){
+  const r=await fetch('/api/ocorrencias/evolucao').then(r=>r.json());
+  const labels=r.map(m=>m.mes);
+
+  if(chartEvolucao) chartEvolucao.destroy();
+  const ctx1=document.getElementById('chart-evolucao').getContext('2d');
+  chartEvolucao=new Chart(ctx1,{
+    type:'line',
+    data:{
+      labels,
+      datasets:[{
+        label:'Absenteísmo %',
+        data:r.map(m=>m.abs_pct),
+        borderColor:'#dc2626',backgroundColor:'rgba(220,38,38,0.1)',
+        borderWidth:2,pointRadius:5,fill:true,tension:0.3,
+      }]
+    },
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top'}},
+      scales:{y:{ticks:{callback:v=>v+'%'}}}}
+  });
+
+  if(chartHoras) chartHoras.destroy();
+  const ctx2=document.getElementById('chart-horas').getContext('2d');
+  chartHoras=new Chart(ctx2,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Faltas (h)',data:r.map(m=>m.h_falta),backgroundColor:'rgba(220,38,38,0.8)',borderRadius:4},
+        {label:'Atestados (h)',data:r.map(m=>m.h_atestado),backgroundColor:'rgba(29,78,216,0.8)',borderRadius:4},
+        {label:'Outros (h)',data:r.map(m=>m.h_outros),backgroundColor:'rgba(107,114,128,0.6)',borderRadius:4},
+      ]
+    },
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},
+      scales:{x:{stacked:true},y:{stacked:true,ticks:{callback:v=>v+'h'}}}}
+  });
+}
+
+// MODAL
+function abrirModalOcorrencia(){
+  document.getElementById('oc-edit-id').value='';
+  document.getElementById('modal-oc-title').textContent='➕ Lançar Ocorrência';
+  document.getElementById('oc-func').value='';
+  document.getElementById('oc-data').value='{{ hoje }}';
+  document.getElementById('oc-tipo').value='';
+  document.getElementById('oc-horas').value='';
+  document.getElementById('oc-obs').value='';
+  abrirModal('modal-oc');
+}
+
+function calcularHoras(){
+  const sel=document.getElementById('oc-tipo');
+  const opt=sel.options[sel.selectedIndex];
+  if(opt&&opt.dataset.horas) document.getElementById('oc-horas').value=opt.dataset.horas;
+}
+
+async function salvarOcorrencia(){
+  const func=document.getElementById('oc-func').value;
+  const data=document.getElementById('oc-data').value;
+  const tipo=document.getElementById('oc-tipo').value;
+  if(!func||!data||!tipo){toast('Preencha os campos obrigatórios','error');return}
+  const id=document.getElementById('oc-edit-id').value;
+
+  // Auto-seleciona fábrica do funcionário
+  const sel=document.getElementById('oc-func');
+  const opt=sel.options[sel.selectedIndex];
+  if(opt&&opt.dataset.fab) document.getElementById('oc-fabrica').value=opt.dataset.fab;
+
+  const d={id:id||null,funcionario_id:func,data,tipo_id:tipo,
+    horas:document.getElementById('oc-horas').value||0,
+    fabrica_id:document.getElementById('oc-fabrica').value,
+    direto:document.getElementById('oc-direto').value,
+    obs:document.getElementById('oc-obs').value};
+  const r=await fetch('/api/ocorrencia/salvar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
+  if(r.ok){fecharModal('modal-oc');carregarDados();toast(id?'Atualizado!':'Ocorrência salva!')}
+  else toast(r.erro||'Erro','error');
+}
+
+async function editarOc(id){
+  const r=await fetch('/api/ocorrencia/'+id).then(r=>r.json());
+  document.getElementById('oc-edit-id').value=id;
+  document.getElementById('modal-oc-title').textContent='✏️ Editar Ocorrência';
+  document.getElementById('oc-func').value=r.funcionario_id||'';
+  document.getElementById('oc-data').value=r.data||'';
+  document.getElementById('oc-tipo').value=r.tipo_id||'';
+  document.getElementById('oc-horas').value=r.horas||'';
+  document.getElementById('oc-fabrica').value=r.fabrica_id||'';
+  document.getElementById('oc-direto').value=r.direto||'DIRETO';
+  document.getElementById('oc-obs').value=r.obs||'';
+  abrirModal('modal-oc');
+}
+
+async function excluirOc(id){
+  if(!confirm('Excluir esta ocorrência?'))return;
+  const r=await fetch('/api/ocorrencia/excluir/'+id,{method:'DELETE'}).then(r=>r.json());
+  if(r.ok){carregarDados();toast('Excluído!')}else toast(r.erro||'Erro','error');
+}
+
+function imprimirRelatorio(){
+  const mes=document.getElementById('fil-mes').value;
+  const mesLabel=document.getElementById('fil-mes').options[document.getElementById('fil-mes').selectedIndex].text;
+  const agora=new Date();
+  const dataStr=agora.toLocaleDateString('pt-BR');
+  const horaStr=agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const totalH=dadosOc.reduce((s,r)=>s+parseFloat(r.horas||0),0);
+  const ferias=dadosOc.filter(r=>r.tipo_nome?.toUpperCase().includes('FERIA')).length;
+
+  // Resumo por tipo
+  const porTipo={};
+  dadosOc.forEach(r=>{const n=r.tipo_nome||'Outros';if(!porTipo[n])porTipo[n]={qtd:0,horas:0};porTipo[n].qtd++;porTipo[n].horas+=parseFloat(r.horas||0)});
+  const tipoRows=Object.entries(porTipo).sort((a,b)=>b[1].horas-a[1].horas).map(([nome,d])=>`
+    <tr style="border-bottom:1px solid #e0e6f0">
+      <td style="padding:6px 12px">${nome}</td>
+      <td style="padding:6px 12px;text-align:center;font-weight:700">${d.qtd}</td>
+      <td style="padding:6px 12px;text-align:right">${d.horas.toFixed(1)}h</td>
+      <td style="padding:6px 12px;text-align:right">${totalH>0?(d.horas/totalH*100).toFixed(1)+'%':'—'}</td>
+    </tr>`).join('');
+
+  // Por fábrica
+  const fabRows=dadosFab.map(f=>`
+    <tr style="border-bottom:1px solid #e0e6f0">
+      <td style="padding:6px 12px;font-weight:700">${f.nome}</td>
+      <td style="padding:6px 12px;text-align:center">${f.total_func}</td>
+      <td style="padding:6px 12px;text-align:center">${f.total_oc}</td>
+      <td style="padding:6px 12px;text-align:right">${f.horas.toFixed(1)}h</td>
+      <td style="padding:6px 12px;text-align:center">${f.ferias}</td>
+      <td style="padding:6px 12px;text-align:right;font-weight:800;color:${f.abs_pct<5?'#15803d':f.abs_pct<8?'#d97706':'#dc2626'}">${f.abs_pct.toFixed(2)}%</td>
+    </tr>`).join('');
+
+  const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Absenteísmo ${mesLabel} — Giassi Confecções</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',Arial,sans-serif;background:#fff;color:#1a1a2e;font-size:12px}
+.page{padding:20px;max-width:960px;margin:0 auto}
+.header{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1a1a2e;padding-bottom:12px;margin-bottom:16px}
+.logo{display:flex;align-items:center;gap:10px}.logo-icon{width:40px;height:40px;background:#1a1a2e;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px}
+.logo h1{font-size:20px;font-weight:800}.logo small{font-size:10px;color:#6b7280;display:block}
+.info{text-align:right;font-size:11px}.info strong{display:block;font-size:14px}
+.metricas{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:16px}
+.met{background:#f8f9fb;border:1px solid #e0e6f0;border-radius:8px;padding:10px;text-align:center}
+.met-val{font-size:16px;font-weight:800}.met-lbl{font-size:9px;color:#9ca3af;text-transform:uppercase;margin-top:2px}
+.sec{font-size:13px;font-weight:700;margin:16px 0 8px;padding-bottom:6px;border-bottom:2px solid #e0e6f0}
+table{width:100%;border-collapse:collapse}thead{background:#1a1a2e}thead th{padding:8px 12px;color:#fff;font-size:10px;font-weight:700;text-align:left}
+.footer{margin-top:16px;padding-top:10px;border-top:1px solid #e0e6f0;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af}
+.no-print{display:flex;justify-content:center;gap:12px;margin-bottom:16px}
+.btn-imp{padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;background:#1a1a2e;color:#fff}
+.btn-fec{padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;background:#f0f2f5;color:#374151}
+@media print{.no-print{display:none!important}@page{margin:10mm}}</style></head><body>
+<div class="page">
+<div class="no-print"><button class="btn-imp" onclick="window.print()">🖨️ Imprimir / PDF</button><button class="btn-fec" onclick="window.close()">✕ Fechar</button></div>
+<div class="header">
+  <div class="logo"><div class="logo-icon">⏱</div><div><h1>GIASSI CONFECÇÕES</h1><small>Relatório de Absenteísmo</small></div></div>
+  <div class="info"><strong>${mesLabel}</strong>${dataStr} às ${horaStr}<br>Reunião Gerencial</div>
+</div>
+<div class="metricas">
+  <div class="met"><div class="met-val">${dadosOc.length}</div><div class="met-lbl">Ocorrências</div></div>
+  <div class="met"><div class="met-val" style="color:#dc2626">${totalH.toFixed(1)}h</div><div class="met-lbl">Horas Perdidas</div></div>
+  <div class="met"><div class="met-val">${new Set(dadosOc.map(r=>r.funcionario_id)).size}</div><div class="met-lbl">Funcionários</div></div>
+  <div class="met"><div class="met-val" style="color:#15803d">${ferias}</div><div class="met-lbl">Em Férias</div></div>
+  <div class="met"><div class="met-val">${mesLabel}</div><div class="met-lbl">Período</div></div>
+</div>
+${fabRows?`<div class="sec">🏭 Por Fábrica</div>
+<table><thead><tr><th>Fábrica</th><th>Funcionários</th><th>Ocorrências</th><th>Horas</th><th>Férias</th><th>Absenteísmo</th></tr></thead>
+<tbody>${fabRows}</tbody></table>`:''}
+<div class="sec" style="margin-top:16px">📊 Por Tipo de Ocorrência</div>
+<table><thead><tr><th>Tipo</th><th>Qtd</th><th>Horas</th><th>% do Total</th></tr></thead>
+<tbody>${tipoRows}</tbody></table>
+<div class="footer"><span>Giassi Confecções — Uso Interno</span><span>Absenteísmo ${mesLabel} — ${dataStr}</span></div>
+</div></body></html>`;
+
+  const j=window.open('','_blank','width=1000,height=800');
+  j.document.write(html);j.document.close();
+}
+
+carregarDados();
+</script>
+{% endblock %}

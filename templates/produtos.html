@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Produtos{% endblock %}
+{% block page_title %}👕 Produtos{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left"><h1>Produtos</h1><p>Gêneros e tipos de produtos</p></div>
+</div>
+<div class="row">
+  <div class="col">
+    <div class="card">
+      <div class="card-header"><div class="card-title">⚥ Gêneros</div>
+        <button class="btn btn-sm btn-primary" onclick="abrirModal('modal-gen')">＋ Novo</button></div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Gênero</th><th>Ações</th></tr></thead>
+        <tbody>
+          {% for g in generos %}
+          <tr><td><strong>{{ g.nome }}</strong></td>
+            <td><button class="btn btn-sm btn-primary" onclick="editarGen({{ g.id }},'{{ g.nome }}')">✏️</button></td>
+          </tr>{% endfor %}
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card">
+      <div class="card-header"><div class="card-title">👕 Tipos de Produto</div>
+        <button class="btn btn-sm btn-primary" onclick="abrirModal('modal-tipo')">＋ Novo</button></div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Tipo</th><th>Gênero</th><th>Ações</th></tr></thead>
+        <tbody>
+          {% for t in tipos %}
+          <tr><td><strong>{{ t.nome }}</strong></td><td>{{ t.gen_nome or '—' }}</td>
+            <td><button class="btn btn-sm btn-primary" onclick="editarTipo({{ t.id }},'{{ t.nome }}',{{ t.genero_id or 'null' }})">✏️</button></td>
+          </tr>{% endfor %}
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-gen">
+  <div class="modal modal-sm">
+    <div class="modal-header"><div class="modal-title">Gênero</div>
+      <button class="modal-close" onclick="fecharModal('modal-gen')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="gen-id">
+      <div class="form-group"><label class="form-label">Nome *</label>
+        <input type="text" class="form-control" id="gen-nome" placeholder="Ex: FEMININO"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-gen')">Cancelar</button>
+      <button class="btn btn-success" onclick="salvarGen()">✓ Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-tipo">
+  <div class="modal modal-sm">
+    <div class="modal-header"><div class="modal-title">Tipo de Produto</div>
+      <button class="modal-close" onclick="fecharModal('modal-tipo')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="tipo-id">
+      <div class="form-group"><label class="form-label">Nome *</label>
+        <input type="text" class="form-control" id="tipo-nome" placeholder="Ex: CALCA"></div>
+      <div class="form-group"><label class="form-label">Gênero</label>
+        <select class="form-control" id="tipo-gen">
+          <option value="">Todos os gêneros</option>
+          {% for g in generos %}<option value="{{ g.id }}">{{ g.nome }}</option>{% endfor %}
+        </select></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-tipo')">Cancelar</button>
+      <button class="btn btn-success" onclick="salvarTipo()">✓ Salvar</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function editarGen(id,nome){document.getElementById('gen-id').value=id;document.getElementById('gen-nome').value=nome;abrirModal('modal-gen')}
+async function salvarGen(){
+  const nome=document.getElementById('gen-nome').value.trim();
+  if(!nome){toast('Nome obrigatório!','err');return}
+  const r=await api('/api/genero/salvar','POST',{id:document.getElementById('gen-id').value||null,nome});
+  if(r.ok){toast('Salvo!');location.reload()}else toast('Erro','err');
+}
+function editarTipo(id,nome,genId){
+  document.getElementById('tipo-id').value=id;document.getElementById('tipo-nome').value=nome;
+  document.getElementById('tipo-gen').value=genId||'';abrirModal('modal-tipo');
+}
+async function salvarTipo(){
+  const nome=document.getElementById('tipo-nome').value.trim();
+  if(!nome){toast('Nome obrigatório!','err');return}
+  const r=await api('/api/tipo/salvar','POST',{id:document.getElementById('tipo-id').value||null,
+    nome,genero_id:document.getElementById('tipo-gen').value||null});
+  if(r.ok){toast('Salvo!');location.reload()}else toast('Erro','err');
+}
+</script>
+{% endblock %}

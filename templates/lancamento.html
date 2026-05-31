@@ -1,0 +1,608 @@
+{% extends 'base.html' %}
+{% block title %}Lançamento{% endblock %}
+{% block content %}
+<style>
+.lan-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.lan-title{font-size:18px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px}
+.card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:20px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1a1a2e;color:#fff}.btn-primary:hover{background:#2d3a6e}
+.btn-success{background:#15803d;color:#fff}.btn-success:hover{background:#166534}
+.btn-danger{background:#dc2626;color:#fff}
+.btn-light{background:#f0f2f5;color:#374151}.btn-light:hover{background:#e5e7eb}
+.btn-sm{padding:5px 10px;font-size:11px}
+.form-group label{display:block;font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid #e0e6f0;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+.form-group input:focus,.form-group select:focus{border-color:#1a1a2e}
+.form-row{display:grid;gap:12px}
+.cols-2{grid-template-columns:1fr 1fr}
+.cols-3{grid-template-columns:1fr 1fr 1fr}
+.cols-4{grid-template-columns:1fr 1fr 1fr 1fr}
+.cols-6{grid-template-columns:repeat(6,1fr)}
+
+/* MÉTRICAS DO DIA */
+.metricas-dia{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.metrica-card{border-radius:12px;padding:16px;text-align:center;border:2px solid}
+.metrica-card.neutro{background:#f8f9fb;border-color:#e0e6f0}
+.metrica-card.verde{background:#dcfce7;border-color:#15803d}
+.metrica-card.amarelo{background:#fef9c3;border-color:#d97706}
+.metrica-card.vermelho{background:#fee2e2;border-color:#dc2626}
+.metrica-card.azul{background:#dbeafe;border-color:#1d4ed8}
+.metrica-val{font-size:26px;font-weight:800;color:#1a1a2e;line-height:1}
+.metrica-lbl{font-size:10px;color:#6b7280;text-transform:uppercase;margin-top:4px;font-weight:600}
+.metrica-sub{font-size:11px;color:#6b7280;margin-top:2px}
+
+/* FAROL GRANDE */
+.farol-grande{border-radius:16px;padding:20px;text-align:center;border:3px solid;transition:all .3s}
+.farol-grande.verm{background:#fee2e2;border-color:#dc2626}
+.farol-grande.amar{background:#fef9c3;border-color:#d97706}
+.farol-grande.verd{background:#dcfce7;border-color:#15803d}
+.farol-grande.azul{background:#dbeafe;border-color:#1d4ed8}
+.farol-grande.neutro{background:#f8f9fb;border-color:#e0e6f0}
+.farol-ef{font-size:48px;font-weight:800;line-height:1}
+.farol-lbl{font-size:13px;font-weight:700;text-transform:uppercase;margin-top:6px}
+.farol-grande.verm .farol-ef,.farol-grande.verm .farol-lbl{color:#dc2626}
+.farol-grande.amar .farol-ef,.farol-grande.amar .farol-lbl{color:#854d0e}
+.farol-grande.verd .farol-ef,.farol-grande.verd .farol-lbl{color:#15803d}
+.farol-grande.azul .farol-ef,.farol-grande.azul .farol-lbl{color:#1d4ed8}
+.farol-grande.neutro .farol-ef,.farol-grande.neutro .farol-lbl{color:#9ca3af}
+
+/* FORM LANÇAMENTO */
+.lan-form{background:#f8f9fb;border-radius:12px;padding:16px;margin-bottom:16px;border:2px solid #e0e6f0}
+.lan-form.ativo{border-color:#1a1a2e;background:#fff}
+
+/* TABELA */
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid #e0e6f0}
+table{width:100%;border-collapse:collapse}
+thead{background:#1a1a2e}
+thead th{padding:10px 14px;color:#fff;font-size:11px;font-weight:700;text-align:left;white-space:nowrap}
+tbody tr{border-bottom:1px solid #f0f2f5;transition:.1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f8f9fb}
+tbody td{padding:9px 14px;font-size:13px;vertical-align:middle}
+.sem{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block}
+.sem-verd{background:#dcfce7;color:#15803d}
+.sem-amar{background:#fef9c3;color:#854d0e}
+.sem-verm{background:#fee2e2;color:#dc2626}
+.sem-azul{background:#dbeafe;color:#1d4ed8}
+.sem-neutro{background:#f0f2f5;color:#6b7280}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-header{padding:16px 20px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:15px;font-weight:700;color:#1a1a2e}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid #f0f2f5;display:flex;justify-content:flex-end;gap:8px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#15803d}
+.toast.error{background:#dc2626}
+
+.hora-badge{background:#1a1a2e;color:#fff;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700}
+.progress-bar{height:8px;background:#e0e6f0;border-radius:4px;overflow:hidden;margin-top:4px}
+.progress-fill{height:100%;border-radius:4px;transition:width .5s}
+</style>
+
+<div class="lan-header">
+  <div class="lan-title">🏭 Lançamento de Produção</div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-light btn-sm" onclick="abrirModalSelecionar()">🔄 Trocar OP</button>
+    <button class="btn btn-primary btn-sm" onclick="abrirModalLancar()">➕ Novo Lançamento</button>
+  </div>
+</div>
+
+<!-- SELEÇÃO DE OP -->
+<div class="card" id="card-sem-op" {% if op_atual %}style="display:none"{% endif %}>
+  <div class="card-title">📋 Selecione uma OP para Lançar</div>
+  <div class="form-row cols-3">
+    <div class="form-group">
+      <label>Ordem de Produção</label>
+      <select id="sel-op" onchange="selecionarOP()">
+        <option value="">Selecione...</option>
+        {% for op in ops %}
+        <option value="{{ op.id }}" data-num="{{ op.numero }}" data-ref="{{ op.ref_codigo or '' }}" data-desc="{{ op.descricao or '' }}" data-unit="{{ op.valor_unitario or 0 }}" data-qtd="{{ op.quantidade_total or 0 }}">
+          OP {{ op.numero }} — {{ op.ref_codigo or '' }} {% if op.descricao %}| {{ op.descricao }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Turno</label>
+      <select id="sel-turno" onchange="selecionarTurno()">
+        <option value="">Selecione...</option>
+        {% for t in turnos %}
+        <option value="{{ t.id }}" data-mins="{{ t.minutos_normal }}" data-nome="{{ t.nome }}">{{ t.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Data</label>
+      <input type="date" id="sel-data" value="{{ hoje }}">
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="confirmarSelecao()">✅ Confirmar Seleção</button>
+</div>
+
+<!-- INFO DA OP SELECIONADA -->
+<div id="card-op-info" {% if not op_atual %}style="display:none"{% endif %}>
+  <div style="background:#1a1a2e;border-radius:12px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="color:#9ca3af;font-size:11px;font-weight:600;text-transform:uppercase">OP em Produção</div>
+      <div style="color:#fff;font-size:16px;font-weight:800" id="info-op-titulo">—</div>
+      <div style="color:#9ca3af;font-size:12px" id="info-op-sub">—</div>
+    </div>
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <div style="text-align:center">
+        <div style="color:#f5a623;font-size:20px;font-weight:800" id="info-meta-hora">—</div>
+        <div style="color:#9ca3af;font-size:10px">META/HORA</div>
+      </div>
+      <div style="text-align:center">
+        <div style="color:#f5a623;font-size:20px;font-weight:800" id="info-meta-dia">—</div>
+        <div style="color:#9ca3af;font-size:10px">META DIA</div>
+      </div>
+      <div style="text-align:center">
+        <div style="color:#f5a623;font-size:20px;font-weight:800" id="info-vlr-unit">—</div>
+        <div style="color:#9ca3af;font-size:10px">VALOR UNIT.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MÉTRICAS DO DIA -->
+  <div class="metricas-dia" id="metricas-dia">
+    <div class="metrica-card neutro">
+      <div class="metrica-val" id="m-produzido">0</div>
+      <div class="metrica-lbl">Produzido</div>
+      <div class="metrica-sub" id="m-produzido-sub">de 0 meta</div>
+    </div>
+    <div class="metrica-card neutro" id="m-ef-card">
+      <div class="metrica-val" id="m-eficiencia">—</div>
+      <div class="metrica-lbl">Eficiência</div>
+      <div class="metrica-sub">do dia</div>
+    </div>
+    <div class="metrica-card neutro">
+      <div class="metrica-val" id="m-faturamento">R$ 0</div>
+      <div class="metrica-lbl">Faturamento</div>
+      <div class="metrica-sub">do dia</div>
+    </div>
+    <div class="metrica-card neutro">
+      <div class="metrica-val" id="m-lancamentos">0</div>
+      <div class="metrica-lbl">Lançamentos</div>
+      <div class="metrica-sub">horas lançadas</div>
+    </div>
+    <div class="metrica-card neutro">
+      <div class="metrica-val" id="m-operadores">0</div>
+      <div class="metrica-lbl">Operadores</div>
+      <div class="metrica-sub">último lançamento</div>
+    </div>
+  </div>
+
+  <!-- FAROL + HISTÓRICO -->
+  <div style="display:grid;grid-template-columns:200px 1fr;gap:16px">
+    <!-- FAROL -->
+    <div>
+      <div class="farol-grande neutro" id="farol-grande">
+        <div class="farol-ef" id="farol-ef">—</div>
+        <div class="farol-lbl" id="farol-lbl">Aguardando</div>
+      </div>
+      <div style="margin-top:12px;background:#f8f9fb;border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:11px;color:#6b7280;margin-bottom:4px">Progresso do Dia</div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress-dia" style="width:0%;background:#e0e6f0"></div>
+        </div>
+        <div style="font-size:11px;color:#6b7280;margin-top:4px" id="progress-txt">0 / 0 pcs</div>
+      </div>
+    </div>
+
+    <!-- HISTÓRICO DO DIA -->
+    <div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Operadores</th>
+              <th>Produzido</th>
+              <th>Meta/Hora</th>
+              <th>Eficiência</th>
+              <th>Faturamento</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tabela-lancamentos">
+            <tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:24px">Nenhum lançamento hoje</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SELECIONAR OP -->
+<div class="modal-overlay" id="modal-selecionar">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">🔄 Selecionar OP</div>
+      <button class="modal-close" onclick="fecharModal('modal-selecionar')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Ordem de Produção</label>
+          <select id="m-sel-op">
+            <option value="">Selecione...</option>
+            {% for op in ops %}
+            <option value="{{ op.id }}" data-num="{{ op.numero }}" data-ref="{{ op.ref_codigo or '' }}" data-desc="{{ op.descricao or '' }}" data-unit="{{ op.valor_unitario or 0 }}" data-qtd="{{ op.quantidade_total or 0 }}">
+              OP {{ op.numero }} — {{ op.ref_codigo or '' }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Turno</label>
+          <select id="m-sel-turno">
+            <option value="">Selecione...</option>
+            {% for t in turnos %}
+            <option value="{{ t.id }}" data-mins="{{ t.minutos_normal }}" data-nome="{{ t.nome }}">{{ t.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Data</label>
+        <input type="date" id="m-sel-data" value="{{ hoje }}">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-selecionar')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarSelecaoModal()">✅ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LANÇAMENTO -->
+<div class="modal-overlay" id="modal-lancar">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Novo Lançamento</div>
+      <button class="modal-close" onclick="fecharModal('modal-lancar')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="lan-edit-id">
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Hora *</label>
+          <input type="time" id="lan-hora">
+        </div>
+        <div class="form-group">
+          <label>Nº Operadores *</label>
+          <input type="number" id="lan-operadores" min="1" value="1">
+        </div>
+      </div>
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Qtd Produzida *</label>
+          <input type="number" id="lan-qtd" min="0" oninput="calcularPreview()">
+        </div>
+        <div class="form-group">
+          <label>Meta da Hora</label>
+          <input type="number" id="lan-meta" readonly style="background:#f8f9fb;font-weight:700">
+        </div>
+      </div>
+      <!-- Preview -->
+      <div style="background:#f8f9fb;border-radius:10px;padding:14px;margin-top:8px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center">
+          <div>
+            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700">Eficiência</div>
+            <div style="font-size:22px;font-weight:800" id="prev-ef">—</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700">Faturamento</div>
+            <div style="font-size:18px;font-weight:800;color:#15803d" id="prev-fat">R$ 0,00</div>
+          </div>
+          <div>
+            <div style="font-size:10px;color:#6b7280;text-transform:uppercase;font-weight:700">Farol</div>
+            <div style="font-size:22px" id="prev-farol">⚪</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:12px">
+        <label>Observação</label>
+        <input type="text" id="lan-obs" placeholder="Opcional...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-lancar')">Cancelar</button>
+      <button class="btn btn-success" onclick="salvarLancamento()">💾 Salvar Lançamento</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ── ESTADO ────────────────────────────────────────
+let estado = {
+  opId: null, opNumero: '', opRef: '', opDesc: '',
+  valorUnit: 0, qtdTotal: 0,
+  turnoId: null, turnoNome: '', minutos: 540,
+  data: '{{ hoje }}',
+  metaDia: 0, metaHora: 0,
+  lancamentos: [],
+};
+
+// ── UTILS ─────────────────────────────────────────
+function toast(msg, tipo='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast '+tipo+' show';
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+function fecharModal(id) { document.getElementById(id).classList.remove('open') }
+function abrirModal(id) { document.getElementById(id).classList.add('open') }
+function fmtR(v) { return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) }
+function fmtN(v) { return Number(v||0).toLocaleString('pt-BR') }
+
+function farolClasse(ef) {
+  if (!ef || ef === 0) return 'neutro';
+  if (ef < 85) return 'verm';
+  if (ef < 92) return 'amar';
+  if (ef <= 100) return 'verd';
+  return 'azul';
+}
+function farolEmoji(ef) {
+  if (!ef || ef === 0) return '⚪';
+  if (ef < 85) return '🔴';
+  if (ef < 92) return '🟡';
+  if (ef <= 100) return '🟢';
+  return '🔵';
+}
+function farolTexto(ef) {
+  if (!ef || ef === 0) return 'Aguardando';
+  if (ef < 85) return 'Abaixo da Meta';
+  if (ef < 92) return 'Atenção';
+  if (ef <= 100) return 'Na Meta';
+  return 'Acima da Meta!';
+}
+function semTag(ef) {
+  if (!ef) return '<span class="sem sem-neutro">—</span>';
+  const cls = ef < 85 ? 'sem-verm' : ef < 92 ? 'sem-amar' : ef <= 100 ? 'sem-verd' : 'sem-azul';
+  return `<span class="sem ${cls}">${farolEmoji(ef)} ${ef.toFixed(1)}%</span>`;
+}
+
+// ── SELEÇÃO DE OP ─────────────────────────────────
+function selecionarOP() {
+  const sel = document.getElementById('sel-op');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+  estado.opId = opt.value;
+  estado.opNumero = opt.dataset.num;
+  estado.opRef = opt.dataset.ref;
+  estado.opDesc = opt.dataset.desc;
+  estado.valorUnit = parseFloat(opt.dataset.unit) || 0;
+  estado.qtdTotal = parseInt(opt.dataset.qtd) || 0;
+}
+
+function selecionarTurno() {
+  const sel = document.getElementById('sel-turno');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+  estado.turnoId = opt.value;
+  estado.turnoNome = opt.dataset.nome;
+  estado.minutos = parseInt(opt.dataset.mins) || 540;
+}
+
+function confirmarSelecao() {
+  const opId = document.getElementById('sel-op').value;
+  const turnoId = document.getElementById('sel-turno').value;
+  const data = document.getElementById('sel-data').value;
+  if (!opId || !turnoId || !data) { toast('Preencha todos os campos', 'error'); return; }
+  selecionarOP(); selecionarTurno();
+  estado.data = data;
+  ativarOP();
+}
+
+function confirmarSelecaoModal() {
+  const sel = document.getElementById('m-sel-op');
+  const opt = sel.options[sel.selectedIndex];
+  const tsel = document.getElementById('m-sel-turno');
+  const topt = tsel.options[tsel.selectedIndex];
+  if (!opt || !opt.value || !topt || !topt.value) { toast('Preencha todos os campos', 'error'); return; }
+  estado.opId = opt.value; estado.opNumero = opt.dataset.num;
+  estado.opRef = opt.dataset.ref; estado.opDesc = opt.dataset.desc;
+  estado.valorUnit = parseFloat(opt.dataset.unit) || 0;
+  estado.qtdTotal = parseInt(opt.dataset.qtd) || 0;
+  estado.turnoId = topt.value; estado.turnoNome = topt.dataset.nome;
+  estado.minutos = parseInt(topt.dataset.mins) || 540;
+  estado.data = document.getElementById('m-sel-data').value;
+  fecharModal('modal-selecionar');
+  ativarOP();
+}
+
+function abrirModalSelecionar() { abrirModal('modal-selecionar'); }
+
+async function ativarOP() {
+  // Calcular metas
+  const horas = estado.minutos / 60;
+  estado.metaHora = 0; // será calculado com tempo peça
+  // Buscar tempo peça da sequência da OP
+  const seq = await fetch('/api/op/sequencia/'+estado.opId).then(r=>r.json());
+  const tempoPeca = seq.reduce((s,o)=>s+parseFloat(o.tempo_padrao||0),0);
+  if (tempoPeca > 0) {
+    estado.metaDia = Math.floor((estado.minutos / tempoPeca));
+    estado.metaHora = Math.floor(estado.metaDia / horas);
+  }
+
+  // Atualizar UI
+  document.getElementById('card-sem-op').style.display = 'none';
+  document.getElementById('card-op-info').style.display = '';
+  document.getElementById('info-op-titulo').textContent = `OP ${estado.opNumero} — ${estado.opRef}`;
+  document.getElementById('info-op-sub').textContent = `${estado.opDesc || ''} • ${estado.turnoNome} • ${estado.data}`;
+  document.getElementById('info-meta-hora').textContent = fmtN(estado.metaHora);
+  document.getElementById('info-meta-dia').textContent = fmtN(estado.metaDia);
+  document.getElementById('info-vlr-unit').textContent = fmtR(estado.valorUnit);
+
+  await carregarLancamentos();
+}
+
+// ── CARREGAR LANÇAMENTOS ──────────────────────────
+async function carregarLancamentos() {
+  if (!estado.opId) return;
+  const url = `/api/lancamentos?op_id=${estado.opId}&data=${estado.data}`;
+  estado.lancamentos = await fetch(url).then(r=>r.json());
+  renderLancamentos();
+  atualizarMetricas();
+}
+
+function renderLancamentos() {
+  const tbody = document.getElementById('tabela-lancamentos');
+  if (!estado.lancamentos.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#9ca3af;padding:24px">Nenhum lançamento hoje</td></tr>';
+    return;
+  }
+  tbody.innerHTML = estado.lancamentos.map(l => `
+    <tr>
+      <td><span class="hora-badge">${l.hora}</span></td>
+      <td>${l.operadores}</td>
+      <td><strong>${fmtN(l.qtd_produzida)}</strong></td>
+      <td>${fmtN(l.qtd_projetada)}</td>
+      <td>${semTag(l.eficiencia)}</td>
+      <td>${fmtR(l.faturamento_hora)}</td>
+      <td>
+        <button class="btn btn-light btn-sm" onclick="editarLancamento(${l.id})" style="padding:3px 8px;font-size:10px">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="excluirLancamento(${l.id})" style="padding:3px 8px;font-size:10px">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function atualizarMetricas() {
+  const lans = estado.lancamentos;
+  const totalProd = lans.reduce((s,l)=>s+parseInt(l.qtd_produzida||0),0);
+  const totalFat = lans.reduce((s,l)=>s+parseFloat(l.faturamento_hora||0),0);
+  const metaDia = estado.metaDia;
+  const efDia = metaDia > 0 ? (totalProd/metaDia)*100 : 0;
+  const ultOp = lans.length ? lans[lans.length-1].operadores : 0;
+
+  document.getElementById('m-produzido').textContent = fmtN(totalProd);
+  document.getElementById('m-produzido-sub').textContent = `de ${fmtN(metaDia)} meta`;
+  document.getElementById('m-eficiencia').textContent = efDia > 0 ? efDia.toFixed(1)+'%' : '—';
+  document.getElementById('m-faturamento').textContent = fmtR(totalFat);
+  document.getElementById('m-lancamentos').textContent = lans.length;
+  document.getElementById('m-operadores').textContent = ultOp;
+
+  // Farol grande
+  const cls = farolClasse(efDia);
+  const farol = document.getElementById('farol-grande');
+  farol.className = `farol-grande ${cls}`;
+  document.getElementById('farol-ef').textContent = efDia > 0 ? efDia.toFixed(1)+'%' : '—';
+  document.getElementById('farol-lbl').textContent = farolTexto(efDia > 0 ? efDia : 0);
+
+  // Métrica eficiência
+  const efCard = document.getElementById('m-ef-card');
+  efCard.className = `metrica-card ${efDia===0?'neutro':cls==='verm'?'vermelho':cls==='amar'?'amarelo':cls==='verd'?'verde':'azul'}`;
+
+  // Progress bar
+  const pct = metaDia > 0 ? Math.min(100, (totalProd/metaDia)*100) : 0;
+  const cor = cls==='verm'?'#dc2626':cls==='amar'?'#d97706':cls==='verd'?'#15803d':'#1d4ed8';
+  document.getElementById('progress-dia').style.width = pct+'%';
+  document.getElementById('progress-dia').style.background = pct===0?'#e0e6f0':cor;
+  document.getElementById('progress-txt').textContent = `${fmtN(totalProd)} / ${fmtN(metaDia)} pcs`;
+}
+
+// ── MODAL LANÇAMENTO ──────────────────────────────
+function abrirModalLancar() {
+  if (!estado.opId) { toast('Selecione uma OP primeiro', 'error'); return; }
+  document.getElementById('lan-edit-id').value = '';
+  // Hora atual
+  const agora = new Date();
+  document.getElementById('lan-hora').value = `${String(agora.getHours()).padStart(2,'0')}:00`;
+  document.getElementById('lan-operadores').value = 1;
+  document.getElementById('lan-qtd').value = '';
+  document.getElementById('lan-meta').value = estado.metaHora;
+  document.getElementById('lan-obs').value = '';
+  calcularPreview();
+  abrirModal('modal-lancar');
+}
+
+function calcularPreview() {
+  const qtd = parseInt(document.getElementById('lan-qtd').value) || 0;
+  const meta = parseInt(document.getElementById('lan-meta').value) || estado.metaHora;
+  const ef = meta > 0 ? (qtd/meta)*100 : 0;
+  const fat = qtd * estado.valorUnit;
+  document.getElementById('prev-ef').textContent = ef > 0 ? ef.toFixed(1)+'%' : '—';
+  document.getElementById('prev-ef').style.color = ef===0?'#9ca3af':ef<85?'#dc2626':ef<92?'#854d0e':ef<=100?'#15803d':'#1d4ed8';
+  document.getElementById('prev-fat').textContent = fmtR(fat);
+  document.getElementById('prev-farol').textContent = farolEmoji(ef > 0 ? ef : 0);
+}
+
+async function salvarLancamento() {
+  const hora = document.getElementById('lan-hora').value;
+  const operadores = parseInt(document.getElementById('lan-operadores').value) || 0;
+  const qtd = parseInt(document.getElementById('lan-qtd').value) || 0;
+  const meta = parseInt(document.getElementById('lan-meta').value) || estado.metaHora;
+  if (!hora || !qtd) { toast('Preencha hora e quantidade', 'error'); return; }
+
+  const ef = meta > 0 ? (qtd/meta)*100 : 0;
+  const fat = qtd * estado.valorUnit;
+  const id = document.getElementById('lan-edit-id').value;
+
+  const d = {
+    id: id || null,
+    op_id: estado.opId,
+    fabrica_id: null,
+    data: estado.data,
+    hora,
+    ciclo_minutos: 60,
+    operadores,
+    qtd_produzida: qtd,
+    qtd_projetada: meta,
+    eficiencia: ef,
+    faturamento_hora: fat,
+    custo_hora: 0,
+    resultado_hora: fat,
+    obs: document.getElementById('lan-obs').value,
+  };
+
+  const r = await fetch('/api/lancamento/salvar', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d)
+  }).then(r=>r.json());
+
+  if (r.ok) {
+    fecharModal('modal-lancar');
+    await carregarLancamentos();
+    toast(id ? 'Lançamento atualizado!' : 'Lançamento salvo!');
+  } else toast(r.erro || 'Erro ao salvar', 'error');
+}
+
+async function editarLancamento(id) {
+  const l = estado.lancamentos.find(x=>x.id===id);
+  if (!l) return;
+  document.getElementById('lan-edit-id').value = id;
+  document.getElementById('lan-hora').value = l.hora;
+  document.getElementById('lan-operadores').value = l.operadores;
+  document.getElementById('lan-qtd').value = l.qtd_produzida;
+  document.getElementById('lan-meta').value = l.qtd_projetada;
+  document.getElementById('lan-obs').value = l.obs || '';
+  calcularPreview();
+  abrirModal('modal-lancar');
+}
+
+async function excluirLancamento(id) {
+  if (!confirm('Excluir este lançamento?')) return;
+  const r = await fetch(`/api/lancamento/excluir/${id}`, {method:'DELETE'}).then(r=>r.json());
+  if (r.ok) { await carregarLancamentos(); toast('Lançamento excluído!'); }
+  else toast(r.erro || 'Erro', 'error');
+}
+
+// Inicializar hora no campo
+document.addEventListener('DOMContentLoaded', () => {
+  const hoje = '{{ hoje }}';
+  document.getElementById('sel-data').value = hoje;
+});
+</script>
+{% endblock %}

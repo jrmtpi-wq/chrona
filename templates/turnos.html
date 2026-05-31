@@ -1,0 +1,331 @@
+{% extends "base.html" %}
+{% block title %}Turnos{% endblock %}
+{% block page_title %}🕐 Cadastro de Turnos{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Turnos de Trabalho</h1>
+    <p>Cadastre os turnos e horários da sua fábrica</p>
+  </div>
+  <button class="btn btn-primary" onclick="novoTurno()">＋ Novo Turno</button>
+</div>
+
+<!-- CARDS DOS TURNOS -->
+<div class="grid grid-3" id="cards-turnos">
+  {% for t in turnos %}
+  <div class="card" style="border-top:4px solid var(--azul3)">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div>
+        <div style="font-size:11px;color:var(--cinza);font-weight:700;text-transform:uppercase">
+          {{ t.numero }}º Turno — {{ t.fab_nome }}</div>
+        <div style="font-size:20px;font-weight:800;color:var(--azul)">{{ t.nome }}</div>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-sm btn-primary" onclick="editarTurno({{ t.id }})">✏️</button>
+        <button class="btn btn-sm btn-danger" onclick="excluirTurno({{ t.id }},'{{ t.nome }}')">🗑</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px">
+      <div style="background:var(--bg);border-radius:6px;padding:8px">
+        <div style="font-size:10px;color:var(--cinza);font-weight:600">ENTRADA</div>
+        <div style="font-size:18px;font-weight:700;color:var(--verde)">{{ t.hora_entrada }}</div>
+      </div>
+      <div style="background:var(--bg);border-radius:6px;padding:8px">
+        <div style="font-size:10px;color:var(--cinza);font-weight:600">SAÍDA</div>
+        <div style="font-size:18px;font-weight:700;color:var(--verm)">{{ t.hora_saida }}</div>
+      </div>
+      {% if t.tem_almoco %}
+      <div style="background:var(--bg);border-radius:6px;padding:8px">
+        <div style="font-size:10px;color:var(--cinza);font-weight:600">ALMOÇO SAÍDA</div>
+        <div style="font-size:16px;font-weight:600">{{ t.hora_saida_almoco or '—' }}</div>
+      </div>
+      <div style="background:var(--bg);border-radius:6px;padding:8px">
+        <div style="font-size:10px;color:var(--cinza);font-weight:600">ALMOÇO RETORNO</div>
+        <div style="font-size:16px;font-weight:600">{{ t.hora_entrada_almoco or '—' }}</div>
+      </div>
+      {% endif %}
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <div style="background:#E8F0FE;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;color:var(--azul3)">
+        ⏱ Seg-Qui: {{ t.minutos_normal }}min ({{ (t.minutos_normal//60)|int }}h{{ t.minutos_normal%60 }}min)</div>
+      {% if t.hora_saida_sexta %}
+      <div style="background:#FEF9E7;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;color:var(--amar)">
+        📅 Sexta: {{ t.minutos_sexta }}min — Saída {{ t.hora_saida_sexta }}</div>
+      {% endif %}
+      <div style="background:#EAFAF1;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;color:var(--verde)">
+        ⚡ H.Extra máx: {{ t.max_hora_extra_dia }}h/dia</div>
+    </div>
+    {% if t.obs %}
+    <div style="margin-top:8px;font-size:12px;color:var(--cinza)">{{ t.obs }}</div>
+    {% endif %}
+  </div>
+  {% else %}
+  <div style="grid-column:span 3">
+    <div class="empty">
+      <span class="empty-icon">🕐</span>
+      Nenhum turno cadastrado. Clique em "＋ Novo Turno" para começar!
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- MODAL TURNO -->
+<div class="modal-bg" id="modal-turno">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-turno-title">Novo Turno</div>
+      <button class="modal-close" onclick="fecharModal('modal-turno')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="t-id">
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">Fábrica *</label>
+          <select class="form-control" id="t-fab">
+            {% for f in fabricas %}
+            <option value="{{ f.id }}">{{ f.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Número do Turno</label>
+          <select class="form-control" id="t-num">
+            <option value="1">1º Turno</option>
+            <option value="2">2º Turno</option>
+            <option value="3">3º Turno</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nome do Turno *</label>
+          <input type="text" class="form-control" id="t-nome" placeholder="Ex: TURNO MANHÃ">
+        </div>
+      </div>
+
+      <div class="form-section">⏰ Horários Segunda a Quinta</div>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Hora Entrada *</label>
+          <input type="time" class="form-control" id="t-he" value="07:30" onchange="calcularMinutos()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hora Saída *</label>
+          <input type="time" class="form-control" id="t-hs" value="17:30" onchange="calcularMinutos()">
+        </div>
+      </div>
+
+      <!-- Almoco -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <input type="checkbox" id="t-alm" checked onchange="toggleAlmoco()" style="width:16px;height:16px;cursor:pointer">
+        <label for="t-alm" style="font-size:13px;font-weight:600;cursor:pointer">Possui intervalo de almoço</label>
+      </div>
+      <div id="almoco-fields">
+        <div class="form-row form-row-2">
+          <div class="form-group">
+            <label class="form-label">Saída para Almoço</label>
+            <input type="time" class="form-control" id="t-hsa" value="11:30" onchange="calcularMinutos()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Retorno do Almoço</label>
+            <input type="time" class="form-control" id="t-hea" value="13:00" onchange="calcularMinutos()">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">📅 Horário Especial da Sexta-feira</div>
+      <div style="font-size:12px;color:var(--cinza);margin-bottom:8px">
+        ℹ️ Na sexta-feira a saída é antecipada para fechar as 44h semanais. Se não preencher, usa o horário normal.
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Hora Saída Sexta</label>
+          <input type="time" class="form-control" id="t-hsf" onchange="calcularMinutos()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">H. Extra Máx. por Dia (h)</label>
+          <input type="number" class="form-control" id="t-hex" value="1" step="0.5" min="0" max="4">
+        </div>
+      </div>
+
+      <!-- PREVIEW DOS MINUTOS -->
+      <div style="background:var(--azul);border-radius:10px;padding:16px;color:#fff;margin-top:8px">
+        <div style="font-size:12px;font-weight:600;opacity:.7;margin-bottom:8px">PREVIEW — MINUTOS DISPONÍVEIS</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center">
+          <div>
+            <div style="font-size:28px;font-weight:800" id="prev-normal">—</div>
+            <div style="font-size:11px;opacity:.7">Seg a Qui (min)</div>
+          </div>
+          <div>
+            <div style="font-size:28px;font-weight:800" id="prev-sexta">—</div>
+            <div style="font-size:11px;opacity:.7">Sexta (min)</div>
+          </div>
+          <div>
+            <div style="font-size:28px;font-weight:800" id="prev-semana">—</div>
+            <div style="font-size:11px;opacity:.7">Total semana (min)</div>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:8px;font-size:13px;opacity:.8" id="prev-44h"></div>
+      </div>
+
+      <div class="form-group" style="margin-top:12px">
+        <label class="form-label">Observações</label>
+        <input type="text" class="form-control" id="t-obs" placeholder="Observações opcionais">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-turno')">Cancelar</button>
+      <button class="btn btn-success" onclick="salvarTurno()">✓ Salvar Turno</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL EXCLUIR -->
+<div class="modal-bg" id="modal-del-turno">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">Confirmar</div>
+      <button class="modal-close" onclick="fecharModal('modal-del-turno')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--cinza)">Deseja excluir o turno <strong id="del-turno-nome"></strong>?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-del-turno')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarDelTurno()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+let delTurnoId = null;
+
+function toggleAlmoco(){
+  const chk = document.getElementById('t-alm').checked;
+  document.getElementById('almoco-fields').style.display = chk ? '' : 'none';
+  calcularMinutos();
+}
+
+function hm(s){
+  if(!s) return 0;
+  const [h,m] = s.split(':');
+  return parseInt(h)*60+parseInt(m);
+}
+
+function calcularMinutos(){
+  const he  = document.getElementById('t-he').value;
+  const hs  = document.getElementById('t-hs').value;
+  const hsa = document.getElementById('t-hsa').value;
+  const hea = document.getElementById('t-hea').value;
+  const hsf = document.getElementById('t-hsf').value;
+  const temAlm = document.getElementById('t-alm').checked;
+
+  let mNormal, mSexta;
+  if(temAlm && hsa && hea){
+    mNormal = (hm(hsa)-hm(he)) + (hm(hs)-hm(hea));
+    mSexta  = hsf ? (hm(hsa)-hm(he)) + (hm(hsf)-hm(hea)) : mNormal;
+  } else {
+    mNormal = hm(hs)-hm(he);
+    mSexta  = hsf ? hm(hsf)-hm(he) : mNormal;
+  }
+
+  const mSemana = (mNormal*4) + mSexta; // Seg-Qui + Sexta
+  document.getElementById('prev-normal').textContent = mNormal > 0 ? mNormal : '—';
+  document.getElementById('prev-sexta').textContent  = mSexta  > 0 ? mSexta  : '—';
+  document.getElementById('prev-semana').textContent = mSemana > 0 ? mSemana : '—';
+
+  // Verificar 44h = 2640 min
+  if(mSemana > 0){
+    const diff = mSemana - 2640;
+    const horas = Math.abs(diff/60).toFixed(1);
+    if(Math.abs(diff) < 5){
+      document.getElementById('prev-44h').innerHTML = '✅ 44 horas semanais: OK!';
+    } else if(diff > 0){
+      document.getElementById('prev-44h').innerHTML = `⚠️ ${horas}h a MAIS que 44h semanais`;
+    } else {
+      document.getElementById('prev-44h').innerHTML = `⚠️ ${horas}h a MENOS que 44h semanais`;
+    }
+  }
+}
+
+function novoTurno(){
+  document.getElementById('t-id').value='';
+  document.getElementById('modal-turno-title').textContent='Novo Turno';
+  document.getElementById('t-nome').value='';
+  document.getElementById('t-num').value='1';
+  document.getElementById('t-he').value='07:30';
+  document.getElementById('t-hs').value='17:30';
+  document.getElementById('t-hsa').value='11:30';
+  document.getElementById('t-hea').value='13:00';
+  document.getElementById('t-hsf').value='';
+  document.getElementById('t-hex').value='1';
+  document.getElementById('t-obs').value='';
+  document.getElementById('t-alm').checked=true;
+  document.getElementById('almoco-fields').style.display='';
+  calcularMinutos();
+  abrirModal('modal-turno');
+}
+
+async function editarTurno(id){
+  const t = await api('/api/turno/'+id);
+  document.getElementById('modal-turno-title').textContent='Editar Turno';
+  document.getElementById('t-id').value=t.id;
+  document.getElementById('t-fab').value=t.fabrica_id;
+  document.getElementById('t-num').value=t.numero;
+  document.getElementById('t-nome').value=t.nome;
+  document.getElementById('t-he').value=t.hora_entrada;
+  document.getElementById('t-hs').value=t.hora_saida;
+  document.getElementById('t-hsa').value=t.hora_saida_almoco||'';
+  document.getElementById('t-hea').value=t.hora_entrada_almoco||'';
+  document.getElementById('t-hsf').value=t.hora_saida_sexta||'';
+  document.getElementById('t-hex').value=t.max_hora_extra_dia||1;
+  document.getElementById('t-obs').value=t.obs||'';
+  document.getElementById('t-alm').checked=t.tem_almoco==1;
+  document.getElementById('almoco-fields').style.display=t.tem_almoco?'':'none';
+  calcularMinutos();
+  abrirModal('modal-turno');
+}
+
+async function salvarTurno(){
+  const nome = document.getElementById('t-nome').value.trim();
+  if(!nome){toast('Nome do turno obrigatório!','err');return}
+  const r = await api('/api/turno/salvar','POST',{
+    id: document.getElementById('t-id').value||null,
+    fabrica_id: document.getElementById('t-fab').value,
+    numero: document.getElementById('t-num').value,
+    nome,
+    hora_entrada: document.getElementById('t-he').value,
+    hora_saida: document.getElementById('t-hs').value,
+    hora_saida_almoco: document.getElementById('t-hsa').value||null,
+    hora_entrada_almoco: document.getElementById('t-hea').value||null,
+    hora_saida_sexta: document.getElementById('t-hsf').value||null,
+    tem_almoco: document.getElementById('t-alm').checked,
+    max_hora_extra_dia: document.getElementById('t-hex').value,
+    obs: document.getElementById('t-obs').value
+  });
+  if(r.ok){
+    toast(`Turno salvo! Seg-Qui: ${r.mins_normal}min | Sexta: ${r.mins_sexta}min`);
+    fecharModal('modal-turno');
+    setTimeout(()=>location.reload(), 1200);
+  } else toast('Erro: '+r.erro,'err');
+}
+
+function excluirTurno(id, nome){
+  delTurnoId = id;
+  document.getElementById('del-turno-nome').textContent = nome;
+  abrirModal('modal-del-turno');
+}
+
+async function confirmarDelTurno(){
+  if(!delTurnoId) return;
+  await api('/api/turno/excluir/'+delTurnoId,'DELETE');
+  toast('Turno removido','warn');
+  fecharModal('modal-del-turno');
+  setTimeout(()=>location.reload(), 800);
+}
+
+// Calcular ao abrir
+calcularMinutos();
+</script>
+{% endblock %}

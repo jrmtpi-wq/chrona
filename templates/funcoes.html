@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Funções{% endblock %}
+{% block page_title %}🏷️ Funções / Cargos{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Funções e Cargos</h1>
+    <p>Cadastre as funções dos colaboradores</p>
+  </div>
+  <button class="btn btn-primary" onclick="novaFuncao()">＋ Nova Função</button>
+</div>
+<div class="row">
+  <div class="col" style="max-width:400px">
+    <div class="card">
+      <div class="card-header"><div class="card-title">✏️ Cadastrar / Editar</div></div>
+      <input type="hidden" id="fc-id">
+      <div class="form-group"><label class="form-label">Nome da Função *</label>
+        <input type="text" class="form-control" id="fc-nome" placeholder="Ex: COSTUREIRA"></div>
+      <div class="form-group"><label class="form-label">Descrição</label>
+        <input type="text" class="form-control" id="fc-desc" placeholder="Descrição da função"></div>
+      <div class="form-group"><label class="form-label">Salário Base (R$)</label>
+        <input type="number" class="form-control" id="fc-sal" step="0.01" value="0"></div>
+      <div class="btn-group">
+        <button class="btn btn-success" onclick="salvarFuncao()">✓ Salvar</button>
+        <button class="btn btn-secondary" onclick="limparFuncao()">↺ Limpar</button>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card" style="padding:0">
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead><tr><th>Função</th><th>Descrição</th><th>Salário Base</th><th>Ações</th></tr></thead>
+          <tbody id="tbody-fc">
+            {% for fc in funcoes %}
+            <tr>
+              <td><strong>{{ fc.nome }}</strong></td>
+              <td>{{ fc.descricao or '—' }}</td>
+              <td>{{ 'R$ %.2f'|format(fc.salario_base|float) if fc.salario_base else '—' }}</td>
+              <td>
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-primary" onclick="editarFuncao({{ fc.id }},'{{ fc.nome }}','{{ fc.descricao or '' }}',{{ fc.salario_base or 0 }})">✏️</button>
+                  <button class="btn btn-sm btn-danger" onclick="excluirFuncao({{ fc.id }})">🗑</button>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="empty">Nenhuma função cadastrada</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function novaFuncao(){limparFuncao()}
+function editarFuncao(id,nome,desc,sal){
+  document.getElementById('fc-id').value=id;
+  document.getElementById('fc-nome').value=nome;
+  document.getElementById('fc-desc').value=desc;
+  document.getElementById('fc-sal').value=sal;
+}
+function limparFuncao(){
+  ['fc-id','fc-nome','fc-desc'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('fc-sal').value=0;
+}
+async function salvarFuncao(){
+  const nome=document.getElementById('fc-nome').value.trim();
+  if(!nome){toast('Nome obrigatório!','err');return}
+  const r=await api('/api/funcao/salvar','POST',{
+    id:document.getElementById('fc-id').value||null,
+    nome,descricao:document.getElementById('fc-desc').value,
+    salario_base:document.getElementById('fc-sal').value});
+  if(r.ok){toast('Função salva!');location.reload()}
+  else toast('Erro: '+r.erro,'err');
+}
+async function excluirFuncao(id){
+  if(!confirm('Excluir esta função?'))return;
+  await api('/api/funcao/excluir/'+id,'DELETE');
+  toast('Função removida','warn');location.reload();
+}
+</script>
+{% endblock %}

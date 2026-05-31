@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+{% block title %}Funcionários{% endblock %}
+{% block page_title %}👷 Funcionários{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Funcionários</h1>
+    <p>Cadastro completo de colaboradores</p>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-primary" onclick="novoFunc()">＋ Novo Funcionário</button>
+  </div>
+</div>
+
+<!-- FILTROS -->
+<div class="card" style="margin-bottom:16px;padding:14px 20px">
+  <div class="search-bar">
+    <input type="text" class="search-input" id="busca" placeholder="🔍  Buscar por nome ou CPF..."
+           oninput="carregarLista()">
+    <select class="form-control" id="filt-situacao" style="width:140px" onchange="carregarLista()">
+      <option value="ATIVO">Ativos</option>
+      <option value="INATIVO">Inativos</option>
+      <option value="TODOS">Todos</option>
+    </select>
+    <select class="form-control" id="filt-fab" style="width:160px" onchange="carregarLista()">
+      <option value="">Todas as fábricas</option>
+      {% for f in fabricas %}
+      <option value="{{ f.id }}">{{ f.nome }}</option>
+      {% endfor %}
+    </select>
+    <div id="count-funcs" style="color:var(--cinza);font-size:13px;margin-left:auto"></div>
+  </div>
+</div>
+
+<!-- TABELA -->
+<div class="card" style="padding:0">
+  <div class="table-wrap" style="border:none">
+    <table>
+      <thead><tr>
+        <th>Funcionário</th>
+        <th>CPF</th>
+        <th>Função</th>
+        <th>Fábrica</th>
+        <th>Telefone</th>
+        <th>Admissão</th>
+        <th>Salário</th>
+        <th>Situação</th>
+        <th style="width:100px">Ações</th>
+      </tr></thead>
+      <tbody id="tbody-funcs">
+        <tr><td colspan="9" class="empty">
+          <span class="empty-icon">👷</span>
+          Carregando funcionários...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL FUNCIONARIO -->
+<div class="modal-bg" id="modal-func">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-func-title">Novo Funcionário</div>
+      <button class="modal-close" onclick="fecharModal('modal-func')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="fn-id">
+
+      <div class="form-section">📋 Dados Pessoais</div>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Nome Completo *</label>
+          <input type="text" class="form-control" id="fn-nome" placeholder="Nome completo">
+        </div>
+        <div class="form-group">
+          <label class="form-label">CPF</label>
+          <input type="text" class="form-control" id="fn-cpf" placeholder="000.000.000-00"
+                 oninput="mascaraCPF(this)">
+        </div>
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">RG</label>
+          <input type="text" class="form-control" id="fn-rg" placeholder="RG">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sexo</label>
+          <select class="form-control" id="fn-sexo">
+            <option value="">Selecione...</option>
+            <option value="FEMININO">Feminino</option>
+            <option value="MASCULINO">Masculino</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data de Nascimento</label>
+          <input type="date" class="form-control" id="fn-nasc">
+        </div>
+      </div>
+
+      <div class="form-section">📞 Contato</div>
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">Telefone</label>
+          <input type="text" class="form-control" id="fn-tel" placeholder="(48) 0000-0000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Celular</label>
+          <input type="text" class="form-control" id="fn-cel" placeholder="(48) 90000-0000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">E-mail</label>
+          <input type="email" class="form-control" id="fn-email" placeholder="email@exemplo.com">
+        </div>
+      </div>
+
+      <div class="form-section">📍 Endereço</div>
+      <div class="form-row form-row-3">
+        <div class="form-group" style="grid-column:span 2">
+          <label class="form-label">Endereço (Rua/Av.)</label>
+          <input type="text" class="form-control" id="fn-end" placeholder="Rua / Avenida">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Número</label>
+          <input type="text" class="form-control" id="fn-num" placeholder="Nº">
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-group">
+          <label class="form-label">Bairro</label>
+          <input type="text" class="form-control" id="fn-bairro">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cidade</label>
+          <input type="text" class="form-control" id="fn-cidade">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Estado</label>
+          <select class="form-control" id="fn-uf">
+            <option value="">UF</option>
+            {% for uf in ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'] %}
+            <option value="{{ uf }}">{{ uf }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">CEP</label>
+          <input type="text" class="form-control" id="fn-cep" placeholder="00000-000">
+        </div>
+      </div>
+
+      <div class="form-section">🏭 Dados Profissionais</div>
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">Fábrica *</label>
+          <select class="form-control" id="fn-fab">
+            {% for f in fabricas %}
+            <option value="{{ f.id }}">{{ f.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Função</label>
+          <select class="form-control" id="fn-funcao">
+            <option value="">Selecione...</option>
+            {% for fc in funcoes %}
+            <option value="{{ fc.id }}">{{ fc.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Situação</label>
+          <select class="form-control" id="fn-sit">
+            <option value="ATIVO">Ativo</option>
+            <option value="INATIVO">Inativo</option>
+            <option value="FERIAS">Férias</option>
+            <option value="AFASTADO">Afastado</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">Data de Admissão</label>
+          <input type="date" class="form-control" id="fn-adm">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Salário (R$)</label>
+          <input type="number" class="form-control" id="fn-sal" step="0.01" value="0" placeholder="0,00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data de Demissão</label>
+          <input type="date" class="form-control" id="fn-dem">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observações</label>
+        <textarea class="form-control" id="fn-obs" rows="2" placeholder="Observações adicionais..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-func')">Cancelar</button>
+      <button class="btn btn-success" onclick="salvar()">✓ Salvar Funcionário</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR EXCLUSAO -->
+<div class="modal-bg" id="modal-del">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">Confirmar</div>
+      <button class="modal-close" onclick="fecharModal('modal-del')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--cinza)">Deseja desativar o funcionário <strong id="del-nome"></strong>?</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-del')">Cancelar</button>
+      <button class="btn btn-danger" onclick="confirmarDel()">Desativar</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+let delId = null;
+
+function novoFunc(){
+  document.getElementById('fn-id').value='';
+  document.getElementById('modal-func-title').textContent='Novo Funcionário';
+  ['fn-nome','fn-cpf','fn-rg','fn-tel','fn-cel','fn-email',
+   'fn-end','fn-num','fn-bairro','fn-cidade','fn-cep','fn-obs'].forEach(id=>{
+    document.getElementById(id).value='';
+  });
+  document.getElementById('fn-sexo').value='';
+  document.getElementById('fn-sit').value='ATIVO';
+  document.getElementById('fn-sal').value='0';
+  document.getElementById('fn-nasc').value='';
+  document.getElementById('fn-adm').value=new Date().toISOString().slice(0,10);
+  document.getElementById('fn-dem').value='';
+  document.getElementById('fn-funcao').value='';
+  document.getElementById('fn-uf').value='SC';
+  abrirModal('modal-func');
+}
+
+async function editarFunc(id){
+  const f = await api('/api/funcionario/'+id);
+  document.getElementById('modal-func-title').textContent='Editar Funcionário';
+  document.getElementById('fn-id').value=f.id;
+  document.getElementById('fn-nome').value=f.nome||'';
+  document.getElementById('fn-cpf').value=f.cpf||'';
+  document.getElementById('fn-rg').value=f.rg||'';
+  document.getElementById('fn-sexo').value=f.sexo||'';
+  document.getElementById('fn-nasc').value=f.data_nascimento||'';
+  document.getElementById('fn-tel').value=f.telefone||'';
+  document.getElementById('fn-cel').value=f.celular||'';
+  document.getElementById('fn-email').value=f.email||'';
+  document.getElementById('fn-end').value=f.endereco||'';
+  document.getElementById('fn-num').value=f.numero||'';
+  document.getElementById('fn-bairro').value=f.bairro||'';
+  document.getElementById('fn-cidade').value=f.cidade||'';
+  document.getElementById('fn-uf').value=f.estado||'';
+  document.getElementById('fn-cep').value=f.cep||'';
+  document.getElementById('fn-fab').value=f.fabrica_id||'';
+  document.getElementById('fn-funcao').value=f.funcao_id||'';
+  document.getElementById('fn-sit').value=f.situacao||'ATIVO';
+  document.getElementById('fn-adm').value=f.data_admissao||'';
+  document.getElementById('fn-dem').value=f.data_demissao||'';
+  document.getElementById('fn-sal').value=f.salario||0;
+  document.getElementById('fn-obs').value=f.observacao||'';
+  abrirModal('modal-func');
+}
+
+async function salvar(){
+  const nome=document.getElementById('fn-nome').value.trim();
+  if(!nome){toast('Nome obrigatório!','err');return}
+  const dados={
+    id:document.getElementById('fn-id').value||null,
+    fabrica_id:document.getElementById('fn-fab').value,
+    funcao_id:document.getElementById('fn-funcao').value||null,
+    nome,cpf:document.getElementById('fn-cpf').value,
+    rg:document.getElementById('fn-rg').value,
+    sexo:document.getElementById('fn-sexo').value,
+    data_nascimento:document.getElementById('fn-nasc').value,
+    telefone:document.getElementById('fn-tel').value,
+    celular:document.getElementById('fn-cel').value,
+    email:document.getElementById('fn-email').value,
+    endereco:document.getElementById('fn-end').value,
+    numero:document.getElementById('fn-num').value,
+    bairro:document.getElementById('fn-bairro').value,
+    cidade:document.getElementById('fn-cidade').value,
+    estado:document.getElementById('fn-uf').value,
+    cep:document.getElementById('fn-cep').value,
+    data_admissao:document.getElementById('fn-adm').value,
+    data_demissao:document.getElementById('fn-dem').value,
+    salario:document.getElementById('fn-sal').value,
+    situacao:document.getElementById('fn-sit').value,
+    observacao:document.getElementById('fn-obs').value,
+  };
+  const r=await api('/api/funcionario/salvar','POST',dados);
+  if(r.ok){toast('Funcionário salvo!');fecharModal('modal-func');carregarLista()}
+  else toast('Erro: '+r.erro,'err');
+}
+
+function pedirDel(id,nome){
+  delId=id;
+  document.getElementById('del-nome').textContent=nome;
+  abrirModal('modal-del');
+}
+async function confirmarDel(){
+  if(!delId)return;
+  await api('/api/funcionario/excluir/'+delId,'DELETE');
+  toast('Funcionário desativado','warn');
+  fecharModal('modal-del');
+  carregarLista();
+  delId=null;
+}
+
+function mascaraCPF(input){
+  let v=input.value.replace(/\D/g,'');
+  if(v.length>11)v=v.slice(0,11);
+  v=v.replace(/(\d{3})(\d)/,'$1.$2')
+     .replace(/(\d{3})(\d)/,'$1.$2')
+     .replace(/(\d{3})(\d{1,2})$/,'$1-$2');
+  input.value=v;
+}
+
+function idadeStr(nasc){
+  if(!nasc)return '';
+  const d=new Date(nasc);const hoje=new Date();
+  let age=hoje.getFullYear()-d.getFullYear();
+  const m=hoje.getMonth()-d.getMonth();
+  if(m<0||(m===0&&hoje.getDate()<d.getDate()))age--;
+  return age>0?age+' anos':'';
+}
+
+async function carregarLista(){
+  const q=document.getElementById('busca').value;
+  const sit=document.getElementById('filt-situacao').value;
+  const fab=document.getElementById('filt-fab').value;
+  let url=`/api/funcionarios/lista?q=${encodeURIComponent(q)}&situacao=${sit}`;
+  if(fab) url+=`&fab=${fab}`;
+  const rows=await api(url);
+  const tb=document.getElementById('tbody-funcs');
+  document.getElementById('count-funcs').textContent=`${rows.length} funcionário(s)`;
+  if(!rows.length){
+    tb.innerHTML='<tr><td colspan="9" class="empty"><span class="empty-icon">👷</span>Nenhum funcionário encontrado</td></tr>';return;
+  }
+  tb.innerHTML=rows.map(f=>`
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="avatar">${f.nome.charAt(0).toUpperCase()}</div>
+          <div>
+            <div style="font-weight:600;color:var(--azul)">${f.nome}</div>
+            <div style="font-size:11px;color:var(--cinza)">${idadeStr(f.data_nascimento)} ${f.sexo?'· '+f.sexo:''}</div>
+          </div>
+        </div>
+      </td>
+      <td>${f.cpf||'—'}</td>
+      <td>${f.funcao_nome||'—'}</td>
+      <td>${f.fab_nome}</td>
+      <td>${f.celular||f.telefone||'—'}</td>
+      <td>${f.data_admissao||'—'}</td>
+      <td><strong>${f.salario>0?fmtR(f.salario):'—'}</strong></td>
+      <td><span class="tag ${f.situacao==='ATIVO'?'tag-ativo':'tag-inativo'}">${f.situacao}</span></td>
+      <td>
+        <div class="btn-group">
+          <button class="btn btn-sm btn-primary" onclick="editarFunc(${f.id})" title="Editar">✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="pedirDel(${f.id},'${f.nome.replace(/'/g,"\\'")}')" title="Desativar">🗑</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+carregarLista();
+</script>
+{% endblock %}

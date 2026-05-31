@@ -1,0 +1,812 @@
+{% extends 'base.html' %}
+{% block title %}Ref / OP{% endblock %}
+{% block content %}
+<style>
+/* TABS */
+.tabs{display:flex;gap:4px;background:#f0f2f5;padding:4px;border-radius:8px;margin-bottom:20px}
+.tab-btn{padding:8px 20px;border:none;background:transparent;border-radius:6px;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer;transition:all .2s}
+.tab-btn.active{background:#fff;color:#1a1a2e;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.ref-card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;overflow:hidden;transition:box-shadow .2s}
+.ref-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
+.ref-card-header{background:linear-gradient(135deg,#1a1a2e,#2d3a6e);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+.ref-codigo{font-size:16px;font-weight:700}
+.ref-badge{background:rgba(255,255,255,.2);padding:3px 10px;border-radius:20px;font-size:11px}
+.ref-body{padding:14px 16px}
+.ref-desc{font-size:14px;font-weight:600;color:#1a1a2e;margin-bottom:8px}
+.ref-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tag{background:#f0f2f5;color:#4b5563;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.ref-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-box{background:#f8f9fb;border-radius:6px;padding:8px 10px;text-align:center}
+.stat-val{font-size:16px;font-weight:700;color:#1a1a2e}
+.stat-lbl{font-size:10px;color:#9ca3af;text-transform:uppercase}
+.ref-actions{padding:12px 16px;border-top:1px solid #f0f2f5;display:flex;gap:8px;flex-wrap:wrap}
+.op-card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;overflow:hidden;transition:box-shadow .2s}
+.op-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
+.op-card-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #f0f2f5}
+.op-numero{font-size:15px;font-weight:700;color:#1a1a2e}
+.op-situacao{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.sit-aberta{background:#dbeafe;color:#1d4ed8}
+.sit-producao{background:#dcfce7;color:#15803d}
+.sit-encerrada{background:#f3f4f6;color:#6b7280}
+.sit-cancelada{background:#fee2e2;color:#dc2626}
+.op-body{padding:14px 16px}
+.op-ref{font-size:12px;color:#6b7280;margin-bottom:4px}
+.op-desc{font-size:14px;font-weight:600;color:#1a1a2e;margin-bottom:12px}
+.op-info{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.info-item{text-align:center;background:#f8f9fb;border-radius:6px;padding:8px}
+.info-val{font-size:14px;font-weight:700;color:#1a1a2e}
+.info-lbl{font-size:10px;color:#9ca3af;text-transform:uppercase}
+.op-datas{display:flex;justify-content:space-between;font-size:11px;color:#9ca3af}
+.op-actions{padding:12px 16px;border-top:1px solid #f0f2f5;display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:7px 14px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:5px}
+.btn-primary{background:#1a1a2e;color:#fff}.btn-primary:hover{background:#2d3a6e}
+.btn-success{background:#15803d;color:#fff}.btn-success:hover{background:#166534}
+.btn-info{background:#1d4ed8;color:#fff}.btn-info:hover{background:#1e40af}
+.btn-warning{background:#d97706;color:#fff}.btn-warning:hover{background:#b45309}
+.btn-danger{background:#dc2626;color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-light{background:#f0f2f5;color:#374151}.btn-light:hover{background:#e5e7eb}
+.btn-sm{padding:5px 10px;font-size:11px}
+.toolbar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.search-box{flex:1;max-width:320px;position:relative}
+.search-box input{width:100%;padding:8px 12px 8px 34px;border:1px solid #e0e6f0;border-radius:8px;font-size:13px;outline:none}
+.search-box input:focus{border-color:#1a1a2e}
+.search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9ca3af}
+.filter-select{padding:8px 12px;border:1px solid #e0e6f0;border-radius:8px;font-size:13px;outline:none;color:#374151}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-lg{width:780px}
+.modal-header{padding:20px 24px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.modal-title{font-size:16px;font-weight:700;color:#1a1a2e}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280}
+.modal-body{padding:24px}
+.modal-footer{padding:16px 24px;border-top:1px solid #f0f2f5;display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:#fff}
+.form-row{display:grid;gap:16px;margin-bottom:16px}
+.form-row.cols-2{grid-template-columns:1fr 1fr}
+.form-row.cols-3{grid-template-columns:1fr 1fr 1fr}
+.form-group label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:9px 12px;border:1px solid #e0e6f0;border-radius:8px;font-size:13px;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:#1a1a2e}
+.form-group textarea{resize:vertical;min-height:70px}
+.seq-container{display:grid;grid-template-columns:1fr 1fr;gap:16px;min-height:400px}
+.seq-titulo{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #e0e6f0}
+.ops-banco{max-height:320px;overflow-y:auto}
+.op-banco-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;transition:background .1s}
+.op-banco-item:hover{background:#f0f2f5}
+.op-banco-add{background:#1a1a2e;color:#fff;border:none;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.op-banco-info{flex:1}
+.op-banco-desc{font-size:13px;font-weight:600}
+.op-banco-det{font-size:11px;color:#9ca3af}
+.op-seq-item{background:#fff;border:1px solid #e0e6f0;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.op-seq-num{background:#1a1a2e;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.op-seq-info{flex:1}
+.op-seq-tempo{font-size:12px;font-weight:700;color:#1a1a2e}
+.op-seq-remove{background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:2px}
+.tempo-total{background:#1a1a2e;color:#fff;border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.tempo-total-lbl{font-size:11px;color:#9ca3af}
+.tempo-total-val{font-size:18px;font-weight:700}
+.drop-zone{border:2px dashed #d1d5db;border-radius:10px;padding:40px;text-align:center;color:#9ca3af}
+.empty{text-align:center;padding:60px 20px;color:#9ca3af}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty-text{font-size:15px;font-weight:600;margin-bottom:4px;color:#6b7280}
+.empty-sub{font-size:13px}
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#15803d}
+.toast.error{background:#dc2626}
+</style>
+
+<div style="padding:0 0 24px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div style="font-size:18px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px">
+      📋 Ref / OP — Referências e Ordens de Produção
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('refs', this)">📦 Referências</button>
+    <button class="tab-btn" onclick="switchTab('ops', this)">📋 Ordens de Produção</button>
+    <button class="tab-btn" onclick="switchTab('operacoes', this)">⚙️ Banco de Operações</button>
+  </div>
+
+  <!-- ABA REFERÊNCIAS -->
+  <div id="tab-refs" class="tab-content">
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="busca-ref" placeholder="Buscar referência..." oninput="filtrarRefs()">
+      </div>
+      <select class="filter-select" id="filtro-genero" onchange="filtrarRefs()">
+        <option value="">Todos os gêneros</option>
+        {% for g in generos %}<option value="{{ g.id }}">{{ g.nome }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-primary" onclick="abrirModalRef()">+ Nova Referência</button>
+    </div>
+    <div class="grid" id="grid-refs">
+      {% if not referencias %}
+      <div style="grid-column:1/-1">
+        <div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Nenhuma referência cadastrada</div><div class="empty-sub">Clique em "+ Nova Referência" para começar</div></div>
+      </div>
+      {% endif %}
+      {% for r in referencias %}
+      <div class="ref-card" data-id="{{ r.id }}" data-genero="{{ r.genero_id }}">
+        <div class="ref-card-header">
+          <div class="ref-codigo">{{ r.codigo }}</div>
+          <div class="ref-badge">{{ r.gen_nome or '—' }}</div>
+        </div>
+        <div class="ref-body">
+          <div class="ref-desc">{{ r.descricao or '—' }}</div>
+          <div class="ref-tags">
+            {% if r.tipo_nome %}<span class="tag">{{ r.tipo_nome }}</span>{% endif %}
+            <span class="tag" style="background:{% if r.ativo %}#dcfce7;color:#15803d{% else %}#fee2e2;color:#dc2626{% endif %}">
+              {% if r.ativo %}ATIVO{% else %}INATIVO{% endif %}
+            </span>
+          </div>
+          <div class="ref-stats">
+            <div class="stat-box"><div class="stat-val">{{ r.total_ops or 0 }}</div><div class="stat-lbl">OPs</div></div>
+            <div class="stat-box"><div class="stat-val">{{ r.total_operacoes or 0 }}</div><div class="stat-lbl">Operações</div></div>
+          </div>
+        </div>
+        <div class="ref-actions">
+          <button class="btn btn-light btn-sm" onclick="editarRef({{ r.id }})">✏️ Editar</button>
+          <button class="btn btn-info btn-sm" onclick="verSequencia({{ r.id }}, '{{ r.codigo }}')">📋 Sequência</button>
+          <button class="btn btn-success btn-sm" onclick="novaOPDaRef({{ r.id }}, '{{ r.codigo }}', '{{ r.descricao }}')">+ OP</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ABA OPs -->
+  <div id="tab-ops" class="tab-content" style="display:none">
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="busca-op" placeholder="Buscar OP ou referência..." oninput="filtrarOPs()">
+      </div>
+      <select class="filter-select" id="filtro-sit" onchange="filtrarOPs()">
+        <option value="">Todas situações</option>
+        <option value="ABERTA">Abertas</option>
+        <option value="PRODUCAO">Em Produção</option>
+        <option value="ENCERRADA">Encerradas</option>
+        <option value="CANCELADA">Canceladas</option>
+      </select>
+      <button class="btn btn-primary" onclick="abrirModalOP()">+ Nova OP</button>
+    </div>
+    <div class="grid" id="grid-ops">
+      {% if not ops %}
+      <div style="grid-column:1/-1">
+        <div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nenhuma OP cadastrada</div><div class="empty-sub">Clique em "+ Nova OP" para começar</div></div>
+      </div>
+      {% endif %}
+      {% for op in ops %}
+      <div class="op-card" data-sit="{{ op.situacao }}" data-num="{{ op.numero|lower }}" data-ref="{{ op.ref_codigo|lower }}">
+        <div class="op-card-header">
+          <div>
+            <div class="op-ref">Ref: {{ op.ref_codigo or '—' }}</div>
+            <div class="op-numero">OP {{ op.numero }}</div>
+          </div>
+          <span class="op-situacao sit-{{ op.situacao|lower }}">{{ op.situacao }}</span>
+        </div>
+        <div class="op-body">
+          <div class="op-desc">{{ op.descricao or op.ref_desc or '—' }}</div>
+          <div class="op-info">
+            <div class="info-item"><div class="info-val">{{ op.quantidade_total }}</div><div class="info-lbl">Peças</div></div>
+            <div class="info-item"><div class="info-val">R$ {{ "%.2f"|format(op.valor_unitario) }}</div><div class="info-lbl">Unit.</div></div>
+            <div class="info-item"><div class="info-val">R$ {{ "%.0f"|format(op.valor_total) }}</div><div class="info-lbl">Total</div></div>
+          </div>
+          <div class="op-datas">
+            <span>📅 Entrada: {{ op.data_entrada or '—' }}</span>
+            <span>🚚 Entrega: {{ op.data_entrega or '—' }}</span>
+          </div>
+        </div>
+        <div class="op-actions">
+          <button class="btn btn-light btn-sm" onclick="editarOP({{ op.id }})">✏️ Editar</button>
+          <button class="btn btn-info btn-sm" onclick="verSequenciaOP({{ op.id }}, '{{ op.numero }}')">📋 Sequência</button>
+          {% if op.situacao == 'ABERTA' %}
+          <button class="btn btn-success btn-sm" onclick="mudarSituacaoOP({{ op.id }}, 'PRODUCAO')">▶️ Iniciar</button>
+          {% elif op.situacao == 'PRODUCAO' %}
+          <button class="btn btn-warning btn-sm" onclick="mudarSituacaoOP({{ op.id }}, 'ENCERRADA')">✅ Encerrar</button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ABA BANCO OPERAÇÕES -->
+  <div id="tab-operacoes" class="tab-content" style="display:none">
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="busca-banco" placeholder="Buscar operação..." oninput="filtrarBanco()">
+      </div>
+      <button class="btn btn-primary" onclick="abrirModalOperacao()">+ Nova Operação</button>
+    </div>
+    <table style="width:100%;background:#fff;border-radius:12px;border:1px solid #e0e6f0;border-collapse:collapse;overflow:hidden">
+      <thead>
+        <tr style="background:#f8f9fb;border-bottom:2px solid #e0e6f0">
+          <th style="padding:12px 16px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Cód.</th>
+          <th style="padding:12px 16px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Descrição</th>
+          <th style="padding:12px 16px;text-align:left;font-size:11px;color:#6b7280;text-transform:uppercase">Equipamento</th>
+          <th style="padding:12px 16px;text-align:center;font-size:11px;color:#6b7280;text-transform:uppercase">Tempo (min)</th>
+          <th style="padding:12px 16px;text-align:center;font-size:11px;color:#6b7280;text-transform:uppercase">Tipo</th>
+          <th style="padding:12px 16px;text-align:center;font-size:11px;color:#6b7280;text-transform:uppercase">Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbody-banco">
+        {% for op in operacoes %}
+        <tr style="border-bottom:1px solid #f0f2f5" class="banco-row" data-desc="{{ op.descricao|lower }}">
+          <td style="padding:11px 16px;font-weight:700">{{ op.codigo or '—' }}</td>
+          <td style="padding:11px 16px;font-weight:600">{{ op.descricao }}</td>
+          <td style="padding:11px 16px;color:#6b7280">{{ op.equip_nome or '—' }}</td>
+          <td style="padding:11px 16px;text-align:center;font-weight:700">{{ op.tempo_padrao }}</td>
+          <td style="padding:11px 16px;text-align:center"><span class="tag">{{ op.tipo }}</span></td>
+          <td style="padding:11px 16px;text-align:center">
+            <button class="btn btn-light btn-sm" onclick="editarOperacao({{ op.id }})">✏️</button>
+            <button class="btn btn-danger btn-sm" onclick="excluirOperacao({{ op.id }})">🗑️</button>
+          </td>
+        </tr>
+        {% endfor %}
+        {% if not operacoes %}
+        <tr><td colspan="6" style="padding:40px;text-align:center;color:#9ca3af">Nenhuma operação cadastrada</td></tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL REFERÊNCIA -->
+<div class="modal-overlay" id="modal-ref">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-ref-title">Nova Referência</div>
+      <button class="modal-close" onclick="fecharModal('modal-ref')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ref-id">
+      <div class="form-row cols-2">
+        <div class="form-group"><label>Código *</label><input type="text" id="ref-codigo" placeholder="Ex: SHT-001"></div>
+        <div class="form-group"><label>Gênero</label>
+          <select id="ref-genero"><option value="">Selecione...</option>{% for g in generos %}<option value="{{ g.id }}">{{ g.nome }}</option>{% endfor %}</select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Descrição</label><input type="text" id="ref-descricao" placeholder="Ex: Shorts Feminino Estampado"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Tipo de Produto</label>
+          <select id="ref-tipo"><option value="">Selecione...</option>{% for t in tipos %}<option value="{{ t.id }}">{{ t.nome }}</option>{% endfor %}</select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-ref')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarRef()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL OP -->
+<div class="modal-overlay" id="modal-op">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-op-title">Nova Ordem de Produção</div>
+      <button class="modal-close" onclick="fecharModal('modal-op')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="op-id">
+      <div class="form-row cols-2">
+        <div class="form-group"><label>Número da OP *</label><input type="text" id="op-numero" placeholder="Ex: OP-2026-001"></div>
+        <div class="form-group"><label>Referência *</label>
+          <select id="op-referencia" onchange="preencherDescOP()">
+            <option value="">Selecione...</option>
+            {% for r in referencias %}<option value="{{ r.id }}" data-desc="{{ r.descricao }}">{{ r.codigo }} — {{ r.descricao or '' }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Descrição / Cliente</label><input type="text" id="op-descricao" placeholder="Ex: Pedido João Silva"></div>
+      </div>
+      <div class="form-row cols-3">
+        <div class="form-group"><label>Quantidade</label><input type="number" id="op-quantidade" placeholder="500" min="1" oninput="calcularTotal()"></div>
+        <div class="form-group"><label>Valor Unit. (R$)</label><input type="number" id="op-valor-unit" placeholder="15.00" step="0.01" oninput="calcularTotal()"></div>
+        <div class="form-group"><label>Valor Total (R$)</label><input type="number" id="op-valor-total" readonly style="background:#f8f9fb"></div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group"><label>Data Entrada</label><input type="date" id="op-data-entrada"></div>
+        <div class="form-group"><label>Data Entrega</label><input type="date" id="op-data-entrega"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Observações</label><textarea id="op-obs"></textarea></div>
+      </div>
+      <div id="op-copiar-seq-container" style="display:none;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:12px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;font-size:13px">
+          <input type="checkbox" id="op-copiar-seq" checked>
+          📋 Copiar sequência operacional da referência
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-op')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarOP()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SEQUÊNCIA REF -->
+<div class="modal-overlay" id="modal-seq-ref">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-seq-ref-title">Sequência Operacional</div>
+      <button class="modal-close" onclick="fecharModal('modal-seq-ref')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="seq-ref-id">
+      <div class="seq-container">
+        <div>
+          <div class="seq-titulo">⚙️ Banco — clique para adicionar</div>
+          <input type="text" placeholder="Filtrar..." style="width:100%;padding:7px 10px;border:1px solid #e0e6f0;border-radius:6px;margin-bottom:8px;font-size:12px;outline:none" oninput="filtrarBancoSeq(this.value)">
+          <div class="ops-banco" id="banco-ops-ref">
+            {% for op in operacoes %}
+            <div class="op-banco-item" onclick="adicionarOpSeqRef({{ op.id }}, '{{ op.descricao }}', {{ op.tempo_padrao }}, {{ op.equipamento_id or 'null' }})">
+              <button class="op-banco-add">+</button>
+              <div class="op-banco-info">
+                <div class="op-banco-desc">{{ op.descricao }}</div>
+                <div class="op-banco-det">{{ op.tempo_padrao }} min{% if op.equip_nome %} | {{ op.equip_nome }}{% endif %}</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div>
+          <div class="seq-titulo">📋 Sequência da Referência</div>
+          <div id="seq-ref-lista"><div class="drop-zone">Clique nas operações ao lado para adicionar</div></div>
+          <div class="tempo-total" id="tempo-total-ref" style="display:none">
+            <div><div class="tempo-total-lbl">TEMPO TOTAL</div><div class="tempo-total-val" id="tempo-total-ref-val">0.00 min</div></div>
+            <div style="text-align:right"><div class="tempo-total-lbl">OPERAÇÕES</div><div class="tempo-total-val" id="tempo-total-ref-qtd">0</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-seq-ref')">Fechar</button>
+      <button class="btn btn-primary" onclick="salvarSeqRef()">💾 Salvar Sequência</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SEQUÊNCIA OP -->
+<div class="modal-overlay" id="modal-seq-op">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-seq-op-title">Sequência da OP</div>
+      <button class="modal-close" onclick="fecharModal('modal-seq-op')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="seq-op-id">
+      <div class="seq-container">
+        <div>
+          <div class="seq-titulo">⚙️ Banco de Operações</div>
+          <input type="text" placeholder="Filtrar..." style="width:100%;padding:7px 10px;border:1px solid #e0e6f0;border-radius:6px;margin-bottom:8px;font-size:12px;outline:none" oninput="filtrarBancoSeqOP(this.value)">
+          <div class="ops-banco" id="banco-ops-op">
+            {% for op in operacoes %}
+            <div class="op-banco-item" onclick="adicionarOpSeqOP({{ op.id }}, '{{ op.descricao }}', {{ op.tempo_padrao }}, {{ op.equipamento_id or 'null' }})">
+              <button class="op-banco-add">+</button>
+              <div class="op-banco-info">
+                <div class="op-banco-desc">{{ op.descricao }}</div>
+                <div class="op-banco-det">{{ op.tempo_padrao }} min{% if op.equip_nome %} | {{ op.equip_nome }}{% endif %}</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div>
+          <div class="seq-titulo">📋 Sequência da OP</div>
+          <div id="seq-op-lista"><div class="drop-zone">Clique nas operações ao lado para adicionar</div></div>
+          <div class="tempo-total" id="tempo-total-op" style="display:none">
+            <div><div class="tempo-total-lbl">TEMPO TOTAL</div><div class="tempo-total-val" id="tempo-total-op-val">0.00 min</div></div>
+            <div style="text-align:right"><div class="tempo-total-lbl">OPERAÇÕES</div><div class="tempo-total-val" id="tempo-total-op-qtd">0</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-seq-op')">Fechar</button>
+      <button class="btn btn-primary" onclick="salvarSeqOP()">💾 Salvar Sequência</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL OPERAÇÃO -->
+<div class="modal-overlay" id="modal-operacao">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-op-banco-title">Nova Operação</div>
+      <button class="modal-close" onclick="fecharModal('modal-operacao')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="operacao-id">
+      <div class="form-row cols-2">
+        <div class="form-group"><label>Código</label><input type="number" id="op-banco-codigo" placeholder="Ex: 10"></div>
+        <div class="form-group"><label>Tipo</label>
+          <select id="op-banco-tipo">
+            <option value="C">C — Costura</option>
+            <option value="M">M — Manual</option>
+            <option value="R">R — Revisão</option>
+            <option value="A">A — Acabamento</option>
+            <option value="P">P — Passadoria</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Descrição *</label><input type="text" id="op-banco-desc" placeholder="Ex: Over Vista Lateral"></div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group"><label>Equipamento</label>
+          <select id="op-banco-equip"><option value="">Selecione...</option>{% for e in equipamentos %}<option value="{{ e.id }}">{{ e.nome }}</option>{% endfor %}</select>
+        </div>
+        <div class="form-group"><label>Tempo Padrão (min)</label><input type="number" id="op-banco-tempo" placeholder="0.50" step="0.01" min="0"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-operacao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarOperacao()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADICIONAR OPERAÇÃO NA SEQUÊNCIA OP -->
+<div class="modal-overlay" id="modal-add-op-seq">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Adicionar na Sequência</div>
+      <button class="modal-close" onclick="fecharModal('modal-add-op-seq')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:#f8f9fb;border-radius:8px;padding:12px;margin-bottom:16px">
+        <div style="font-size:14px;font-weight:700" id="add-op-seq-nome">—</div>
+        <div style="font-size:12px;color:#6b7280" id="add-op-seq-info">—</div>
+      </div>
+      <input type="hidden" id="add-op-seq-id">
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>⏱️ Tempo (min) *</label>
+          <input type="number" id="add-op-seq-tempo" step="0.01" min="0" placeholder="0.50">
+        </div>
+        <div class="form-group">
+          <label>🔧 Equipamento</label>
+          <select id="add-op-seq-equip">
+            <option value="">Selecione...</option>
+            {% for e in equipamentos %}<option value="{{ e.id }}">{{ e.nome }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>👩 Operadora</label>
+          <select id="add-op-seq-func">
+            <option value="">Selecione...</option>
+            {% for f in funcionarios %}<option value="{{ f.id }}">{{ f.nome }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-add-op-seq')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarAddOpSeqOP()">✅ Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let seqRef = [];
+let seqOP  = [];
+let opSeqBuffer = null;
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).style.display = 'block';
+  btn.classList.add('active');
+}
+function toast(msg, tipo='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast ' + tipo + ' show';
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+function abrirModal(id) { document.getElementById(id).classList.add('open') }
+function fecharModal(id) { document.getElementById(id).classList.remove('open') }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if(e.target === m) m.classList.remove('open') });
+});
+function filtrarRefs() {
+  const b = document.getElementById('busca-ref').value.toLowerCase();
+  const g = document.getElementById('filtro-genero').value;
+  document.querySelectorAll('.ref-card').forEach(c => {
+    const txt = c.textContent.toLowerCase();
+    const gen = c.dataset.genero;
+    c.style.display = ((!b || txt.includes(b)) && (!g || gen == g)) ? '' : 'none';
+  });
+}
+function filtrarOPs() {
+  const b = document.getElementById('busca-op').value.toLowerCase();
+  const s = document.getElementById('filtro-sit').value;
+  document.querySelectorAll('.op-card').forEach(c => {
+    const match = (!b || (c.dataset.num||'').includes(b) || (c.dataset.ref||'').includes(b)) && (!s || c.dataset.sit === s);
+    c.style.display = match ? '' : 'none';
+  });
+}
+function filtrarBanco() {
+  const b = document.getElementById('busca-banco').value.toLowerCase();
+  document.querySelectorAll('.banco-row').forEach(r => {
+    r.style.display = (!b || r.dataset.desc.includes(b)) ? '' : 'none';
+  });
+}
+function filtrarBancoSeq(v) {
+  document.querySelectorAll('#banco-ops-ref .op-banco-item').forEach(i => {
+    i.style.display = (!v || i.textContent.toLowerCase().includes(v.toLowerCase())) ? '' : 'none';
+  });
+}
+function filtrarBancoSeqOP(v) {
+  document.querySelectorAll('#banco-ops-op .op-banco-item').forEach(i => {
+    i.style.display = (!v || i.textContent.toLowerCase().includes(v.toLowerCase())) ? '' : 'none';
+  });
+}
+function abrirModalRef() {
+  document.getElementById('ref-id').value = '';
+  document.getElementById('ref-codigo').value = '';
+  document.getElementById('ref-descricao').value = '';
+  document.getElementById('ref-genero').value = '';
+  document.getElementById('ref-tipo').value = '';
+  document.getElementById('modal-ref-title').textContent = 'Nova Referência';
+  abrirModal('modal-ref');
+}
+async function editarRef(id) {
+  const r = await fetch('/api/referencia/' + id).then(r => r.json());
+  document.getElementById('ref-id').value = r.id;
+  document.getElementById('ref-codigo').value = r.codigo;
+  document.getElementById('ref-descricao').value = r.descricao || '';
+  document.getElementById('ref-genero').value = r.genero_id || '';
+  document.getElementById('ref-tipo').value = r.tipo_produto_id || '';
+  document.getElementById('modal-ref-title').textContent = 'Editar Referência';
+  abrirModal('modal-ref');
+}
+async function salvarRef() {
+  const d = {
+    id: document.getElementById('ref-id').value || null,
+    codigo: document.getElementById('ref-codigo').value.toUpperCase().trim(),
+    descricao: document.getElementById('ref-descricao').value.trim(),
+    genero_id: document.getElementById('ref-genero').value || null,
+    tipo_produto_id: document.getElementById('ref-tipo').value || null,
+  };
+  if (!d.codigo) { toast('Código obrigatório', 'error'); return; }
+  const r = await fetch('/api/referencia/salvar', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
+  if (r.ok) { toast('Referência salva!'); fecharModal('modal-ref'); setTimeout(() => location.reload(), 800); }
+  else toast(r.erro || 'Erro ao salvar', 'error');
+}
+function abrirModalOP(refId) {
+  document.getElementById('op-id').value = '';
+  document.getElementById('op-numero').value = '';
+  document.getElementById('op-referencia').value = refId || '';
+  document.getElementById('op-descricao').value = '';
+  document.getElementById('op-quantidade').value = '';
+  document.getElementById('op-valor-unit').value = '';
+  document.getElementById('op-valor-total').value = '';
+  document.getElementById('op-data-entrada').value = new Date().toISOString().split('T')[0];
+  document.getElementById('op-data-entrega').value = '';
+  document.getElementById('op-obs').value = '';
+  document.getElementById('modal-op-title').textContent = 'Nova Ordem de Produção';
+  document.getElementById('op-copiar-seq-container').style.display = refId ? 'block' : 'none';
+  abrirModal('modal-op');
+}
+function novaOPDaRef(refId, refCod, refDesc) {
+  document.querySelectorAll('.tab-btn')[1].click();
+  setTimeout(() => abrirModalOP(refId), 100);
+}
+function preencherDescOP() {
+  const sel = document.getElementById('op-referencia');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.desc) document.getElementById('op-descricao').value = opt.dataset.desc;
+  document.getElementById('op-copiar-seq-container').style.display = sel.value ? 'block' : 'none';
+}
+function calcularTotal() {
+  const qtd = parseFloat(document.getElementById('op-quantidade').value) || 0;
+  const unit = parseFloat(document.getElementById('op-valor-unit').value) || 0;
+  document.getElementById('op-valor-total').value = (qtd * unit).toFixed(2);
+}
+async function editarOP(id) {
+  const r = await fetch('/api/op/' + id).then(r => r.json());
+  document.getElementById('op-id').value = r.id;
+  document.getElementById('op-numero').value = r.numero;
+  document.getElementById('op-referencia').value = r.referencia_id || '';
+  document.getElementById('op-descricao').value = r.descricao || '';
+  document.getElementById('op-quantidade').value = r.quantidade_total;
+  document.getElementById('op-valor-unit').value = r.valor_unitario;
+  document.getElementById('op-valor-total').value = r.valor_total;
+  document.getElementById('op-data-entrada').value = r.data_entrada || '';
+  document.getElementById('op-data-entrega').value = r.data_entrega || '';
+  document.getElementById('op-obs').value = r.obs || '';
+  document.getElementById('modal-op-title').textContent = 'Editar OP ' + r.numero;
+  document.getElementById('op-copiar-seq-container').style.display = 'none';
+  abrirModal('modal-op');
+}
+async function salvarOP() {
+  const d = {
+    id: document.getElementById('op-id').value || null,
+    numero: document.getElementById('op-numero').value.trim(),
+    referencia_id: document.getElementById('op-referencia').value || null,
+    descricao: document.getElementById('op-descricao').value.trim(),
+    quantidade_total: parseInt(document.getElementById('op-quantidade').value) || 0,
+    valor_unitario: parseFloat(document.getElementById('op-valor-unit').value) || 0,
+    valor_total: parseFloat(document.getElementById('op-valor-total').value) || 0,
+    data_entrada: document.getElementById('op-data-entrada').value,
+    data_entrega: document.getElementById('op-data-entrega').value,
+    obs: document.getElementById('op-obs').value,
+    copiar_sequencia: document.getElementById('op-copiar-seq').checked,
+  };
+  if (!d.numero) { toast('Número da OP obrigatório', 'error'); return; }
+  const r = await fetch('/api/op/salvar', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
+  if (r.ok) { toast('OP salva!'); fecharModal('modal-op'); setTimeout(() => location.reload(), 800); }
+  else toast(r.erro || 'Erro ao salvar', 'error');
+}
+async function mudarSituacaoOP(id, sit) {
+  const r = await fetch('/api/op/situacao', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,situacao:sit})}).then(r=>r.json());
+  if (r.ok) { toast('Situação atualizada!'); setTimeout(() => location.reload(), 600); }
+  else toast(r.erro || 'Erro', 'error');
+}
+async function verSequencia(refId, refCod) {
+  document.getElementById('seq-ref-id').value = refId;
+  document.getElementById('modal-seq-ref-title').textContent = '📋 Sequência — Ref ' + refCod;
+  seqRef = [];
+  const data = await fetch('/api/referencia/sequencia/' + refId).then(r => r.json());
+  seqRef = data;
+  renderSeqRef();
+  abrirModal('modal-seq-ref');
+}
+function adicionarOpSeqRef(opId, desc, tempo, equipId) {
+  seqRef.push({operacao_id:opId, descricao:desc, tempo_padrao:tempo, equipamento_id:equipId});
+  renderSeqRef();
+}
+function removerOpSeqRef(idx) { seqRef.splice(idx,1); renderSeqRef(); }
+function renderSeqRef() {
+  const lista = document.getElementById('seq-ref-lista');
+  const totalDiv = document.getElementById('tempo-total-ref');
+  if (!seqRef.length) { lista.innerHTML='<div class="drop-zone">Clique nas operações ao lado para adicionar</div>'; totalDiv.style.display='none'; return; }
+  let html='', total=0;
+  seqRef.forEach((op,i) => {
+    total += parseFloat(op.tempo_padrao)||0;
+    html += `<div class="op-seq-item"><div class="op-seq-num">${i+1}</div><div class="op-seq-info"><div style="font-size:13px;font-weight:600">${op.descricao}</div><div class="op-seq-tempo">${parseFloat(op.tempo_padrao).toFixed(2)} min</div></div><button class="op-seq-remove" onclick="removerOpSeqRef(${i})">✕</button></div>`;
+  });
+  lista.innerHTML = html;
+  document.getElementById('tempo-total-ref-val').textContent = total.toFixed(2)+' min';
+  document.getElementById('tempo-total-ref-qtd').textContent = seqRef.length;
+  totalDiv.style.display = 'flex';
+}
+async function salvarSeqRef() {
+  const refId = document.getElementById('seq-ref-id').value;
+  const r = await fetch('/api/referencia/sequencia/salvar', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({referencia_id:refId,operacoes:seqRef})}).then(r=>r.json());
+  if (r.ok) { toast('Sequência salva!'); fecharModal('modal-seq-ref'); }
+  else toast(r.erro||'Erro','error');
+}
+async function verSequenciaOP(opId, opNum) {
+  document.getElementById('seq-op-id').value = opId;
+  document.getElementById('modal-seq-op-title').textContent = '📋 Sequência — OP ' + opNum;
+  seqOP = [];
+  const data = await fetch('/api/op/sequencia/' + opId).then(r => r.json());
+  seqOP = data;
+  renderSeqOP();
+  abrirModal('modal-seq-op');
+}
+function adicionarOpSeqOP(opId, desc, tempo, equipId) {
+  // Abre modal para confirmar/ajustar antes de adicionar
+  opSeqBuffer = {operacao_id:opId, descricao:desc, tempo_padrao:tempo, equipamento_id:equipId, funcionario_id:null};
+  document.getElementById('add-op-seq-nome').textContent = desc;
+  document.getElementById('add-op-seq-info').textContent = 'Tempo padrão: ' + parseFloat(tempo).toFixed(2) + ' min';
+  document.getElementById('add-op-seq-id').value = opId;
+  document.getElementById('add-op-seq-tempo').value = parseFloat(tempo).toFixed(2);
+  document.getElementById('add-op-seq-equip').value = equipId || '';
+  document.getElementById('add-op-seq-func').value = '';
+  abrirModal('modal-add-op-seq');
+}
+
+function confirmarAddOpSeqOP() {
+  if (!opSeqBuffer) return;
+  const tempo = parseFloat(document.getElementById('add-op-seq-tempo').value) || 0;
+  const equipId = document.getElementById('add-op-seq-equip').value || null;
+  const funcId = document.getElementById('add-op-seq-func').value || null;
+  const funcNome = document.getElementById('add-op-seq-func').options[document.getElementById('add-op-seq-func').selectedIndex]?.text || '';
+  const equipNome = document.getElementById('add-op-seq-equip').options[document.getElementById('add-op-seq-equip').selectedIndex]?.text || '';
+  seqOP.push({
+    ...opSeqBuffer,
+    tempo_padrao: tempo,
+    equipamento_id: equipId,
+    equipamento_nome: equipId ? equipNome : '',
+    funcionario_id: funcId,
+    funcionario_nome: funcId ? funcNome : '',
+  });
+  opSeqBuffer = null;
+  fecharModal('modal-add-op-seq');
+  renderSeqOP();
+}
+
+function removerOpSeqOP(idx) { seqOP.splice(idx,1); renderSeqOP(); }
+
+function renderSeqOP() {
+  const lista = document.getElementById('seq-op-lista');
+  const totalDiv = document.getElementById('tempo-total-op');
+  if (!seqOP.length) { lista.innerHTML='<div class="drop-zone">Clique nas operações ao lado para adicionar</div>'; totalDiv.style.display='none'; return; }
+  let html='', total=0;
+  seqOP.forEach((op,i) => {
+    total += parseFloat(op.tempo_padrao)||0;
+    const extra = [];
+    if (op.equipamento_nome) extra.push('🔧 '+op.equipamento_nome);
+    if (op.funcionario_nome) extra.push('👩 '+op.funcionario_nome);
+    html += `<div class="op-seq-item">
+      <div class="op-seq-num">${i+1}</div>
+      <div class="op-seq-info" style="flex:1">
+        <div style="font-size:13px;font-weight:600">${op.descricao}</div>
+        <div style="font-size:11px;color:#6b7280">${extra.join(' | ') || ''}</div>
+        <div class="op-seq-tempo">${parseFloat(op.tempo_padrao).toFixed(2)} min</div>
+      </div>
+      <button class="op-seq-remove" onclick="removerOpSeqOP(${i})">✕</button>
+    </div>`;
+  });
+  lista.innerHTML = html;
+  document.getElementById('tempo-total-op-val').textContent = total.toFixed(2)+' min';
+  document.getElementById('tempo-total-op-qtd').textContent = seqOP.length;
+  totalDiv.style.display = 'flex';
+}
+
+async function salvarSeqOP() {
+  const opId = document.getElementById('seq-op-id').value;
+  const r = await fetch('/api/op/sequencia/salvar', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op_id:opId,operacoes:seqOP})}).then(r=>r.json());
+  if (r.ok) { toast('Sequência salva!'); fecharModal('modal-seq-op'); }
+  else toast(r.erro||'Erro','error');
+}
+function abrirModalOperacao() {
+  document.getElementById('operacao-id').value = '';
+  document.getElementById('op-banco-codigo').value = '';
+  document.getElementById('op-banco-desc').value = '';
+  document.getElementById('op-banco-equip').value = '';
+  document.getElementById('op-banco-tempo').value = '';
+  document.getElementById('op-banco-tipo').value = 'C';
+  document.getElementById('modal-op-banco-title').textContent = 'Nova Operação';
+  abrirModal('modal-operacao');
+}
+async function editarOperacao(id) {
+  const r = await fetch('/api/operacao/' + id).then(r => r.json());
+  document.getElementById('operacao-id').value = r.id;
+  document.getElementById('op-banco-codigo').value = r.codigo || '';
+  document.getElementById('op-banco-desc').value = r.descricao;
+  document.getElementById('op-banco-equip').value = r.equipamento_id || '';
+  document.getElementById('op-banco-tempo').value = r.tempo_padrao;
+  document.getElementById('op-banco-tipo').value = r.tipo || 'C';
+  document.getElementById('modal-op-banco-title').textContent = 'Editar Operação';
+  abrirModal('modal-operacao');
+}
+async function salvarOperacao() {
+  const d = {
+    id: document.getElementById('operacao-id').value || null,
+    codigo: document.getElementById('op-banco-codigo').value || null,
+    descricao: document.getElementById('op-banco-desc').value.trim(),
+    equipamento_id: document.getElementById('op-banco-equip').value || null,
+    tempo_padrao: parseFloat(document.getElementById('op-banco-tempo').value) || 0,
+    tipo: document.getElementById('op-banco-tipo').value,
+  };
+  if (!d.descricao) { toast('Descrição obrigatória', 'error'); return; }
+  const r = await fetch('/api/operacao/salvar', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
+  if (r.ok) { toast('Operação salva!'); fecharModal('modal-operacao'); setTimeout(() => location.reload(), 800); }
+  else toast(r.erro||'Erro','error');
+}
+async function excluirOperacao(id) {
+  if (!confirm('Excluir esta operação?')) return;
+  const r = await fetch('/api/operacao/excluir/'+id, {method:'DELETE'}).then(r=>r.json());
+  if (r.ok) { toast('Operação excluída'); setTimeout(() => location.reload(), 600); }
+  else toast(r.erro||'Erro','error');
+}
+</script>
+{% endblock %}

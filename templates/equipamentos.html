@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Equipamentos{% endblock %}
+{% block page_title %}🔧 Equipamentos{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Equipamentos</h1>
+    <p>Cadastro de máquinas e equipamentos</p>
+  </div>
+  <button class="btn btn-primary" onclick="abrirModal('modal-equip')">＋ Novo Equipamento</button>
+</div>
+<div class="card" style="margin-bottom:14px;padding:12px 20px">
+  <div class="search-bar">
+    <input type="text" class="search-input" id="busca" placeholder="🔍  Buscar equipamento...">
+    <select class="form-control" id="filt-sit" style="width:130px">
+      <option value="ATIVO">Ativos</option><option value="INATIVO">Inativos</option><option value="">Todos</option>
+    </select>
+    <div id="count-eq" style="color:var(--cinza);font-size:13px;margin-left:auto"></div>
+  </div>
+</div>
+<div class="card" style="padding:0">
+  <div class="table-wrap" style="border:none">
+    <table>
+      <thead><tr><th>Nome</th><th>Marca</th><th>Modelo</th><th>Nº Série</th><th>Fábrica</th><th>Valor</th><th>Situação</th><th>Ações</th></tr></thead>
+      <tbody id="tbody-eq">
+        {% for e in equips %}
+        <tr>
+          <td><strong>{{ e.nome }}</strong></td>
+          <td>{{ e.marca or '—' }}</td><td>{{ e.modelo or '—' }}</td>
+          <td>{{ e.numero_serie or '—' }}</td><td>{{ e.fab_nome }}</td>
+          <td>{{ 'R$ %.2f'|format(e.valor|float) if e.valor else '—' }}</td>
+          <td><span class="tag {{ 'tag-ativo' if e.situacao=='ATIVO' else 'tag-inativo' }}">{{ e.situacao }}</span></td>
+          <td><div class="btn-group">
+            <button class="btn btn-sm btn-primary" onclick='editarEquip({{ e|tojson }})'>✏️</button>
+            <button class="btn btn-sm btn-danger" onclick="excluirEquip({{ e.id }})">🗑</button>
+          </div></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="empty"><span class="empty-icon">🔧</span>Nenhum equipamento cadastrado</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="modal-bg" id="modal-equip">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div class="modal-title" id="eq-title">Novo Equipamento</div>
+      <button class="modal-close" onclick="fecharModal('modal-equip')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="eq-id">
+      <div class="form-row form-row-2">
+        <div class="form-group"><label class="form-label">Nome *</label>
+          <input type="text" class="form-control" id="eq-nome" placeholder="Nome do equipamento"></div>
+        <div class="form-group"><label class="form-label">Fábrica</label>
+          <select class="form-control" id="eq-fab">
+            {% for f in fabricas %}<option value="{{ f.id }}">{{ f.nome }}</option>{% endfor %}
+          </select></div>
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-group"><label class="form-label">Marca</label>
+          <input type="text" class="form-control" id="eq-marca"></div>
+        <div class="form-group"><label class="form-label">Modelo</label>
+          <input type="text" class="form-control" id="eq-modelo"></div>
+        <div class="form-group"><label class="form-label">Nº Série</label>
+          <input type="text" class="form-control" id="eq-serie"></div>
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-group"><label class="form-label">Data Aquisição</label>
+          <input type="date" class="form-control" id="eq-data"></div>
+        <div class="form-group"><label class="form-label">Valor R$</label>
+          <input type="number" class="form-control" id="eq-val" step="0.01" value="0"></div>
+        <div class="form-group"><label class="form-label">Situação</label>
+          <select class="form-control" id="eq-sit">
+            <option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option>
+            <option value="MANUTENCAO">Manutenção</option>
+          </select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Observações</label>
+        <textarea class="form-control" id="eq-obs" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-equip')">Cancelar</button>
+      <button class="btn btn-success" onclick="salvarEquip()">✓ Salvar</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function editarEquip(e){
+  document.getElementById('eq-title').textContent='Editar Equipamento';
+  document.getElementById('eq-id').value=e.id;
+  document.getElementById('eq-nome').value=e.nome||'';
+  document.getElementById('eq-fab').value=e.fabrica_id||'';
+  document.getElementById('eq-marca').value=e.marca||'';
+  document.getElementById('eq-modelo').value=e.modelo||'';
+  document.getElementById('eq-serie').value=e.numero_serie||'';
+  document.getElementById('eq-data').value=e.data_aquisicao||'';
+  document.getElementById('eq-val').value=e.valor||0;
+  document.getElementById('eq-sit').value=e.situacao||'ATIVO';
+  document.getElementById('eq-obs').value=e.observacao||'';
+  abrirModal('modal-equip');
+}
+async function salvarEquip(){
+  const nome=document.getElementById('eq-nome').value.trim();
+  if(!nome){toast('Nome obrigatório!','err');return}
+  const r=await api('/api/equipamento/salvar','POST',{
+    id:document.getElementById('eq-id').value||null,
+    fabrica_id:document.getElementById('eq-fab').value,
+    nome,marca:document.getElementById('eq-marca').value,
+    modelo:document.getElementById('eq-modelo').value,
+    numero_serie:document.getElementById('eq-serie').value,
+    data_aquisicao:document.getElementById('eq-data').value,
+    valor:document.getElementById('eq-val').value,
+    situacao:document.getElementById('eq-sit').value,
+    observacao:document.getElementById('eq-obs').value});
+  if(r.ok){toast('Equipamento salvo!');fecharModal('modal-equip');location.reload()}
+  else toast('Erro: '+r.erro,'err');
+}
+async function excluirEquip(id){
+  if(!confirm('Desativar equipamento?'))return;
+  await api('/api/equipamento/excluir/'+id,'DELETE');
+  toast('Desativado','warn');location.reload();
+}
+</script>
+{% endblock %}

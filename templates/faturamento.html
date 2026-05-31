@@ -1,0 +1,595 @@
+{% extends 'base.html' %}
+{% block title %}Faturamento{% endblock %}
+{% block content %}
+<style>
+.card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:20px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1a1a2e;color:#fff}.btn-primary:hover{background:#2d3a6e}
+.btn-success{background:#15803d;color:#fff}.btn-success:hover{background:#166534}
+.btn-danger{background:#dc2626;color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-warning{background:#d97706;color:#fff}
+.btn-light{background:#f0f2f5;color:#374151}.btn-light:hover{background:#e5e7eb}
+.btn-purple{background:#7c3aed;color:#fff}.btn-purple:hover{background:#6d28d9}
+.btn-sm{padding:5px 10px;font-size:11px}
+.form-group label{display:block;font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 12px;border:1px solid #e0e6f0;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#1a1a2e}
+.form-row{display:grid;gap:12px}
+.cols-2{grid-template-columns:1fr 1fr}
+.cols-3{grid-template-columns:1fr 1fr 1fr}
+.cols-4{grid-template-columns:1fr 1fr 1fr 1fr}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:16px;background:#f0f2f5;border-radius:10px;padding:4px}
+.tab{padding:8px 16px;border:none;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:#6b7280;transition:.15s}
+.tab.active{background:#fff;color:#1a1a2e;box-shadow:0 1px 4px rgba(0,0,0,.1)}
+
+/* MÉTRICAS */
+.metricas{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.metrica{background:#fff;border-radius:10px;border:1px solid #e0e6f0;padding:14px;position:relative;overflow:hidden}
+.metrica::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.metrica.verde::before{background:#15803d}
+.metrica.azul::before{background:#1d4ed8}
+.metrica.amar::before{background:#d97706}
+.metrica.verm::before{background:#dc2626}
+.metrica-val{font-size:22px;font-weight:800;color:#1a1a2e}
+.metrica-lbl{font-size:11px;color:#6b7280;margin-top:3px}
+.metrica-sub{font-size:11px;color:#9ca3af;margin-top:2px}
+
+/* FILTROS */
+.filtros{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.filtro-sel{padding:6px 12px;border:1.5px solid #e0e6f0;border-radius:8px;font-size:12px;outline:none;background:#fff}
+.filtro-sel:focus{border-color:#1a1a2e}
+
+/* TABELA */
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid #e0e6f0}
+table{width:100%;border-collapse:collapse}
+thead{background:#1a1a2e}
+thead th{padding:10px 12px;color:#fff;font-size:11px;font-weight:700;text-align:left;white-space:nowrap}
+tbody tr{border-bottom:1px solid #f0f2f5;transition:.1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f8f9fb}
+tbody td{padding:9px 12px;font-size:12px;vertical-align:middle}
+tfoot td{padding:10px 12px;font-size:12px;font-weight:700;background:#f8f9fb;border-top:2px solid #e0e6f0}
+
+.badge{padding:3px 8px;border-radius:10px;font-size:10px;font-weight:700;display:inline-block}
+.badge-concluida{background:#dcfce7;color:#15803d}
+.badge-parcial{background:#fef9c3;color:#854d0e}
+.badge-nf{background:#dbeafe;color:#1d4ed8}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;width:620px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-header{padding:16px 20px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.modal-title{font-size:15px;font-weight:700;color:#1a1a2e}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid #f0f2f5;display:flex;justify-content:flex-end;gap:8px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#15803d}
+.toast.error{background:#dc2626}
+
+/* POR FÁBRICA */
+.fab-card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;margin-bottom:12px;overflow:hidden}
+.fab-card-header{background:#1a1a2e;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.fab-card-nome{color:#fff;font-size:14px;font-weight:700}
+.fab-card-total{color:#f5a623;font-size:16px;font-weight:800}
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+  <div style="font-size:18px;font-weight:700;color:#1a1a2e">💰 Faturamento</div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-primary btn-sm" onclick="abrirModalFaturar()">➕ Faturar OP</button>
+    <button class="btn btn-purple btn-sm" onclick="abrirModalNF()">🧾 Lançar Nota Fiscal</button>
+  </div>
+</div>
+
+<!-- FILTROS -->
+<div class="filtros">
+  <select class="filtro-sel" id="fil-mes" onchange="carregarDados()">
+    {% for m in meses %}
+    <option value="{{ m.valor }}" {% if m.atual %}selected{% endif %}>{{ m.label }}</option>
+    {% endfor %}
+  </select>
+  <select class="filtro-sel" id="fil-fabrica" onchange="carregarDados()">
+    <option value="">Todas as Fábricas</option>
+    {% for f in fabricas %}
+    <option value="{{ f.id }}">{{ f.nome }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-light btn-sm" onclick="carregarDados()">🔄 Atualizar</button>
+</div>
+
+<!-- MÉTRICAS -->
+<div class="metricas">
+  <div class="metrica verde">
+    <div class="metrica-val" id="m-fat-total">R$ 0</div>
+    <div class="metrica-lbl">Faturamento Total</div>
+    <div class="metrica-sub" id="m-fat-sub">do mês</div>
+  </div>
+  <div class="metrica azul">
+    <div class="metrica-val" id="m-ops-fat">0</div>
+    <div class="metrica-lbl">OPs Faturadas</div>
+    <div class="metrica-sub" id="m-ops-sub">no mês</div>
+  </div>
+  <div class="metrica amar">
+    <div class="metrica-val" id="m-nfs">0</div>
+    <div class="metrica-lbl">Notas Fiscais</div>
+    <div class="metrica-sub">emitidas</div>
+  </div>
+  <div class="metrica azul">
+    <div class="metrica-val" id="m-pecas-fat">0</div>
+    <div class="metrica-lbl">Peças Faturadas</div>
+    <div class="metrica-sub">no mês</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="setTab('ops',this)">📋 Por OP</button>
+  <button class="tab" onclick="setTab('nfs',this)">🧾 Notas Fiscais</button>
+  <button class="tab" onclick="setTab('fabricas',this)">🏭 Por Fábrica</button>
+</div>
+
+<!-- TAB OPS -->
+<div id="tab-ops">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>OP</th>
+          <th>Referência</th>
+          <th>Descrição</th>
+          <th>Fábrica</th>
+          <th>Tipo</th>
+          <th>Qtd</th>
+          <th>Vlr Unit.</th>
+          <th>Total</th>
+          <th>NF</th>
+          <th>Obs</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody-ops">
+        <tr><td colspan="12" style="text-align:center;color:#9ca3af;padding:24px">Nenhum faturamento no período</td></tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="6">TOTAL</td>
+          <td id="tf-qtd">0</td>
+          <td></td>
+          <td id="tf-total">R$ 0,00</td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- TAB NFS -->
+<div id="tab-nfs" style="display:none">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Nº NF</th>
+          <th>Cliente</th>
+          <th>Fábrica</th>
+          <th>Valor</th>
+          <th>OPs Vinculadas</th>
+          <th>Obs</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="tbody-nfs">
+        <tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:24px">Nenhuma nota fiscal no período</td></tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4">TOTAL</td>
+          <td id="tf-nf-total">R$ 0,00</td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- TAB FÁBRICAS -->
+<div id="tab-fabricas" style="display:none">
+  <div id="fabricas-container">
+    <div style="text-align:center;color:#9ca3af;padding:40px">Carregando...</div>
+  </div>
+</div>
+
+<!-- MODAL FATURAR OP -->
+<div class="modal-overlay" id="modal-faturar">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-fat-title">➕ Faturar OP</div>
+      <button class="modal-close" onclick="fecharModal('modal-faturar')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="fat-edit-id">
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Ordem de Produção *</label>
+          <select id="fat-op" onchange="opFatSelecionada()">
+            <option value="">Selecione...</option>
+            {% for op in ops %}
+            <option value="{{ op.id }}" data-num="{{ op.numero }}" data-ref="{{ op.ref_codigo or '' }}" data-qtd="{{ op.quantidade_total or 0 }}" data-unit="{{ op.valor_unitario or 0 }}" data-fab="{{ op.fabrica_id }}">
+              OP {{ op.numero }} — {{ op.ref_codigo or '' }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Data *</label>
+          <input type="date" id="fat-data" value="{{ hoje }}">
+        </div>
+      </div>
+      <div class="form-row cols-3" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Tipo</label>
+          <select id="fat-tipo">
+            <option value="CONCLUIDA">✅ OP Concluída</option>
+            <option value="PARCIAL">⚠️ Parcial (fechamento mês)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Quantidade *</label>
+          <input type="number" id="fat-qtd" min="1" oninput="calcularFat()">
+        </div>
+        <div class="form-group">
+          <label>Valor Unitário *</label>
+          <input type="number" id="fat-vlr-unit" step="0.01" min="0" oninput="calcularFat()">
+        </div>
+      </div>
+      <!-- Preview total -->
+      <div style="background:#f8f9fb;border-radius:8px;padding:12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:12px;color:#6b7280">Total calculado</div>
+        <div style="font-size:22px;font-weight:800;color:#15803d" id="fat-total-preview">R$ 0,00</div>
+      </div>
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Nº Nota Fiscal</label>
+          <input type="text" id="fat-nf" placeholder="Ex: 001234">
+        </div>
+        <div class="form-group">
+          <label>Fábrica</label>
+          <select id="fat-fabrica">
+            {% for f in fabricas %}
+            <option value="{{ f.id }}">{{ f.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Observação</label>
+        <input type="text" id="fat-obs" placeholder="Opcional...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-faturar')">Cancelar</button>
+      <button class="btn btn-success" onclick="salvarFaturamento()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOTA FISCAL -->
+<div class="modal-overlay" id="modal-nf">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-nf-title">🧾 Lançar Nota Fiscal</div>
+      <button class="modal-close" onclick="fecharModal('modal-nf')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="nf-edit-id">
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Número da NF *</label>
+          <input type="text" id="nf-numero" placeholder="Ex: 001234">
+        </div>
+        <div class="form-group">
+          <label>Data de Emissão *</label>
+          <input type="date" id="nf-data" value="{{ hoje }}">
+        </div>
+      </div>
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Cliente *</label>
+          <input type="text" id="nf-cliente" placeholder="Nome do cliente">
+        </div>
+        <div class="form-group">
+          <label>Fábrica</label>
+          <select id="nf-fabrica">
+            {% for f in fabricas %}
+            <option value="{{ f.id }}">{{ f.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Valor Total *</label>
+          <input type="number" id="nf-valor" step="0.01" min="0" placeholder="0,00">
+        </div>
+        <div class="form-group">
+          <label>OPs Vinculadas</label>
+          <input type="text" id="nf-ops" placeholder="Ex: OP001, OP002">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Observação</label>
+        <textarea id="nf-obs" rows="2" placeholder="Opcional..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-nf')">Cancelar</button>
+      <button class="btn btn-success" onclick="salvarNF()">💾 Salvar NF</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let tabAtual = 'ops';
+
+function toast(msg,tipo='success'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+tipo+' show';setTimeout(()=>t.classList.remove('show'),2800)}
+function fecharModal(id){document.getElementById(id).classList.remove('open')}
+function abrirModal(id){document.getElementById(id).classList.add('open')}
+function fmtR(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtN(v){return Number(v||0).toLocaleString('pt-BR')}
+
+function setTab(tab, btn) {
+  tabAtual = tab;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['ops','nfs','fabricas'].forEach(t=>document.getElementById('tab-'+t).style.display='none');
+  document.getElementById('tab-'+tab).style.display='';
+  if(tab==='fabricas') renderFabricas();
+}
+
+// CARREGAR DADOS
+async function carregarDados() {
+  const mes = document.getElementById('fil-mes').value;
+  const fabId = document.getElementById('fil-fabrica').value;
+  await Promise.all([carregarFaturamentos(mes,fabId), carregarNFs(mes,fabId)]);
+}
+
+async function carregarFaturamentos(mes, fabId) {
+  let url = `/api/faturamentos?mes=${mes}`;
+  if(fabId) url += `&fabrica_id=${fabId}`;
+  const rows = await fetch(url).then(r=>r.json());
+  renderFaturamentos(rows);
+  atualizarMetricas(rows);
+}
+
+async function carregarNFs(mes, fabId) {
+  let url = `/api/notas-fiscais?mes=${mes}`;
+  if(fabId) url += `&fabrica_id=${fabId}`;
+  const rows = await fetch(url).then(r=>r.json());
+  renderNFs(rows);
+}
+
+function renderFaturamentos(rows) {
+  const tbody = document.getElementById('tbody-ops');
+  if(!rows.length) {
+    tbody.innerHTML='<tr><td colspan="12" style="text-align:center;color:#9ca3af;padding:24px">Nenhum faturamento no período</td></tr>';
+    document.getElementById('tf-qtd').textContent='0';
+    document.getElementById('tf-total').textContent='R$ 0,00';
+    return;
+  }
+  const totalQtd = rows.reduce((s,r)=>s+parseInt(r.quantidade||0),0);
+  const totalVal = rows.reduce((s,r)=>s+parseFloat(r.valor_total||0),0);
+  tbody.innerHTML = rows.map(r=>`
+    <tr>
+      <td>${r.data}</td>
+      <td><strong>OP ${r.op_numero||'—'}</strong></td>
+      <td>${r.ref_codigo||'—'}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.descricao||'—'}</td>
+      <td>${r.fab_nome||'—'}</td>
+      <td><span class="badge ${r.tipo==='PARCIAL'?'badge-parcial':'badge-concluida'}">${r.tipo==='PARCIAL'?'Parcial':'Concluída'}</span></td>
+      <td style="text-align:right;font-weight:700">${fmtN(r.quantidade)}</td>
+      <td style="text-align:right">${fmtR(r.valor_unitario)}</td>
+      <td style="text-align:right;font-weight:700;color:#15803d">${fmtR(r.valor_total)}</td>
+      <td>${r.numero_nf?`<span class="badge badge-nf">NF ${r.numero_nf}</span>`:'—'}</td>
+      <td style="color:#6b7280;font-size:11px">${r.obs||'—'}</td>
+      <td>
+        <button class="btn btn-light btn-sm" onclick="editarFat(${r.id})" style="padding:3px 7px;font-size:10px">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="excluirFat(${r.id})" style="padding:3px 7px;font-size:10px">✕</button>
+      </td>
+    </tr>
+  `).join('');
+  document.getElementById('tf-qtd').textContent = fmtN(totalQtd);
+  document.getElementById('tf-total').textContent = fmtR(totalVal);
+}
+
+function renderNFs(rows) {
+  const tbody = document.getElementById('tbody-nfs');
+  if(!rows.length) {
+    tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:24px">Nenhuma nota fiscal no período</td></tr>';
+    document.getElementById('tf-nf-total').textContent='R$ 0,00';
+    return;
+  }
+  const total = rows.reduce((s,r)=>s+parseFloat(r.valor||0),0);
+  tbody.innerHTML = rows.map(r=>`
+    <tr>
+      <td>${r.data}</td>
+      <td><strong>${r.numero}</strong></td>
+      <td>${r.cliente||'—'}</td>
+      <td>${r.fab_nome||'—'}</td>
+      <td style="font-weight:700;color:#15803d">${fmtR(r.valor)}</td>
+      <td style="font-size:11px;color:#6b7280">${r.ops_vinculadas||'—'}</td>
+      <td style="font-size:11px;color:#6b7280">${r.obs||'—'}</td>
+      <td>
+        <button class="btn btn-light btn-sm" onclick="editarNF(${r.id})" style="padding:3px 7px;font-size:10px">✏️</button>
+        <button class="btn btn-danger btn-sm" onclick="excluirNF(${r.id})" style="padding:3px 7px;font-size:10px">✕</button>
+      </td>
+    </tr>
+  `).join('');
+  document.getElementById('tf-nf-total').textContent = fmtR(total);
+  document.getElementById('m-nfs').textContent = rows.length;
+}
+
+function atualizarMetricas(rows) {
+  const total = rows.reduce((s,r)=>s+parseFloat(r.valor_total||0),0);
+  const qtd = rows.reduce((s,r)=>s+parseInt(r.quantidade||0),0);
+  const mes = document.getElementById('fil-mes').value;
+  document.getElementById('m-fat-total').textContent = fmtR(total);
+  document.getElementById('m-ops-fat').textContent = rows.length;
+  document.getElementById('m-pecas-fat').textContent = fmtN(qtd);
+}
+
+async function renderFabricas() {
+  const mes = document.getElementById('fil-mes').value;
+  const rows = await fetch(`/api/faturamentos?mes=${mes}`).then(r=>r.json());
+  const porFab = {};
+  rows.forEach(r=>{
+    if(!porFab[r.fabrica_id]) porFab[r.fabrica_id]={nome:r.fab_nome,total:0,qtd:0,ops:0};
+    porFab[r.fabrica_id].total+=parseFloat(r.valor_total||0);
+    porFab[r.fabrica_id].qtd+=parseInt(r.quantidade||0);
+    porFab[r.fabrica_id].ops++;
+  });
+  const container = document.getElementById('fabricas-container');
+  const fabs = Object.values(porFab);
+  if(!fabs.length){container.innerHTML='<div style="text-align:center;color:#9ca3af;padding:40px">Nenhum faturamento no período</div>';return}
+  container.innerHTML = fabs.map(f=>`
+    <div class="fab-card">
+      <div class="fab-card-header">
+        <div class="fab-card-nome">🏭 ${f.nome}</div>
+        <div class="fab-card-total">${fmtR(f.total)}</div>
+      </div>
+      <div style="padding:12px 16px;display:flex;gap:24px">
+        <div><div style="font-size:18px;font-weight:800;color:#1a1a2e">${f.ops}</div><div style="font-size:10px;color:#9ca3af;text-transform:uppercase">OPs Faturadas</div></div>
+        <div><div style="font-size:18px;font-weight:800;color:#1a1a2e">${fmtN(f.qtd)}</div><div style="font-size:10px;color:#9ca3af;text-transform:uppercase">Peças</div></div>
+        <div><div style="font-size:18px;font-weight:800;color:#15803d">${fmtR(f.total)}</div><div style="font-size:10px;color:#9ca3af;text-transform:uppercase">Total</div></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// MODAL FATURAR
+function abrirModalFaturar() {
+  document.getElementById('fat-edit-id').value='';
+  document.getElementById('modal-fat-title').textContent='➕ Faturar OP';
+  document.getElementById('fat-op').value='';
+  document.getElementById('fat-data').value='{{ hoje }}';
+  document.getElementById('fat-tipo').value='CONCLUIDA';
+  document.getElementById('fat-qtd').value='';
+  document.getElementById('fat-vlr-unit').value='';
+  document.getElementById('fat-nf').value='';
+  document.getElementById('fat-obs').value='';
+  document.getElementById('fat-total-preview').textContent='R$ 0,00';
+  abrirModal('modal-faturar');
+}
+
+function opFatSelecionada() {
+  const sel=document.getElementById('fat-op');
+  const opt=sel.options[sel.selectedIndex];
+  if(!opt||!opt.value)return;
+  document.getElementById('fat-qtd').value=opt.dataset.qtd||'';
+  document.getElementById('fat-vlr-unit').value=opt.dataset.unit||'';
+  document.getElementById('fat-fabrica').value=opt.dataset.fab||'';
+  calcularFat();
+}
+
+function calcularFat() {
+  const qtd=parseFloat(document.getElementById('fat-qtd').value)||0;
+  const unit=parseFloat(document.getElementById('fat-vlr-unit').value)||0;
+  document.getElementById('fat-total-preview').textContent=fmtR(qtd*unit);
+}
+
+async function salvarFaturamento() {
+  const opId=document.getElementById('fat-op').value;
+  const data=document.getElementById('fat-data').value;
+  const qtd=parseInt(document.getElementById('fat-qtd').value)||0;
+  const unit=parseFloat(document.getElementById('fat-vlr-unit').value)||0;
+  if(!opId||!data||!qtd){toast('Preencha os campos obrigatórios','error');return}
+  const id=document.getElementById('fat-edit-id').value;
+  const d={id:id||null,op_id:opId,fabrica_id:document.getElementById('fat-fabrica').value,data,tipo:document.getElementById('fat-tipo').value,quantidade:qtd,valor_unitario:unit,valor_total:qtd*unit,numero_nf:document.getElementById('fat-nf').value,obs:document.getElementById('fat-obs').value};
+  const r=await fetch('/api/faturamento/salvar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
+  if(r.ok){fecharModal('modal-faturar');carregarDados();toast(id?'Atualizado!':'Faturamento salvo!')}
+  else toast(r.erro||'Erro','error');
+}
+
+async function editarFat(id) {
+  const r=await fetch('/api/faturamento/'+id).then(r=>r.json());
+  document.getElementById('fat-edit-id').value=id;
+  document.getElementById('modal-fat-title').textContent='✏️ Editar Faturamento';
+  document.getElementById('fat-op').value=r.op_id||'';
+  document.getElementById('fat-data').value=r.data||'';
+  document.getElementById('fat-tipo').value=r.tipo||'CONCLUIDA';
+  document.getElementById('fat-qtd').value=r.quantidade||'';
+  document.getElementById('fat-vlr-unit').value=r.valor_unitario||'';
+  document.getElementById('fat-fabrica').value=r.fabrica_id||'';
+  document.getElementById('fat-nf').value=r.numero_nf||'';
+  document.getElementById('fat-obs').value=r.obs||'';
+  calcularFat();
+  abrirModal('modal-faturar');
+}
+
+async function excluirFat(id) {
+  if(!confirm('Excluir este faturamento?'))return;
+  const r=await fetch('/api/faturamento/excluir/'+id,{method:'DELETE'}).then(r=>r.json());
+  if(r.ok){carregarDados();toast('Excluído!')}else toast(r.erro||'Erro','error');
+}
+
+// MODAL NF
+function abrirModalNF() {
+  document.getElementById('nf-edit-id').value='';
+  document.getElementById('modal-nf-title').textContent='🧾 Lançar Nota Fiscal';
+  document.getElementById('nf-numero').value='';
+  document.getElementById('nf-data').value='{{ hoje }}';
+  document.getElementById('nf-cliente').value='';
+  document.getElementById('nf-valor').value='';
+  document.getElementById('nf-ops').value='';
+  document.getElementById('nf-obs').value='';
+  abrirModal('modal-nf');
+}
+
+async function salvarNF() {
+  const num=document.getElementById('nf-numero').value.trim();
+  const data=document.getElementById('nf-data').value;
+  const cliente=document.getElementById('nf-cliente').value.trim();
+  const valor=parseFloat(document.getElementById('nf-valor').value)||0;
+  if(!num||!data||!cliente||!valor){toast('Preencha os campos obrigatórios','error');return}
+  const id=document.getElementById('nf-edit-id').value;
+  const d={id:id||null,numero:num,data,cliente,fabrica_id:document.getElementById('nf-fabrica').value,valor,ops_vinculadas:document.getElementById('nf-ops').value,obs:document.getElementById('nf-obs').value};
+  const r=await fetch('/api/nota-fiscal/salvar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
+  if(r.ok){fecharModal('modal-nf');carregarDados();toast(id?'NF atualizada!':'NF salva!')}
+  else toast(r.erro||'Erro','error');
+}
+
+async function editarNF(id) {
+  const r=await fetch('/api/nota-fiscal/'+id).then(r=>r.json());
+  document.getElementById('nf-edit-id').value=id;
+  document.getElementById('modal-nf-title').textContent='✏️ Editar NF';
+  document.getElementById('nf-numero').value=r.numero||'';
+  document.getElementById('nf-data').value=r.data||'';
+  document.getElementById('nf-cliente').value=r.cliente||'';
+  document.getElementById('nf-fabrica').value=r.fabrica_id||'';
+  document.getElementById('nf-valor').value=r.valor||'';
+  document.getElementById('nf-ops').value=r.ops_vinculadas||'';
+  document.getElementById('nf-obs').value=r.obs||'';
+  abrirModal('modal-nf');
+}
+
+async function excluirNF(id) {
+  if(!confirm('Excluir esta nota fiscal?'))return;
+  const r=await fetch('/api/nota-fiscal/excluir/'+id,{method:'DELETE'}).then(r=>r.json());
+  if(r.ok){carregarDados();toast('NF excluída!')}else toast(r.erro||'Erro','error');
+}
+
+// Init
+carregarDados();
+</script>
+{% endblock %}

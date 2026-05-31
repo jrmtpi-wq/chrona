@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chrona — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#1B3A6B 0%,#0D2347 60%,#1B3A6B 100%);
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.box{background:#fff;border-radius:16px;padding:40px;width:100%;max-width:400px;
+  box-shadow:0 30px 80px rgba(0,0,0,.3)}
+.logo{text-align:center;margin-bottom:32px}
+.logo-icon{width:64px;height:64px;background:#F5A623;border-radius:16px;
+  display:inline-flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:12px}
+.logo h1{font-size:28px;font-weight:800;color:#1B3A6B;letter-spacing:2px}
+.logo p{color:#5F6368;font-size:13px;margin-top:4px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:11px;font-weight:700;color:#5F6368;
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.form-group input{width:100%;padding:11px 14px;border:1.5px solid #DADCE0;
+  border-radius:8px;font-size:14px;font-family:inherit;outline:none;transition:.2s;
+  background:#F8F9FA;color:#1a1a2e}
+.form-group input:focus{border-color:#1B3A6B;background:#fff;
+  box-shadow:0 0 0 3px rgba(27,58,107,.1)}
+.btn{width:100%;padding:13px;background:#1B3A6B;color:#fff;border:none;
+  border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;
+  font-family:inherit;transition:.2s;margin-top:8px;letter-spacing:.5px}
+.btn:hover{background:#0D2347}
+.error{background:#FDEDEC;color:#C0392B;padding:10px 14px;border-radius:7px;
+  font-size:13px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.info{margin-top:24px;padding:14px;background:#F8F9FA;border-radius:8px;font-size:12px;color:#5F6368}
+.info strong{display:block;margin-bottom:8px;color:#1a1a2e}
+code{background:#E8F0FE;color:#1B3A6B;padding:2px 7px;border-radius:4px;font-size:11px}
+.divider{text-align:center;color:#DADCE0;margin:20px 0;font-size:12px;
+  display:flex;align-items:center;gap:12px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#DADCE0}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">
+    <div class="logo-icon">⏱</div>
+    <h1>CHRONA</h1>
+    <p>Sistema de Gestão da Produção</p>
+  </div>
+  {% with msgs=get_flashed_messages(with_categories=true) %}
+    {% for cat,msg in msgs %}
+    <div class="error">⚠️ {{ msg }}</div>
+    {% endfor %}
+  {% endwith %}
+  <form method="POST">
+    <div class="form-group">
+      <label>Usuário</label>
+      <input type="text" name="login" placeholder="Digite seu usuário" required autofocus>
+    </div>
+    <div class="form-group">
+      <label>Senha</label>
+      <input type="password" name="senha" placeholder="Digite sua senha" required>
+    </div>
+    <button type="submit" class="btn">Entrar no Sistema →</button>
+  </form>
+  <div class="info">
+    <strong>Acessos padrão:</strong>
+    Admin: <code>admin</code> / <code>admin123</code><br><br>
+    Fábricas: <code>fabrica1</code> a <code>fabrica4</code> / <code>chrona123</code>
+  </div>
+</div>
+</body>
+</html>

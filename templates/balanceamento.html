@@ -1,0 +1,811 @@
+{% extends 'base.html' %}
+{% block title %}Balanceamento{% endblock %}
+{% block content %}
+<style>
+.bal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.bal-title{font-size:18px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px}
+.card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:20px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.form-row{display:grid;gap:12px;margin-bottom:12px}
+.form-row.cols-2{grid-template-columns:1fr 1fr}
+.form-row.cols-3{grid-template-columns:1fr 1fr 1fr}
+.form-row.cols-4{grid-template-columns:1fr 1fr 1fr 1fr}
+.form-row.cols-5{grid-template-columns:1fr 1fr 1fr 1fr 1fr}
+.form-group label{display:block;font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid #e0e6f0;border-radius:8px;font-size:13px;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:#1a1a2e}
+.form-group input[readonly]{background:#f8f9fb;color:#374151;font-weight:700}
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1a1a2e;color:#fff}.btn-primary:hover{background:#2d3a6e}
+.btn-success{background:#15803d;color:#fff}.btn-success:hover{background:#166534}
+.btn-warning{background:#d97706;color:#fff}
+.btn-danger{background:#dc2626;color:#fff}
+.btn-light{background:#f0f2f5;color:#374151}.btn-light:hover{background:#e5e7eb}
+.btn-print{background:#7c3aed;color:#fff}.btn-print:hover{background:#6d28d9}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-xs{padding:3px 7px;font-size:10px;border-radius:4px}
+
+/* MÉTRICAS */
+.metricas{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
+.metrica{background:#f8f9fb;border-radius:10px;padding:12px;text-align:center;border:1px solid #e0e6f0}
+.metrica-val{font-size:20px;font-weight:800;color:#1a1a2e}
+.metrica-lbl{font-size:10px;color:#9ca3af;text-transform:uppercase;margin-top:2px}
+.metrica.destaque{background:#1a1a2e;border-color:#1a1a2e}
+.metrica.destaque .metrica-val{color:#fff}
+.metrica.destaque .metrica-lbl{color:#9ca3af}
+
+/* LAYOUT BALANCEAMENTO */
+.bal-layout{display:grid;grid-template-columns:220px 1fr;gap:16px;min-height:500px}
+
+/* PAINEL OPERADORAS */
+.operadoras-panel{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:12px}
+.operadoras-title{font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px;letter-spacing:.5px}
+.operadoras-list{min-height:200px}
+.operadora-chip{background:#f0f2f5;border:1px solid #e0e6f0;border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:grab;display:flex;align-items:center;gap:8px;transition:all .15s;font-size:12px;font-weight:600}
+.operadora-chip:hover{border-color:#1a1a2e;background:#e8eaf0}
+.operadora-chip.dragging{opacity:.4}
+.operadora-chip .drag-icon{color:#d1d5db;font-size:14px}
+.operadora-avatar{width:28px;height:28px;border-radius:50%;background:#1a1a2e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+
+/* PAINEL OPERAÇÕES */
+.operacoes-panel{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:12px;margin-top:12px}
+.op-seq-chip{background:#f8f9fb;border:1px solid #e0e6f0;border-radius:6px;padding:6px 8px;margin-bottom:4px;cursor:grab;display:flex;align-items:center;gap:6px;font-size:11px;transition:all .15s}
+.op-seq-chip:hover{border-color:#1d4ed8;background:#eff6ff}
+.op-seq-chip.dragging{opacity:.4}
+.op-num{background:#1a1a2e;color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+.op-tempo{font-weight:700;color:#1a1a2e;margin-left:auto;font-size:11px}
+
+/* TIMES */
+.times-container{overflow-x:auto}
+.times-grid{display:flex;gap:10px;min-width:max-content;padding-bottom:8px}
+.time-card{background:#fff;border-radius:12px;border:2px solid #e0e6f0;width:200px;flex-shrink:0;transition:border-color .2s}
+.time-card.drag-over{border-color:#1d4ed8;background:#eff6ff}
+.time-header{padding:10px 12px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between}
+.time-num{font-size:12px;font-weight:700;color:#1a1a2e}
+.time-ciclo{font-size:10px;padding:2px 6px;border-radius:10px;font-weight:700}
+.ciclo-ok{background:#dcfce7;color:#15803d}
+.ciclo-warn{background:#fef9c3;color:#854d0e}
+.ciclo-over{background:#fee2e2;color:#dc2626}
+.time-operadoras{padding:8px 10px;border-bottom:1px solid #f0f2f5;min-height:40px}
+.time-op-drop{min-height:30px;border:1px dashed #d1d5db;border-radius:6px;padding:4px;display:flex;flex-wrap:wrap;gap:4px}
+.time-op-drop.drag-over{border-color:#1d4ed8;background:#eff6ff}
+.op-tag{background:#1a1a2e;color:#fff;border-radius:4px;padding:2px 6px;font-size:10px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:3px}
+.op-tag:hover{background:#dc2626}
+.time-ops{padding:8px 10px;min-height:80px}
+.time-ops-drop{min-height:60px;border:1px dashed #d1d5db;border-radius:6px;padding:4px}
+.time-ops-drop.drag-over{border-color:#1d4ed8;background:#eff6ff}
+.time-op-item{background:#f0f2f5;border-radius:4px;padding:4px 6px;margin-bottom:3px;font-size:10px;display:flex;align-items:center;gap:4px;cursor:grab}
+.time-op-item:hover{background:#fee2e2}
+.time-op-item .op-t{font-weight:700;color:#1a1a2e;margin-left:auto}
+.time-footer{padding:8px 10px;border-top:1px solid #f0f2f5}
+.time-total{display:flex;justify-content:space-between;align-items:center;font-size:11px}
+.time-total-val{font-weight:800;font-size:13px}
+.time-progress{height:4px;background:#e0e6f0;border-radius:2px;margin-top:4px}
+.time-progress-fill{height:100%;border-radius:2px;transition:width .3s}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#15803d}
+.toast.error{background:#dc2626}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-header{padding:16px 20px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:15px;font-weight:700}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid #f0f2f5;display:flex;justify-content:flex-end;gap:8px}
+
+.section-divider{border:none;border-top:1px solid #e0e6f0;margin:16px 0}
+.badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-blue{background:#dbeafe;color:#1d4ed8}
+.badge-green{background:#dcfce7;color:#15803d}
+.badge-red{background:#fee2e2;color:#dc2626}
+
+/* ── IMPRESSÃO ── */
+@media print {
+  body * { visibility: hidden; }
+  #area-impressao, #area-impressao * { visibility: visible; }
+  #area-impressao { position: fixed; inset: 0; background: #fff; z-index: 99999; padding: 16px; }
+}
+#area-impressao { display: none; }
+
+/* Estilos do layout de impressão (usados também na janela popup) */
+.imp-page { font-family: 'Inter', Arial, sans-serif; background: #fff; color: #1a1a2e; padding: 20px; max-width: 1100px; margin: 0 auto; }
+.imp-header { display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 3px solid #1a1a2e; padding-bottom: 14px; margin-bottom: 16px; }
+.imp-logo { display: flex; align-items: center; gap: 10px; }
+.imp-logo-icon { width: 44px; height: 44px; background: #1a1a2e; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #f5a623; }
+.imp-logo h1 { font-size: 22px; font-weight: 800; letter-spacing: 1px; margin: 0; }
+.imp-logo small { font-size: 10px; color: #6b7280; }
+.imp-info { text-align: right; font-size: 12px; color: #374151; }
+.imp-info strong { display: block; font-size: 14px; color: #1a1a2e; }
+.imp-op-banner { background: #1a1a2e; color: #fff; border-radius: 10px; padding: 12px 18px; margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+.imp-op-banner h2 { font-size: 16px; font-weight: 800; margin: 0; }
+.imp-op-banner span { font-size: 12px; color: #9ca3af; }
+.imp-metricas { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px; }
+.imp-metrica { background: #f8f9fb; border: 1px solid #e0e6f0; border-radius: 8px; padding: 10px; text-align: center; }
+.imp-metrica.dest { background: #1a1a2e; }
+.imp-metrica-val { font-size: 18px; font-weight: 800; color: #1a1a2e; }
+.imp-metrica.dest .imp-metrica-val { color: #f5a623; }
+.imp-metrica-lbl { font-size: 9px; color: #9ca3af; text-transform: uppercase; margin-top: 2px; }
+.imp-times-title { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #e0e6f0; display: flex; align-items: center; gap: 6px; }
+.imp-times-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.imp-time { border: 2px solid #e0e6f0; border-radius: 10px; overflow: hidden; break-inside: avoid; }
+.imp-time-header { padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; }
+.imp-time-header.ok { background: #dcfce7; border-bottom: 2px solid #15803d; }
+.imp-time-header.warn { background: #fef9c3; border-bottom: 2px solid #d97706; }
+.imp-time-header.over { background: #fee2e2; border-bottom: 2px solid #dc2626; }
+.imp-time-num { font-size: 13px; font-weight: 800; }
+.imp-time-ciclo { font-size: 10px; font-weight: 700; }
+.imp-time-header.ok .imp-time-num, .imp-time-header.ok .imp-time-ciclo { color: #15803d; }
+.imp-time-header.warn .imp-time-num, .imp-time-header.warn .imp-time-ciclo { color: #854d0e; }
+.imp-time-header.over .imp-time-num, .imp-time-header.over .imp-time-ciclo { color: #dc2626; }
+.imp-operadoras { padding: 6px 8px; background: #f8f9fb; border-bottom: 1px solid #e0e6f0; min-height: 28px; }
+.imp-operadoras-lbl { font-size: 8px; color: #9ca3af; font-weight: 700; text-transform: uppercase; margin-bottom: 3px; }
+.imp-op-tags { display: flex; flex-wrap: wrap; gap: 3px; }
+.imp-op-tag { background: #1a1a2e; color: #fff; border-radius: 4px; padding: 2px 6px; font-size: 9px; font-weight: 700; }
+.imp-ops { padding: 6px 8px; }
+.imp-ops-lbl { font-size: 8px; color: #9ca3af; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+.imp-op-row { display: flex; align-items: center; gap: 4px; padding: 3px 0; border-bottom: 1px solid #f0f2f5; font-size: 10px; }
+.imp-op-row:last-child { border-bottom: none; }
+.imp-op-n { width: 16px; height: 16px; background: #e0e6f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; flex-shrink: 0; }
+.imp-op-desc { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.imp-op-carga { font-weight: 700; color: #1a1a2e; font-size: 10px; }
+.imp-time-footer { padding: 6px 8px; background: #f8f9fb; border-top: 1px solid #e0e6f0; display: flex; justify-content: space-between; align-items: center; }
+.imp-total-lbl { font-size: 9px; color: #6b7280; }
+.imp-total-val { font-size: 12px; font-weight: 800; }
+.imp-progress { height: 4px; background: #e0e6f0; border-radius: 2px; margin-top: 3px; }
+.imp-progress-fill { height: 100%; border-radius: 2px; }
+.imp-footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #e0e6f0; display: flex; justify-content: space-between; font-size: 10px; color: #9ca3af; }
+.imp-vazio { color: #9ca3af; font-size: 10px; font-style: italic; }
+</style>
+
+<div class="bal-header">
+  <div class="bal-title">⚖️ Balanceamento de Produção</div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-print btn-sm" onclick="imprimirBalanceamento()">🖨️ Imprimir</button>
+    <button class="btn btn-light btn-sm" onclick="limparBalanceamento()">🗑️ Limpar</button>
+    <button class="btn btn-success btn-sm" onclick="salvarBalanceamento()">💾 Salvar</button>
+  </div>
+</div>
+
+<!-- CONFIGURAÇÃO -->
+<div class="card">
+  <div class="card-title">⚙️ Configuração do Balanceamento</div>
+  <div class="form-row cols-5">
+    <div class="form-group">
+      <label>Ordem de Produção *</label>
+      <select id="bal-op" onchange="carregarOP()">
+        <option value="">Selecione...</option>
+        {% for op in ops %}
+        <option value="{{ op.id }}" data-ref="{{ op.ref_codigo }}" data-desc="{{ op.descricao }}" data-num="{{ op.numero }}">OP {{ op.numero }} — {{ op.ref_codigo or '' }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Turno *</label>
+      <select id="bal-turno" onchange="atualizarMinutos()">
+        <option value="">Selecione...</option>
+        {% for t in turnos %}
+        <option value="{{ t.id }}" data-mins="{{ t.minutos_normal }}" data-nome="{{ t.nome }}">{{ t.nome }} ({{ t.minutos_normal }}min)</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Nº Operadoras</label>
+      <input type="number" id="bal-operadoras" value="20" min="1" max="100" oninput="calcularMetas()">
+    </div>
+    <div class="form-group">
+      <label>Ciclo (minutos)</label>
+      <select id="bal-ciclo" onchange="calcularMetas()">
+        <option value="10">10 min</option>
+        <option value="15" selected>15 min</option>
+        <option value="20">20 min</option>
+        <option value="25">25 min</option>
+        <option value="30">30 min</option>
+        <option value="60">60 min</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Nº de Times</label>
+      <input type="number" id="bal-times" value="10" min="1" max="50" oninput="calcularMetas()">
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-primary" onclick="calcularMetas()">🔄 Calcular</button>
+    <button class="btn btn-success" onclick="balancearAutomatico()">⚡ Balancear Automático</button>
+    <button class="btn btn-light" onclick="gerarTimes()">📋 Gerar Times Vazios</button>
+  </div>
+</div>
+
+<!-- MÉTRICAS -->
+<div class="metricas" id="metricas-container">
+  <div class="metrica"><div class="metrica-val" id="m-mins">—</div><div class="metrica-lbl">Min. Disponíveis</div></div>
+  <div class="metrica"><div class="metrica-val" id="m-tempo">—</div><div class="metrica-lbl">Tempo Peça (min)</div></div>
+  <div class="metrica destaque"><div class="metrica-val" id="m-meta-dia">—</div><div class="metrica-lbl">Meta Dia (pcs)</div></div>
+  <div class="metrica destaque"><div class="metrica-val" id="m-ciclos">—</div><div class="metrica-lbl">Ciclos/Dia</div></div>
+  <div class="metrica destaque"><div class="metrica-val" id="m-meta-ciclo">—</div><div class="metrica-lbl">Meta/Ciclo (pcs)</div></div>
+  <div class="metrica"><div class="metrica-val" id="m-op-ciclo">—</div><div class="metrica-lbl">Ops/Time</div></div>
+</div>
+
+<!-- LAYOUT PRINCIPAL -->
+<div class="bal-layout">
+  <!-- PAINEL ESQUERDO -->
+  <div>
+    <div class="operadoras-panel">
+      <div class="operadoras-title">👩 Operadoras Disponíveis</div>
+      <div class="operadoras-list" id="operadoras-disponiveis">
+        {% for f in funcionarios %}
+        <div class="operadora-chip" draggable="true" data-id="{{ f.id }}" data-nome="{{ f.nome }}" ondragstart="dragOperadora(event, {{ f.id }}, '{{ f.nome }}')">
+          <span class="drag-icon">⠿</span>
+          <div class="operadora-avatar">{{ f.nome[:2]|upper }}</div>
+          <span style="font-size:11px;flex:1">{{ f.nome.split()[0] }}</span>
+        </div>
+        {% endfor %}
+        {% if not funcionarios %}
+        <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Nenhuma operadora cadastrada</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="operacoes-panel">
+      <div class="operadoras-title">⚙️ Operações da OP</div>
+      <div id="operacoes-disponiveis" style="max-height:300px;overflow-y:auto">
+        <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Selecione uma OP</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIMES -->
+  <div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:700;color:#1a1a2e">📋 Times de Produção</div>
+      <div style="font-size:11px;color:#9ca3af">Arraste operadoras e operações para os times</div>
+    </div>
+    <div class="times-container">
+      <div class="times-grid" id="times-grid">
+        <div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px">
+          Configure e clique em "Gerar Times" ou "Balancear Automático"
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AJUSTE OPERAÇÃO -->
+<div class="modal-overlay" id="modal-ajuste">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Ajustar Operação</div>
+      <button class="modal-close" onclick="fecharModal('modal-ajuste')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ajuste-time-idx">
+      <input type="hidden" id="ajuste-op-idx">
+      <div style="margin-bottom:16px">
+        <div style="font-size:14px;font-weight:700" id="ajuste-op-nome">—</div>
+        <div style="font-size:12px;color:#6b7280" id="ajuste-op-info">—</div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Tempo Padrão (min)</label>
+          <input type="number" id="ajuste-tempo" step="0.01" min="0">
+        </div>
+        <div class="form-group">
+          <label>Qtd Peças no Ciclo</label>
+          <input type="number" id="ajuste-qtd" min="1" value="1" oninput="calcularCargaAjuste()">
+        </div>
+      </div>
+      <div style="background:#f8f9fb;border-radius:8px;padding:12px;margin-top:8px">
+        <div style="font-size:12px;color:#6b7280">Carga no ciclo</div>
+        <div style="font-size:20px;font-weight:800;color:#1a1a2e" id="ajuste-carga">0.00 min</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-ajuste')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarAjuste()">✅ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ÁREA DE IMPRESSÃO (oculta, usada como referência) -->
+<div id="area-impressao"></div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ── ESTADO ────────────────────────────────────────
+let estado = {
+  op: null,
+  opNumero: '',
+  opRef: '',
+  opDesc: '',
+  turnoNome: '',
+  operacoes: [],
+  times: [],
+  minutos: 540,
+  ciclo: 15,
+  nOperadoras: 20,
+  nTimes: 10,
+  metaDia: 0,
+  metaCiclo: 0,
+  tempoPeca: 0,
+};
+let dragItem = null;
+let dragType = null;
+
+// ── UTILS ─────────────────────────────────────────
+function toast(msg, tipo='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast '+tipo+' show';
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+function fecharModal(id) { document.getElementById(id).classList.remove('open') }
+function abrirModal(id) { document.getElementById(id).classList.add('open') }
+
+// ── CARREGAR OP ───────────────────────────────────
+async function carregarOP() {
+  const sel = document.getElementById('bal-op');
+  const opId = sel.value;
+  if (!opId) return;
+  const opt = sel.options[sel.selectedIndex];
+  estado.opNumero = opt.dataset.num || '';
+  estado.opRef    = opt.dataset.ref || '';
+  estado.opDesc   = opt.dataset.desc || '';
+
+  const seq = await fetch('/api/op/sequencia/' + opId).then(r => r.json());
+  estado.operacoes = seq.map((s, i) => ({
+    idx: i,
+    operacao_id: s.operacao_id,
+    descricao: s.descricao,
+    tempo_padrao: parseFloat(s.tempo_padrao) || 0,
+    equipamento_id: s.equipamento_id,
+  }));
+  estado.tempoPeca = estado.operacoes.reduce((s, o) => s + o.tempo_padrao, 0);
+  renderOperacoesDisponiveis();
+  calcularMetas();
+}
+
+function renderOperacoesDisponiveis() {
+  const div = document.getElementById('operacoes-disponiveis');
+  if (!estado.operacoes.length) {
+    div.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">OP sem sequência cadastrada</div>';
+    return;
+  }
+  div.innerHTML = estado.operacoes.map((op, i) => `
+    <div class="op-seq-chip" draggable="true" data-idx="${i}"
+         ondragstart="dragOperacao(event, ${i})">
+      <span class="drag-icon" style="color:#d1d5db;font-size:12px">⠿</span>
+      <div class="op-num">${i+1}</div>
+      <span style="flex:1;font-size:11px">${op.descricao}</span>
+      <span class="op-tempo">${op.tempo_padrao.toFixed(2)}</span>
+    </div>
+  `).join('');
+}
+
+// ── CALCULAR ──────────────────────────────────────
+function atualizarMinutos() {
+  const sel = document.getElementById('bal-turno');
+  const opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.mins) estado.minutos = parseInt(opt.dataset.mins);
+  if (opt && opt.dataset.nome) estado.turnoNome = opt.dataset.nome;
+  calcularMetas();
+}
+
+function calcularMetas() {
+  estado.ciclo = parseInt(document.getElementById('bal-ciclo').value) || 15;
+  estado.nOperadoras = parseInt(document.getElementById('bal-operadoras').value) || 1;
+  estado.nTimes = parseInt(document.getElementById('bal-times').value) || 1;
+  estado.tempoPeca = estado.operacoes.reduce((s, o) => s + o.tempo_padrao, 0);
+
+  const mins = estado.minutos;
+  const tp = estado.tempoPeca;
+  const ops = estado.nOperadoras;
+  const ciclo = estado.ciclo;
+
+  const metaDia = tp > 0 ? Math.floor((mins / tp) * ops) : 0;
+  const numCiclos = Math.floor(mins / ciclo);
+  const metaCiclo = numCiclos > 0 ? Math.round(metaDia / numCiclos) : 0;
+  const opsPorTime = estado.nTimes > 0 ? Math.ceil(estado.operacoes.length / estado.nTimes) : 0;
+
+  estado.metaDia = metaDia;
+  estado.metaCiclo = metaCiclo;
+
+  document.getElementById('m-mins').textContent = mins;
+  document.getElementById('m-tempo').textContent = tp.toFixed(2);
+  document.getElementById('m-meta-dia').textContent = metaDia.toLocaleString();
+  document.getElementById('m-ciclos').textContent = numCiclos;
+  document.getElementById('m-meta-ciclo').textContent = metaCiclo;
+  document.getElementById('m-op-ciclo').textContent = opsPorTime;
+
+  renderTimes();
+}
+
+// ── GERAR TIMES ───────────────────────────────────
+function gerarTimes() {
+  const n = parseInt(document.getElementById('bal-times').value) || 10;
+  estado.times = Array.from({length: n}, (_, i) => ({num: i+1, operadoras: [], ops: []}));
+  renderTimes();
+  toast('Times gerados!');
+}
+
+// ── BALANCEAR AUTOMÁTICO ──────────────────────────
+function balancearAutomatico() {
+  if (!estado.operacoes.length) { toast('Selecione uma OP com sequência', 'error'); return; }
+  const n = parseInt(document.getElementById('bal-times').value) || 10;
+  const ciclo = estado.ciclo;
+
+  estado.times = Array.from({length: n}, (_, i) => ({num: i+1, operadoras: [], ops: []}));
+
+  let timeIdx = 0;
+  let cargaAtual = 0;
+
+  for (const op of estado.operacoes) {
+    const cargaOp = op.tempo_padrao * estado.metaCiclo;
+    if (cargaAtual + cargaOp > ciclo && cargaAtual > 0 && timeIdx < n-1) {
+      timeIdx++; cargaAtual = 0;
+    }
+    estado.times[timeIdx].ops.push({...op, qtd: estado.metaCiclo || 1, carga: cargaOp});
+    cargaAtual += cargaOp;
+  }
+
+  renderTimes();
+  toast('Balanceamento automático concluído!');
+}
+
+// ── RENDER TIMES ──────────────────────────────────
+function renderTimes() {
+  const grid = document.getElementById('times-grid');
+  if (!estado.times.length) {
+    grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px">Configure e clique em "Gerar Times" ou "Balancear Automático"</div>';
+    return;
+  }
+
+  grid.innerHTML = estado.times.map((time, ti) => {
+    const totalCarga = time.ops.reduce((s, o) => s + (o.carga || 0), 0);
+    const ciclo = estado.ciclo;
+    const pct = ciclo > 0 ? Math.min(100, (totalCarga / ciclo) * 100) : 0;
+    const cls = totalCarga > ciclo ? 'ciclo-over' : totalCarga > ciclo * 0.9 ? 'ciclo-warn' : 'ciclo-ok';
+    const cor = totalCarga > ciclo ? '#dc2626' : totalCarga > ciclo * 0.9 ? '#d97706' : '#15803d';
+
+    const opsHtml = time.ops.map((op, oi) => `
+      <div class="time-op-item" draggable="true"
+           ondragstart="dragOpDoTime(event, ${ti}, ${oi})"
+           ondblclick="abrirAjuste(${ti}, ${oi})">
+        <div class="op-num" style="width:16px;height:16px;font-size:8px">${op.idx+1}</div>
+        <span style="flex:1;font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${op.descricao}</span>
+        <span class="op-t">${(op.carga||0).toFixed(1)}</span>
+        <button onclick="removerOpDoTime(${ti},${oi})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:10px;padding:0 2px">✕</button>
+      </div>
+    `).join('');
+
+    const opersHtml = time.operadoras.map((op, oi) => `
+      <span class="op-tag" onclick="removerOperadoraDoTime(${ti}, ${oi})" title="Remover">
+        ${op.nome.split(' ')[0]} ✕
+      </span>
+    `).join('');
+
+    return `
+      <div class="time-card" id="time-${ti}"
+           ondragover="allowDrop(event)" ondrop="dropNoTime(event, ${ti})"
+           ondragenter="this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')">
+        <div class="time-header">
+          <span class="time-num">Time ${time.num}</span>
+          <span class="time-ciclo ${cls}">${totalCarga.toFixed(1)}/${ciclo}min</span>
+        </div>
+        <div class="time-operadoras">
+          <div style="font-size:9px;color:#9ca3af;margin-bottom:3px">OPERADORAS</div>
+          <div class="time-op-drop" ondragover="allowDrop(event)" ondrop="dropOperadoraNoTime(event, ${ti})"
+               ondragenter="this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')">
+            ${opersHtml || '<span style="font-size:10px;color:#d1d5db">Solte aqui</span>'}
+          </div>
+        </div>
+        <div class="time-ops">
+          <div style="font-size:9px;color:#9ca3af;margin-bottom:3px">OPERAÇÕES <span style="color:#6b7280">(2x clique p/ ajustar)</span></div>
+          <div class="time-ops-drop" ondragover="allowDrop(event)" ondrop="dropOpNoTime(event, ${ti})"
+               ondragenter="this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')">
+            ${opsHtml || '<span style="font-size:10px;color:#d1d5db">Solte operações aqui</span>'}
+          </div>
+        </div>
+        <div class="time-footer">
+          <div class="time-total">
+            <span style="font-size:10px;color:#6b7280">Carga total</span>
+            <span class="time-total-val" style="color:${cor}">${totalCarga.toFixed(2)} min</span>
+          </div>
+          <div class="time-progress">
+            <div class="time-progress-fill" style="width:${pct}%;background:${cor}"></div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── DRAG & DROP OPERADORA ─────────────────────────
+function dragOperadora(e, id, nome) {
+  dragType = 'operadora'; dragItem = {id, nome};
+  e.dataTransfer.effectAllowed = 'move';
+}
+function dropOperadoraNoTime(e, ti) {
+  e.preventDefault(); e.stopPropagation();
+  if (dragType !== 'operadora' || !dragItem) return;
+  if (estado.times[ti].operadoras.find(o => o.id === dragItem.id)) {
+    toast('Operadora já está neste time', 'error'); return;
+  }
+  estado.times[ti].operadoras.push({...dragItem});
+  dragItem = null; dragType = null; renderTimes();
+}
+function removerOperadoraDoTime(ti, oi) {
+  estado.times[ti].operadoras.splice(oi, 1); renderTimes();
+}
+
+// ── DRAG & DROP OPERAÇÃO ──────────────────────────
+function dragOperacao(e, idx) {
+  dragType = 'operacao-banco'; dragItem = {...estado.operacoes[idx]};
+  e.dataTransfer.effectAllowed = 'move';
+}
+function dragOpDoTime(e, ti, oi) {
+  dragType = 'operacao-time'; dragItem = {ti, oi, op: {...estado.times[ti].ops[oi]}};
+  e.dataTransfer.effectAllowed = 'move';
+}
+function dropOpNoTime(e, ti) {
+  e.preventDefault(); e.stopPropagation();
+  if (dragType === 'operacao-banco' && dragItem) {
+    const qtd = estado.metaCiclo || 1;
+    estado.times[ti].ops.push({...dragItem, qtd, carga: dragItem.tempo_padrao * qtd});
+    dragItem = null; dragType = null; renderTimes();
+  } else if (dragType === 'operacao-time' && dragItem) {
+    const {ti: tiOrig, oi, op} = dragItem;
+    if (tiOrig !== ti) { estado.times[tiOrig].ops.splice(oi, 1); estado.times[ti].ops.push(op); }
+    dragItem = null; dragType = null; renderTimes();
+  }
+}
+function dropNoTime(e, ti) {
+  e.preventDefault();
+  const card = document.getElementById('time-'+ti);
+  if (card) card.classList.remove('drag-over');
+  if (dragType === 'operadora') dropOperadoraNoTime(e, ti);
+  else if (dragType === 'operacao-banco' || dragType === 'operacao-time') dropOpNoTime(e, ti);
+}
+function allowDrop(e) { e.preventDefault(); }
+function removerOpDoTime(ti, oi) { estado.times[ti].ops.splice(oi, 1); renderTimes(); }
+
+// ── AJUSTE OPERAÇÃO ───────────────────────────────
+function abrirAjuste(ti, oi) {
+  const op = estado.times[ti].ops[oi];
+  document.getElementById('ajuste-time-idx').value = ti;
+  document.getElementById('ajuste-op-idx').value = oi;
+  document.getElementById('ajuste-op-nome').textContent = op.descricao;
+  document.getElementById('ajuste-op-info').textContent = `Tempo padrão: ${op.tempo_padrao} min`;
+  document.getElementById('ajuste-tempo').value = op.tempo_padrao;
+  document.getElementById('ajuste-qtd').value = op.qtd || 1;
+  calcularCargaAjuste();
+  abrirModal('modal-ajuste');
+}
+function calcularCargaAjuste() {
+  const tempo = parseFloat(document.getElementById('ajuste-tempo').value) || 0;
+  const qtd = parseInt(document.getElementById('ajuste-qtd').value) || 1;
+  document.getElementById('ajuste-carga').textContent = (tempo * qtd).toFixed(2) + ' min';
+}
+function confirmarAjuste() {
+  const ti = parseInt(document.getElementById('ajuste-time-idx').value);
+  const oi = parseInt(document.getElementById('ajuste-op-idx').value);
+  const tempo = parseFloat(document.getElementById('ajuste-tempo').value) || 0;
+  const qtd = parseInt(document.getElementById('ajuste-qtd').value) || 1;
+  estado.times[ti].ops[oi].tempo_padrao = tempo;
+  estado.times[ti].ops[oi].qtd = qtd;
+  estado.times[ti].ops[oi].carga = tempo * qtd;
+  fecharModal('modal-ajuste'); renderTimes(); toast('Operação ajustada!');
+}
+
+// ── IMPRIMIR ──────────────────────────────────────
+function imprimirBalanceamento() {
+  if (!estado.times.length) { toast('Nenhum balanceamento para imprimir', 'error'); return; }
+
+  const agora = new Date();
+  const dataStr = agora.toLocaleDateString('pt-BR');
+  const horaStr = agora.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  const ciclo = estado.ciclo;
+  const numCiclos = Math.floor(estado.minutos / ciclo);
+
+  const timesHtml = estado.times.map(time => {
+    const totalCarga = time.ops.reduce((s, o) => s + (o.carga || 0), 0);
+    const pct = ciclo > 0 ? Math.min(100, (totalCarga / ciclo) * 100) : 0;
+    const cls = totalCarga > ciclo ? 'over' : totalCarga > ciclo * 0.9 ? 'warn' : 'ok';
+    const cor = totalCarga > ciclo ? '#dc2626' : totalCarga > ciclo * 0.9 ? '#d97706' : '#15803d';
+
+    const opTagsHtml = time.operadoras.length
+      ? time.operadoras.map(o => `<span class="imp-op-tag">${o.nome.split(' ')[0]}</span>`).join('')
+      : '<span class="imp-vazio">Sem operadoras</span>';
+
+    const opsHtml = time.ops.length
+      ? time.ops.map((op, i) => `
+          <div class="imp-op-row">
+            <div class="imp-op-n">${op.idx+1}</div>
+            <span class="imp-op-desc" title="${op.descricao}">${op.descricao}</span>
+            <span class="imp-op-carga">${(op.carga||0).toFixed(1)}</span>
+          </div>
+        `).join('')
+      : '<div class="imp-vazio" style="padding:4px 0">Sem operações</div>';
+
+    return `
+      <div class="imp-time">
+        <div class="imp-time-header ${cls}">
+          <span class="imp-time-num">Time ${time.num}</span>
+          <span class="imp-time-ciclo">${totalCarga.toFixed(1)}/${ciclo}min</span>
+        </div>
+        <div class="imp-operadoras">
+          <div class="imp-operadoras-lbl">Operadoras</div>
+          <div class="imp-op-tags">${opTagsHtml}</div>
+        </div>
+        <div class="imp-ops">
+          <div class="imp-ops-lbl">Operações</div>
+          ${opsHtml}
+        </div>
+        <div class="imp-time-footer">
+          <span class="imp-total-lbl">Carga total</span>
+          <span class="imp-total-val" style="color:${cor}">${totalCarga.toFixed(2)} min</span>
+        </div>
+        <div class="imp-progress">
+          <div class="imp-progress-fill" style="width:${pct}%;background:${cor}"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Balanceamento — CHRONA</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',Arial,sans-serif;background:#fff;color:#1a1a2e;font-size:13px}
+.imp-page{padding:20px;max-width:1100px;margin:0 auto}
+.imp-header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:3px solid #1a1a2e;padding-bottom:14px;margin-bottom:16px}
+.imp-logo{display:flex;align-items:center;gap:10px}
+.imp-logo-icon{width:44px;height:44px;background:#1a1a2e;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.imp-logo h1{font-size:22px;font-weight:800;letter-spacing:1px;margin:0}
+.imp-logo small{font-size:10px;color:#6b7280;display:block}
+.imp-info{text-align:right;font-size:12px;color:#374151}
+.imp-info strong{display:block;font-size:14px;color:#1a1a2e;margin-bottom:2px}
+.imp-op-banner{background:#1a1a2e;color:#fff;border-radius:10px;padding:12px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.imp-op-banner h2{font-size:16px;font-weight:800;margin:0}
+.imp-op-banner span{font-size:12px;color:#9ca3af}
+.imp-metricas{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:16px}
+.imp-metrica{background:#f8f9fb;border:1px solid #e0e6f0;border-radius:8px;padding:10px;text-align:center}
+.imp-metrica.dest{background:#1a1a2e}
+.imp-metrica-val{font-size:18px;font-weight:800;color:#1a1a2e}
+.imp-metrica.dest .imp-metrica-val{color:#f5a623}
+.imp-metrica-lbl{font-size:9px;color:#9ca3af;text-transform:uppercase;margin-top:2px}
+.imp-times-title{font-size:13px;font-weight:700;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e0e6f0}
+.imp-times-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.imp-time{border:2px solid #e0e6f0;border-radius:10px;overflow:hidden;break-inside:avoid}
+.imp-time-header{padding:8px 10px;display:flex;align-items:center;justify-content:space-between}
+.imp-time-header.ok{background:#dcfce7;border-bottom:2px solid #15803d}
+.imp-time-header.warn{background:#fef9c3;border-bottom:2px solid #d97706}
+.imp-time-header.over{background:#fee2e2;border-bottom:2px solid #dc2626}
+.imp-time-num{font-size:13px;font-weight:800}
+.imp-time-ciclo{font-size:10px;font-weight:700}
+.imp-time-header.ok .imp-time-num,.imp-time-header.ok .imp-time-ciclo{color:#15803d}
+.imp-time-header.warn .imp-time-num,.imp-time-header.warn .imp-time-ciclo{color:#854d0e}
+.imp-time-header.over .imp-time-num,.imp-time-header.over .imp-time-ciclo{color:#dc2626}
+.imp-operadoras{padding:6px 8px;background:#f8f9fb;border-bottom:1px solid #e0e6f0;min-height:28px}
+.imp-operadoras-lbl{font-size:8px;color:#9ca3af;font-weight:700;text-transform:uppercase;margin-bottom:3px}
+.imp-op-tags{display:flex;flex-wrap:wrap;gap:3px}
+.imp-op-tag{background:#1a1a2e;color:#fff;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700}
+.imp-ops{padding:6px 8px}
+.imp-ops-lbl{font-size:8px;color:#9ca3af;font-weight:700;text-transform:uppercase;margin-bottom:4px}
+.imp-op-row{display:flex;align-items:center;gap:4px;padding:3px 0;border-bottom:1px solid #f0f2f5;font-size:10px}
+.imp-op-row:last-child{border-bottom:none}
+.imp-op-n{width:16px;height:16px;background:#e0e6f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0}
+.imp-op-desc{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.imp-op-carga{font-weight:700;color:#1a1a2e;font-size:10px;white-space:nowrap}
+.imp-time-footer{padding:6px 8px;background:#f8f9fb;border-top:1px solid #e0e6f0;display:flex;justify-content:space-between;align-items:center}
+.imp-total-lbl{font-size:9px;color:#6b7280}
+.imp-total-val{font-size:12px;font-weight:800}
+.imp-progress{height:4px;background:#e0e6f0}
+.imp-progress-fill{height:100%}
+.imp-footer{margin-top:20px;padding-top:10px;border-top:1px solid #e0e6f0;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af}
+.imp-vazio{color:#9ca3af;font-size:10px;font-style:italic}
+.no-print{display:flex;justify-content:center;gap:12px;margin-bottom:20px}
+.no-print button{padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}
+.btn-imp{background:#1a1a2e;color:#fff}
+.btn-fec{background:#f0f2f5;color:#374151}
+@media print{.no-print{display:none!important}body{padding:0}@page{margin:10mm}}
+</style>
+</head>
+<body>
+<div class="imp-page">
+  <div class="no-print">
+    <button class="btn-imp" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+    <button class="btn-fec" onclick="window.close()">✕ Fechar</button>
+  </div>
+
+  <div class="imp-header">
+    <div class="imp-logo">
+      <div class="imp-logo-icon">⏱</div>
+      <div>
+        <h1>CHRONA</h1>
+        <small>Sistema de Produção</small>
+      </div>
+    </div>
+    <div class="imp-info">
+      <strong>Balanceamento de Produção</strong>
+      ${dataStr} às ${horaStr}<br>
+      Turno: ${estado.turnoNome || '—'}
+    </div>
+  </div>
+
+  <div class="imp-op-banner">
+    <div>
+      <h2>OP ${estado.opNumero} — ${estado.opRef}</h2>
+      <span>${estado.opDesc || ''}</span>
+    </div>
+    <div style="text-align:right">
+      <span>Ciclo: <strong style="color:#f5a623">${ciclo} min</strong></span><br>
+      <span>${estado.nTimes} times • ${estado.nOperadoras} operadoras</span>
+    </div>
+  </div>
+
+  <div class="imp-metricas">
+    <div class="imp-metrica"><div class="imp-metrica-val">${estado.minutos}</div><div class="imp-metrica-lbl">Min. Disponíveis</div></div>
+    <div class="imp-metrica"><div class="imp-metrica-val">${estado.tempoPeca.toFixed(2)}</div><div class="imp-metrica-lbl">Tempo Peça (min)</div></div>
+    <div class="imp-metrica dest"><div class="imp-metrica-val">${estado.metaDia.toLocaleString()}</div><div class="imp-metrica-lbl">Meta Dia (pcs)</div></div>
+    <div class="imp-metrica dest"><div class="imp-metrica-val">${numCiclos}</div><div class="imp-metrica-lbl">Ciclos/Dia</div></div>
+    <div class="imp-metrica dest"><div class="imp-metrica-val">${estado.metaCiclo}</div><div class="imp-metrica-lbl">Meta/Ciclo (pcs)</div></div>
+    <div class="imp-metrica"><div class="imp-metrica-val">${estado.nTimes}</div><div class="imp-metrica-lbl">Nº de Times</div></div>
+  </div>
+
+  <div class="imp-times-title">📋 Times de Produção</div>
+  <div class="imp-times-grid">${timesHtml}</div>
+
+  <div class="imp-footer">
+    <span>CHRONA — Sistema de Produção</span>
+    <span>Gerado em ${dataStr} às ${horaStr}</span>
+  </div>
+</div>
+</body>
+</html>`;
+
+  const janela = window.open('', '_blank', 'width=1100,height=800');
+  janela.document.write(html);
+  janela.document.close();
+}
+
+// ── SALVAR ────────────────────────────────────────
+async function salvarBalanceamento() {
+  const opId = document.getElementById('bal-op').value;
+  if (!opId) { toast('Selecione uma OP', 'error'); return; }
+  const d = {
+    op_id: opId,
+    turno_id: document.getElementById('bal-turno').value,
+    ciclo_minutos: estado.ciclo,
+    total_operadores: estado.nOperadoras,
+    minutos_disponiveis: estado.minutos,
+    meta_dia: estado.metaDia,
+    meta_ciclo: estado.metaCiclo,
+    total_times: estado.nTimes,
+    times: estado.times,
+  };
+  const r = await fetch('/api/balanceamento/salvar', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d)
+  }).then(r => r.json());
+  if (r.ok) toast('Balanceamento salvo!');
+  else toast(r.erro || 'Erro ao salvar', 'error');
+}
+
+// ── LIMPAR ────────────────────────────────────────
+function limparBalanceamento() {
+  if (!confirm('Limpar todo o balanceamento?')) return;
+  estado.times = []; renderTimes();
+  toast('Balanceamento limpo');
+}
+
+calcularMetas();
+</script>
+{% endblock %}

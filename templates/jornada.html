@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+{% block title %}Jornada{% endblock %}
+{% block page_title %}📅 Jornada de Trabalho{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Jornada de Trabalho</h1>
+    <p>Calendário de dias trabalhados por turno</p>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-primary" onclick="abrirModal('modal-gerar')">⚡ Gerar Mês</button>
+    <button class="btn btn-secondary" onclick="abrirModal('modal-dia')">＋ Adicionar Dia</button>
+  </div>
+</div>
+
+<!-- FILTROS -->
+<div class="card" style="margin-bottom:16px;padding:14px 20px">
+  <div class="search-bar">
+    <div>
+      <label style="font-size:11px;color:var(--cinza);font-weight:600;display:block;margin-bottom:4px">MÊS</label>
+      <input type="month" class="form-control" id="filt-mes" style="width:160px"
+             onchange="carregarDias()">
+    </div>
+    <div>
+      <label style="font-size:11px;color:var(--cinza);font-weight:600;display:block;margin-bottom:4px">TURNO</label>
+      <select class="form-control" id="filt-turno" style="width:180px" onchange="carregarDias()">
+        <option value="">Todos os turnos</option>
+        {% for t in turnos %}
+        <option value="{{ t.id }}">{{ t.numero }}º — {{ t.nome }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div id="resumo-mes" style="margin-left:auto;text-align:right;font-size:13px;color:var(--cinza)"></div>
+  </div>
+</div>
+
+<!-- TABELA DE DIAS -->
+<div class="card" style="padding:0">
+  <div class="table-wrap" style="border:none">
+    <table>
+      <thead><tr>
+        <th>Data</th><th>Dia</th><th>Turno</th><th>Tipo</th>
+        <th>Entrada</th><th>S.Almoço</th><th>E.Almoço</th><th>Saída</th>
+        <th>Minutos</th><th>H.Extra</th><th>Obs</th><th>Ações</th>
+      </tr></thead>
+      <tbody id="tbody-jornada">
+        <tr><td colspan="12" class="empty">
+          <span class="empty-icon">📅</span>
+          Selecione um mês para visualizar
+        </td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL GERAR MES -->
+<div class="modal-bg" id="modal-gerar">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div class="modal-title">⚡ Gerar Calendário do Mês</div>
+      <button class="modal-close" onclick="fecharModal('modal-gerar')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:#E8F0FE;border-radius:8px;padding:14px;margin-bottom:16px;font-size:13px;color:var(--azul)">
+        ℹ️ O sistema vai gerar automaticamente todos os dias do mês para o turno selecionado,
+        aplicando os horários corretos (inclusive sexta-feira com saída antecipada).
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Mês *</label>
+          <input type="month" class="form-control" id="g-mes">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fábrica</label>
+          <select class="form-control" id="g-fab">
+            {% for f in fabricas %}
+            <option value="{{ f.id }}">{{ f.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Turno *</label>
+        <select class="form-control" id="g-turno">
+          <option value="">Selecione o turno...</option>
+          {% for t in turnos %}
+          <option value="{{ t.id }}">{{ t.numero }}º Turno — {{ t.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;gap:20px;margin-top:8px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+          <input type="checkbox" id="g-sab" style="width:16px;height:16px"> Incluir Sábados
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+          <input type="checkbox" id="g-dom" style="width:16px;height:16px"> Incluir Domingos
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-gerar')">Cancelar</button>
+      <button class="btn btn-success" onclick="gerarMes()">⚡ Gerar Calendário</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ADICIONAR DIA -->
+<div class="modal-bg" id="modal-dia">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-dia-title">Adicionar / Editar Dia</div>
+      <button class="modal-close" onclick="fecharModal('modal-dia')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="d-id">
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">Data *</label>
+          <input type="date" class="form-control" id="d-data">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Turno *</label>
+          <select class="form-control" id="d-turno" onchange="preencherHorarioTurno()">
+            <option value="">Selecione...</option>
+            {% for t in turnos %}
+            <option value="{{ t.id }}"
+                    data-he="{{ t.hora_entrada }}"
+                    data-hsa="{{ t.hora_saida_almoco or '' }}"
+                    data-hea="{{ t.hora_entrada_almoco or '' }}"
+                    data-hs="{{ t.hora_saida }}"
+                    data-mins="{{ t.minutos_normal }}">
+              {{ t.numero }}º — {{ t.nome }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select class="form-control" id="d-tipo">
+            <option value="NORMAL">Normal</option>
+            <option value="SABADO">Sábado</option>
+            <option value="DOMINGO">Domingo</option>
+            <option value="FERIADO">Feriado</option>
+            <option value="HORA EXTRA">Hora Extra</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row form-row-4">
+        <div class="form-group">
+          <label class="form-label">Entrada</label>
+          <input type="time" class="form-control" id="d-he" onchange="calcDia()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">S.Almoço</label>
+          <input type="time" class="form-control" id="d-hsa" onchange="calcDia()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">E.Almoço</label>
+          <input type="time" class="form-control" id="d-hea" onchange="calcDia()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Saída</label>
+          <input type="time" class="form-control" id="d-hs" onchange="calcDia()">
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Minutos Disponíveis</label>
+          <input type="number" class="form-control" id="d-mins" readonly
+                 style="background:#E8F0FE;font-weight:700;color:var(--azul)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hora Extra? (1=sim, 0=não)</label>
+          <select class="form-control" id="d-hex">
+            <option value="0">Não</option>
+            <option value="1">Sim — Hora Extra</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observação</label>
+        <input type="text" class="form-control" id="d-obs">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-dia')">Cancelar</button>
+      <button class="btn btn-success" onclick="salvarDia()">✓ Salvar</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+// Init mes atual
+document.getElementById('filt-mes').value = new Date().toISOString().slice(0,7);
+document.getElementById('g-mes').value = new Date().toISOString().slice(0,7);
+carregarDias();
+
+function hm(s){ if(!s)return 0; const[h,m]=s.split(':'); return parseInt(h)*60+parseInt(m); }
+
+function calcDia(){
+  const he=document.getElementById('d-he').value;
+  const hsa=document.getElementById('d-hsa').value;
+  const hea=document.getElementById('d-hea').value;
+  const hs=document.getElementById('d-hs').value;
+  let mins=0;
+  if(hsa&&hea) mins=(hm(hsa)-hm(he))+(hm(hs)-hm(hea));
+  else mins=hm(hs)-hm(he);
+  document.getElementById('d-mins').value=Math.max(0,mins);
+}
+
+function preencherHorarioTurno(){
+  const sel=document.getElementById('d-turno');
+  const opt=sel.options[sel.selectedIndex];
+  if(!opt.value) return;
+  document.getElementById('d-he').value=opt.dataset.he||'';
+  document.getElementById('d-hsa').value=opt.dataset.hsa||'';
+  document.getElementById('d-hea').value=opt.dataset.hea||'';
+  document.getElementById('d-hs').value=opt.dataset.hs||'';
+  document.getElementById('d-mins').value=opt.dataset.mins||0;
+}
+
+async function gerarMes(){
+  const mes=document.getElementById('g-mes').value;
+  const turno=document.getElementById('g-turno').value;
+  const fab=document.getElementById('g-fab').value;
+  if(!mes||!turno){toast('Selecione mês e turno!','err');return}
+  const r=await api('/api/jornada/gerar','POST',{
+    mes,turno_id:turno,fabrica_id:fab,
+    include_sabado:document.getElementById('g-sab').checked,
+    include_domingo:document.getElementById('g-dom').checked
+  });
+  if(r.ok){
+    toast(`✅ ${r.inseridos} dias gerados!`);
+    fecharModal('modal-gerar');
+    document.getElementById('filt-mes').value=mes;
+    carregarDias();
+  } else toast('Erro: '+r.erro,'err');
+}
+
+async function salvarDia(){
+  const data=document.getElementById('d-data').value;
+  const turno=document.getElementById('d-turno').value;
+  if(!data||!turno){toast('Data e turno obrigatórios!','err');return}
+  const r=await api('/api/jornada/salvar','POST',{
+    id:document.getElementById('d-id').value||null,
+    data,turno_id:turno,
+    tipo:document.getElementById('d-tipo').value,
+    hora_entrada:document.getElementById('d-he').value,
+    hora_saida_almoco:document.getElementById('d-hsa').value||null,
+    hora_entrada_almoco:document.getElementById('d-hea').value||null,
+    hora_saida:document.getElementById('d-hs').value,
+    minutos_disponiveis:document.getElementById('d-mins').value,
+    hora_extra:document.getElementById('d-hex').value,
+    obs:document.getElementById('d-obs').value
+  });
+  if(r.ok){toast('Dia salvo!');fecharModal('modal-dia');carregarDias()}
+  else toast('Erro: '+r.erro,'err');
+}
+
+function editarDia(d){
+  document.getElementById('modal-dia-title').textContent='Editar Dia';
+  document.getElementById('d-id').value=d.id;
+  document.getElementById('d-data').value=d.data;
+  document.getElementById('d-turno').value=d.turno_id;
+  document.getElementById('d-tipo').value=d.tipo;
+  document.getElementById('d-he').value=d.hora_entrada||'';
+  document.getElementById('d-hsa').value=d.hora_saida_almoco||'';
+  document.getElementById('d-hea').value=d.hora_entrada_almoco||'';
+  document.getElementById('d-hs').value=d.hora_saida||'';
+  document.getElementById('d-mins').value=d.minutos_disponiveis||0;
+  document.getElementById('d-hex').value=d.hora_extra||0;
+  document.getElementById('d-obs').value=d.obs||'';
+  abrirModal('modal-dia');
+}
+
+async function excluirDia(id){
+  if(!confirm('Remover este dia?'))return;
+  await api('/api/jornada/excluir/'+id,'DELETE');
+  toast('Removido','warn');carregarDias();
+}
+
+const TIPO_CORES = {
+  'NORMAL':'#E8F0FE','SABADO':'#FEF9E7','DOMINGO':'#FDEDEC',
+  'FERIADO':'#FDEDEC','HORA EXTRA':'#EAFAF1'
+};
+const TIPO_TEXT = {
+  'NORMAL':'var(--azul3)','SABADO':'var(--amar)','DOMINGO':'var(--verm)',
+  'FERIADO':'var(--verm)','HORA EXTRA':'var(--verde)'
+};
+
+async function carregarDias(){
+  const mes=document.getElementById('filt-mes').value;
+  const turno=document.getElementById('filt-turno').value;
+  let url='/api/jornada/lista?';
+  if(mes) url+=`mes=${mes}&`;
+  if(turno) url+=`turno_id=${turno}`;
+  const rows=await api(url);
+  const tb=document.getElementById('tbody-jornada');
+  if(!rows.length){
+    tb.innerHTML='<tr><td colspan="12" class="empty"><span class="empty-icon">📅</span>Nenhum dia cadastrado para este período</td></tr>';
+    document.getElementById('resumo-mes').innerHTML='';
+    return;
+  }
+  let totMins=0, totDias=0, totHE=0;
+  tb.innerHTML=rows.map(r=>{
+    totMins+=parseInt(r.minutos_disponiveis||0);
+    totDias++;
+    if(r.hora_extra) totHE++;
+    const bg=TIPO_CORES[r.tipo]||'#F8F9FA';
+    const fg=TIPO_TEXT[r.tipo]||'var(--cinza)';
+    const mins=parseInt(r.minutos_disponiveis||0);
+    return `<tr>
+      <td><strong>${r.data}</strong></td>
+      <td style="color:var(--cinza)">${r.dia_semana||''}</td>
+      <td><span style="font-size:11px;font-weight:600;color:var(--azul3)">${r.turno_nome}</span></td>
+      <td><span class="tag" style="background:${bg};color:${fg}">${r.tipo}</span></td>
+      <td>${r.hora_entrada||'—'}</td>
+      <td>${r.hora_saida_almoco||'—'}</td>
+      <td>${r.hora_entrada_almoco||'—'}</td>
+      <td>${r.hora_saida||'—'}</td>
+      <td><strong style="color:var(--azul)">${mins}min</strong>
+          <span style="font-size:11px;color:var(--cinza)">(${Math.floor(mins/60)}h${mins%60}min)</span></td>
+      <td>${r.hora_extra?'<span class="tag tag-ativo">SIM</span>':'<span style="color:var(--cinza)">—</span>'}</td>
+      <td style="color:var(--cinza);font-size:12px">${r.obs||''}</td>
+      <td>
+        <div class="btn-group">
+          <button class="btn btn-sm btn-primary" onclick='editarDia(${JSON.stringify(r)})'>✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="excluirDia(${r.id})">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const horas = Math.floor(totMins/60);
+  const minRest = totMins%60;
+  document.getElementById('resumo-mes').innerHTML=
+    `<strong>${totDias}</strong> dias | <strong>${totMins}</strong> min total
+     (<strong>${horas}h${minRest}min</strong>) | <strong>${totHE}</strong> dias hora extra`;
+}
+</script>
+{% endblock %}
