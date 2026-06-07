@@ -624,18 +624,32 @@ def _ins(sql, conflict=''):
 def seed():
     c = conn()
     if c.execute("SELECT COUNT(*) FROM fabricas").fetchone()[0] == 0:
-        fabricas = [
+        fabricas_nomes = [
             ('Giassi Confeccoes', 'Icara'),
             ('Icara Confeccoes',  'Icara'),
             ('Luiza Confeccoes',  'Icara'),
             ('DP Confeccoes',     'Icara'),
         ]
-        for nome, cidade in fabricas:
+        for nome, cidade in fabricas_nomes:
             c.execute("INSERT INTO fabricas (nome,cidade) VALUES (?,?)", (nome, cidade))
+        c.commit()
+
+        # Busca os IDs reais das fábricas após commit
+        fab_rows = c.execute("SELECT id, nome FROM fabricas ORDER BY id").fetchall()
+        prefixos_map = {
+            'Giassi Confeccoes': 'giassi',
+            'Icara Confeccoes':  'icara',
+            'Luiza Confeccoes':  'luiza',
+            'DP Confeccoes':     'dp',
+        }
+
         c.execute(_ins("INSERT INTO usuarios (nome,login,senha_hash,perfil) VALUES (?,?,?,?)", True),
                   ('Administrador', 'admin', hash_senha('admin123'), 'admin'))
-        prefixos = [('giassi', 1), ('icara', 2), ('luiza', 3), ('dp', 4)]
-        for prefixo, fab_id in prefixos:
+
+        for row in fab_rows:
+            fab_id = row[0]
+            fab_nome = row[1]
+            prefixo = prefixos_map.get(fab_nome, fab_nome.lower().split()[0])
             usuarios_fab = [
                 (f'Gestor {prefixo.capitalize()}',     f'{prefixo}.gestor', 'gestor'),
                 (f'Operador {prefixo.capitalize()} 1', f'{prefixo}.op1',    'operador'),
