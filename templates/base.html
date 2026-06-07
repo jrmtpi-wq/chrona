@@ -285,7 +285,13 @@ tbody td{padding:10px 14px;font-size:13px;vertical-align:middle}
       <a href="/turnos" class="nav-item {% if 'turnos' in request.path %}active{% endif %}"><span class="nav-icon">🕐</span><span class="nav-label">Turnos</span></a>
       <a href="/jornada" class="nav-item {% if 'jornada' in request.path %}active{% endif %}"><span class="nav-icon">📅</span><span class="nav-label">Jornada</span></a>
       <a href="#" class="nav-item"><span class="nav-icon">⏰</span><span class="nav-label">Ponto</span></a>
-      <a href="/ocorrencias" class="nav-item"><span class="nav-icon">🚫</span><span class="nav-label">Faltas</span></a>    
+      <a href="/ocorrencias" class="nav-item"><span class="nav-icon">🚫</span><span class="nav-label">Faltas</span></a>
+
+      {% if session.perfil == 'admin' %}
+      <span class="nav-section">Administração</span>
+      <a href="/usuarios" class="nav-item {% if 'usuarios' in request.path %}active{% endif %}">
+        <span class="nav-icon">👤</span><span class="nav-label">Usuários</span></a>
+      {% endif %}
     </div>
     <div class="sid-bottom">
       <a href="/logout">

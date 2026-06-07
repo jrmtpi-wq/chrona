@@ -1,0 +1,331 @@
+{% extends 'base.html' %}
+{% block title %}Usuários{% endblock %}
+{% block page_title %}Gerenciamento de Usuários{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Usuários e Permissões</h1>
+    <p>Gerencie os usuários e seus níveis de acesso ao sistema</p>
+  </div>
+  <button class="btn btn-primary" onclick="abrirModal('modal-usuario'); resetForm()">
+    + Novo Usuário
+  </button>
+</div>
+
+<!-- Cards de resumo -->
+<div class="grid grid-3" style="margin-bottom:20px">
+  {% set total = users|length %}
+  {% set ativos = users|selectattr('ativo','equalto',1)|list|length %}
+  {% set admins = users|selectattr('perfil','equalto','admin')|list|length %}
+  <div class="stat-card azul">
+    <div class="stat-icon azul">👥</div>
+    <div class="stat-val">{{ total }}</div>
+    <div class="stat-label">Total de Usuários</div>
+  </div>
+  <div class="stat-card verde">
+    <div class="stat-icon verde">✅</div>
+    <div class="stat-val">{{ ativos }}</div>
+    <div class="stat-label">Usuários Ativos</div>
+  </div>
+  <div class="stat-card amar">
+    <div class="stat-icon amar">🔑</div>
+    <div class="stat-val">{{ admins }}</div>
+    <div class="stat-label">Administradores</div>
+  </div>
+</div>
+
+<!-- Tabela de usuários -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">👤 Lista de Usuários</div>
+    <input class="search-input" type="text" id="busca" placeholder="Buscar usuário..." oninput="filtrar()">
+  </div>
+  <div class="table-wrap">
+    <table id="tabela-usuarios">
+      <thead>
+        <tr>
+          <th>Usuário</th>
+          <th>Login</th>
+          <th>Perfil</th>
+          <th>Fábrica</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr data-nome="{{ u.nome|lower }}" data-login="{{ u.login|lower }}">
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="avatar">{{ u.nome[0]|upper }}</div>
+              <div>
+                <div style="font-weight:600">{{ u.nome }}</div>
+              </div>
+            </div>
+          </td>
+          <td><code style="background:#F0F2F5;padding:2px 8px;border-radius:4px;font-size:12px">{{ u.login }}</code></td>
+          <td>
+            {% if u.perfil == 'admin' %}
+              <span class="sem sem-azul">Admin</span>
+            {% elif u.perfil == 'gestor' %}
+              <span class="sem sem-amar">Gestor</span>
+            {% else %}
+              <span class="sem sem-neutro">Operador</span>
+            {% endif %}
+          </td>
+          <td>{{ u.fab_nome or '<span style="color:#aaa">— Todas —</span>'|safe }}</td>
+          <td>
+            <span class="tag {% if u.ativo %}tag-ativo{% else %}tag-inativo{% endif %}" id="status-{{ u.id }}">
+              {{ 'Ativo' if u.ativo else 'Inativo' }}
+            </span>
+          </td>
+          <td>
+            <div class="btn-group">
+              <button class="btn btn-secondary btn-sm" onclick="editarUsuario({{ u|tojson }})">✏️ Editar</button>
+              <button class="btn btn-warning btn-sm" onclick="resetSenha({{ u.id }}, '{{ u.nome }}')">🔑 Senha</button>
+              {% if u.id != session.uid %}
+              <button class="btn btn-sm {% if u.ativo %}btn-danger{% else %}btn-success{% endif %}" id="btn-toggle-{{ u.id }}"
+                onclick="toggleAtivo({{ u.id }})">
+                {{ '🚫 Desativar' if u.ativo else '✅ Ativar' }}
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Legenda de perfis -->
+<div class="card" style="margin-top:16px">
+  <div class="card-header">
+    <div class="card-title">🔐 Níveis de Acesso</div>
+  </div>
+  <div class="grid grid-3" style="gap:12px">
+    <div style="padding:16px;border-radius:8px;background:#E8F0FE;border-left:4px solid #1A73E8">
+      <div style="font-weight:700;color:#1A73E8;margin-bottom:6px">🔑 Administrador</div>
+      <ul style="font-size:12px;color:#5F6368;padding-left:16px;line-height:1.8">
+        <li>Acesso a todas as fábricas</li>
+        <li>Gerencia usuários e permissões</li>
+        <li>Visualiza todos os relatórios</li>
+        <li>Configurações do sistema</li>
+      </ul>
+    </div>
+    <div style="padding:16px;border-radius:8px;background:#FEF9E7;border-left:4px solid #F39C12">
+      <div style="font-weight:700;color:#E8950F;margin-bottom:6px">📋 Gestor</div>
+      <ul style="font-size:12px;color:#5F6368;padding-left:16px;line-height:1.8">
+        <li>Acesso à sua fábrica</li>
+        <li>Cadastros e lançamentos</li>
+        <li>Relatórios financeiros</li>
+        <li>Gestão de funcionários</li>
+      </ul>
+    </div>
+    <div style="padding:16px;border-radius:8px;background:#F1F3F4;border-left:4px solid #5F6368">
+      <div style="font-weight:700;color:#5F6368;margin-bottom:6px">⚙️ Operador</div>
+      <ul style="font-size:12px;color:#5F6368;padding-left:16px;line-height:1.8">
+        <li>Acesso à sua fábrica</li>
+        <li>Lançamentos de produção</li>
+        <li>Consulta de dados</li>
+        <li>Sem acesso financeiro</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Usuário -->
+<div id="modal-usuario" class="modal-bg">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-titulo">Novo Usuário</div>
+      <button class="modal-close" onclick="fecharModal('modal-usuario')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="u-id">
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Nome Completo *</label>
+          <input type="text" id="u-nome" class="form-control" placeholder="Nome do usuário">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Login *</label>
+          <input type="text" id="u-login" class="form-control" placeholder="usuario123">
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Perfil *</label>
+          <select id="u-perfil" class="form-control" onchange="toggleFabrica()">
+            <option value="operador">Operador</option>
+            <option value="gestor">Gestor</option>
+            <option value="admin">Administrador</option>
+          </select>
+        </div>
+        <div class="form-group" id="grupo-fabrica">
+          <label class="form-label">Fábrica *</label>
+          <select id="u-fabrica" class="form-control">
+            <option value="">— Selecione —</option>
+            {% for f in fabricas %}
+            <option value="{{ f.id }}">{{ f.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="label-senha">Senha *</label>
+        <input type="password" id="u-senha" class="form-control" placeholder="Mínimo 6 caracteres">
+        <div style="font-size:11px;color:#5F6368;margin-top:4px" id="hint-senha">
+          Deixe em branco para manter a senha atual ao editar.
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-usuario')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarUsuario()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Reset Senha -->
+<div id="modal-senha" class="modal-bg">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">🔑 Redefinir Senha</div>
+      <button class="modal-close" onclick="fecharModal('modal-senha')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:#5F6368;margin-bottom:16px">
+        Definir nova senha para: <strong id="reset-nome"></strong>
+      </p>
+      <input type="hidden" id="reset-uid">
+      <div class="form-group">
+        <label class="form-label">Nova Senha *</label>
+        <input type="password" id="reset-senha" class="form-control" placeholder="Mínimo 6 caracteres">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirmar Senha *</label>
+        <input type="password" id="reset-confirma" class="form-control" placeholder="Repita a senha">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-senha')">Cancelar</button>
+      <button class="btn btn-warning" onclick="confirmarResetSenha()">🔑 Redefinir</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filtrar(){
+  const q = document.getElementById('busca').value.toLowerCase();
+  document.querySelectorAll('#tabela-usuarios tbody tr').forEach(tr=>{
+    const nome = tr.dataset.nome||'';
+    const login = tr.dataset.login||'';
+    tr.style.display = (nome.includes(q)||login.includes(q)) ? '' : 'none';
+  });
+}
+
+function toggleFabrica(){
+  const perfil = document.getElementById('u-perfil').value;
+  const grupo = document.getElementById('grupo-fabrica');
+  grupo.style.display = perfil === 'admin' ? 'none' : '';
+}
+
+function resetForm(){
+  document.getElementById('u-id').value = '';
+  document.getElementById('u-nome').value = '';
+  document.getElementById('u-login').value = '';
+  document.getElementById('u-perfil').value = 'operador';
+  document.getElementById('u-fabrica').value = '';
+  document.getElementById('u-senha').value = '';
+  document.getElementById('modal-titulo').textContent = 'Novo Usuário';
+  document.getElementById('label-senha').textContent = 'Senha *';
+  document.getElementById('hint-senha').style.display = 'none';
+  toggleFabrica();
+}
+
+function editarUsuario(u){
+  document.getElementById('u-id').value = u.id;
+  document.getElementById('u-nome').value = u.nome;
+  document.getElementById('u-login').value = u.login;
+  document.getElementById('u-perfil').value = u.perfil;
+  document.getElementById('u-fabrica').value = u.fabrica_id || '';
+  document.getElementById('u-senha').value = '';
+  document.getElementById('modal-titulo').textContent = 'Editar Usuário';
+  document.getElementById('label-senha').textContent = 'Nova Senha';
+  document.getElementById('hint-senha').style.display = '';
+  toggleFabrica();
+  abrirModal('modal-usuario');
+}
+
+async function salvarUsuario(){
+  const id = document.getElementById('u-id').value;
+  const nome = document.getElementById('u-nome').value.trim();
+  const login = document.getElementById('u-login').value.trim();
+  const perfil = document.getElementById('u-perfil').value;
+  const fabrica_id = document.getElementById('u-fabrica').value;
+  const senha = document.getElementById('u-senha').value;
+
+  if(!nome || !login){ toast('Preencha nome e login', 'err'); return; }
+  if(!id && !senha){ toast('Senha obrigatória para novo usuário', 'err'); return; }
+  if(senha && senha.length < 6){ toast('Senha deve ter no mínimo 6 caracteres', 'err'); return; }
+  if(perfil !== 'admin' && !fabrica_id){ toast('Selecione uma fábrica', 'err'); return; }
+
+  const body = {nome, login, perfil, fabrica_id: fabrica_id || null, senha};
+  if(id) body.id = id;
+
+  const r = await api('/api/usuarios/salvar', 'POST', body);
+  if(r.ok){
+    toast(id ? 'Usuário atualizado!' : 'Usuário criado!');
+    fecharModal('modal-usuario');
+    setTimeout(()=>location.reload(), 800);
+  } else {
+    toast(r.erro || 'Erro ao salvar', 'err');
+  }
+}
+
+async function toggleAtivo(uid){
+  const r = await api(`/api/usuarios/toggle/${uid}`, 'POST');
+  if(r.ok){
+    const tag = document.getElementById(`status-${uid}`);
+    const btn = document.getElementById(`btn-toggle-${uid}`);
+    if(r.ativo){
+      tag.className = 'tag tag-ativo'; tag.textContent = 'Ativo';
+      btn.className = 'btn btn-danger btn-sm'; btn.textContent = '🚫 Desativar';
+    } else {
+      tag.className = 'tag tag-inativo'; tag.textContent = 'Inativo';
+      btn.className = 'btn btn-success btn-sm'; btn.textContent = '✅ Ativar';
+    }
+    toast(r.ativo ? 'Usuário ativado' : 'Usuário desativado', r.ativo ? 'ok' : 'warn');
+  } else {
+    toast(r.erro || 'Erro', 'err');
+  }
+}
+
+function resetSenha(uid, nome){
+  document.getElementById('reset-uid').value = uid;
+  document.getElementById('reset-nome').textContent = nome;
+  document.getElementById('reset-senha').value = '';
+  document.getElementById('reset-confirma').value = '';
+  abrirModal('modal-senha');
+}
+
+async function confirmarResetSenha(){
+  const senha = document.getElementById('reset-senha').value;
+  const confirma = document.getElementById('reset-confirma').value;
+  const uid = document.getElementById('reset-uid').value;
+  if(!senha || senha.length < 6){ toast('Senha deve ter no mínimo 6 caracteres', 'err'); return; }
+  if(senha !== confirma){ toast('Senhas não conferem', 'err'); return; }
+  const r = await api('/api/usuarios/reset-senha', 'POST', {uid, senha});
+  if(r.ok){
+    toast('Senha redefinida com sucesso!');
+    fecharModal('modal-senha');
+  } else {
+    toast(r.erro || 'Erro', 'err');
+  }
+}
+</script>
+{% endblock %}

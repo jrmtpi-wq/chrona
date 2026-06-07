@@ -788,12 +788,11 @@ def api_balanceamento_salvar():
                        d['meta_dia'], d['meta_ciclo'], d['total_times'], d['op_id']))
             bal_id = bal['id']
         else:
-            c.execute("""INSERT INTO balanceamento (op_id,fabrica_id,ciclo_minutos,total_operadores,
+            bal_id = c.insert_id("""INSERT INTO balanceamento (op_id,fabrica_id,ciclo_minutos,total_operadores,
                          minutos_disponiveis,meta_dia,meta_ciclo,total_times)
                          VALUES (?,?,?,?,?,?,?,?)""",
                       (d['op_id'], fab_id, d['ciclo_minutos'], d['total_operadores'],
                        d['minutos_disponiveis'], d['meta_dia'], d['meta_ciclo'], d['total_times']))
-            bal_id = c.lastrowid
  
         # Atualiza time_numero na sequencia_op
         for time in d.get('times', []):
@@ -1643,5 +1642,86 @@ def api_ocorrencia_excluir(oid):
     c = m.conn()
     c.execute("DELETE FROM ocorrencias WHERE id=?", (oid,))
     c.commit(); c.close(); return jsonify({'ok': True})
+# ── USUÁRIOS ───────────────────────────────────────────────────
+def admin_required(f):
+    from functools import wraps
+    @wraps(f)
+    def dec(*a, **kw):
+        if session.get('perfil') != 'admin':
+            flash('Acesso restrito ao administrador.', 'error')
+            return redirect(url_for('dashboard'))
+        return f(*a, **kw)
+    return dec
+
+@app.route('/usuarios')
+@login_required
+@admin_required
+def usuarios():
+    c = m.conn()
+    users = c.execute("""
+        SELECT u.*, f.nome fab_nome
+        FROM usuarios u
+        LEFT JOIN fabricas f ON u.fabrica_id = f.id
+        ORDER BY u.perfil, u.nome
+    """).fetchall()
+    fabricas = c.execute("SELECT * FROM fabricas WHERE ativa=1 ORDER BY nome").fetchall()
+    c.close()
+    return render_template('usuarios.html',
+        users=[dict(r) for r in users],
+        fabricas=[dict(r) for r in fabricas])
+
+@app.route('/api/usuarios/salvar', methods=['POST'])
+@login_required
+@admin_required
+def api_usuarios_salvar():
+    d = request.json; c = m.conn()
+    try:
+        fab_id = int(d['fabrica_id']) if d.get('fabrica_id') else None
+        if d.get('id'):
+            sql = "UPDATE usuarios SET nome=?,login=?,perfil=?,fabrica_id=?,ativo=?"
+            params = [d['nome'], d['login'], d['perfil'], fab_id, int(d.get('ativo', 1))]
+            if d.get('senha'):
+                sql += ",senha_hash=?"
+                params.append(m.hash_senha(d['senha']))
+            sql += " WHERE id=?"
+            params.append(d['id'])
+            c.execute(sql, params)
+        else:
+            if not d.get('senha'):
+                return jsonify({'ok': False, 'erro': 'Senha obrigatória para novo usuário'})
+            c.execute("""INSERT INTO usuarios (nome,login,senha_hash,perfil,fabrica_id,ativo)
+                         VALUES (?,?,?,?,?,1)""",
+                      (d['nome'], d['login'], m.hash_senha(d['senha']), d['perfil'], fab_id))
+        c.commit(); c.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        c.close()
+        if 'UNIQUE' in str(e):
+            return jsonify({'ok': False, 'erro': 'Login já existe'})
+        return jsonify({'ok': False, 'erro': str(e)})
+
+@app.route('/api/usuarios/toggle/<int:uid>', methods=['POST'])
+@login_required
+@admin_required
+def api_usuarios_toggle(uid):
+    if uid == session.get('uid'):
+        return jsonify({'ok': False, 'erro': 'Não é possível desativar seu próprio usuário'})
+    c = m.conn()
+    c.execute("UPDATE usuarios SET ativo = CASE WHEN ativo=1 THEN 0 ELSE 1 END WHERE id=?", (uid,))
+    c.commit()
+    novo = c.execute("SELECT ativo FROM usuarios WHERE id=?", (uid,)).fetchone()['ativo']
+    c.close()
+    return jsonify({'ok': True, 'ativo': novo})
+
+@app.route('/api/usuarios/reset-senha', methods=['POST'])
+@login_required
+@admin_required
+def api_usuarios_reset_senha():
+    d = request.json; c = m.conn()
+    c.execute("UPDATE usuarios SET senha_hash=? WHERE id=?",
+              (m.hash_senha(d['senha']), d['uid']))
+    c.commit(); c.close()
+    return jsonify({'ok': True})
+
 if __name__ == '__main__':
     app.run(debug=False, use_reloader=False, host='0.0.0.0', port=5050)
