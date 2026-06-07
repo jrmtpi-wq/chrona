@@ -613,7 +613,12 @@ DESPESAS_PADRAO = [
     'FGTS + FGTS RESCISAO','IRRF','GPS / IMPOSTO DE RENDA','SIMPLES'
 ]
 
-IGNORE = 'ON CONFLICT DO NOTHING' if PG_MODE else 'OR IGNORE'
+def _ins(sql, conflict=''):
+    """Monta INSERT com ON CONFLICT para PG ou OR IGNORE para SQLite."""
+    if PG_MODE:
+        return sql + (' ON CONFLICT DO NOTHING' if conflict else '')
+    else:
+        return sql.replace('INSERT INTO', 'INSERT OR IGNORE INTO')
 
 
 def seed():
@@ -627,7 +632,7 @@ def seed():
         ]
         for nome, cidade in fabricas:
             c.execute("INSERT INTO fabricas (nome,cidade) VALUES (?,?)", (nome, cidade))
-        c.execute(f"INSERT {IGNORE} INTO usuarios (nome,login,senha_hash,perfil) VALUES (?,?,?,?)",
+        c.execute(_ins("INSERT INTO usuarios (nome,login,senha_hash,perfil) VALUES (?,?,?,?)", True),
                   ('Administrador', 'admin', hash_senha('admin123'), 'admin'))
         prefixos = [('giassi', 1), ('icara', 2), ('luiza', 3), ('dp', 4)]
         for prefixo, fab_id in prefixos:
@@ -639,26 +644,26 @@ def seed():
             ]
             for nome, login, perfil in usuarios_fab:
                 c.execute(
-                    f"INSERT {IGNORE} INTO usuarios (nome,login,senha_hash,perfil,fabrica_id,ativo) VALUES (?,?,?,?,?,1)",
+                    _ins("INSERT INTO usuarios (nome,login,senha_hash,perfil,fabrica_id,ativo) VALUES (?,?,?,?,?,1)", True),
                     (nome, login, hash_senha('chrona123'), perfil, fab_id)
                 )
 
     if c.execute("SELECT COUNT(*) FROM categorias_despesa").fetchone()[0] == 0:
         for i, nome in enumerate(DESPESAS_PADRAO):
-            c.execute(f"INSERT {IGNORE} INTO categorias_despesa (nome,ordem) VALUES (?,?)", (nome, i))
+            c.execute(_ins("INSERT INTO categorias_despesa (nome,ordem) VALUES (?,?)", True), (nome, i))
 
     if c.execute("SELECT COUNT(*) FROM generos_produto").fetchone()[0] == 0:
         for g in ['FEMININO', 'MASCULINO', 'INFANTIL', 'ADULTO']:
-            c.execute(f"INSERT {IGNORE} INTO generos_produto (nome) VALUES (?)", (g,))
+            c.execute(_ins("INSERT INTO generos_produto (nome) VALUES (?)", True), (g,))
 
     if c.execute("SELECT COUNT(*) FROM tipos_produto").fetchone()[0] == 0:
         for t in ['SHORTS', 'CALCA', 'LEG', 'VESTIDO', 'BLUSA', 'CAMISETA', 'SAIA', 'MACACAO']:
-            c.execute(f"INSERT {IGNORE} INTO tipos_produto (nome) VALUES (?)", (t,))
+            c.execute(_ins("INSERT INTO tipos_produto (nome) VALUES (?)", True), (t,))
 
     if c.execute("SELECT COUNT(*) FROM funcoes").fetchone()[0] == 0:
         for f in ['COSTUREIRA', 'CORTADOR(A)', 'REVISORA', 'AUXILIAR',
                   'ENCARREGADO(A)', 'SUPERVISOR(A)', 'GERENTE']:
-            c.execute(f"INSERT {IGNORE} INTO funcoes (nome) VALUES (?)", (f,))
+            c.execute(_ins("INSERT INTO funcoes (nome) VALUES (?)", True), (f,))
 
     c.commit()
     c.close()
