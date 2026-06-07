@@ -659,7 +659,7 @@ def seed():
             for nome, login, perfil in usuarios_fab:
                 c.execute(
                     _ins("INSERT INTO usuarios (nome,login,senha_hash,perfil,fabrica_id,ativo) VALUES (?,?,?,?,?,1)", True),
-                    (nome, login, hash_senha('chrona123'), perfil, fab_id)
+                    (nome, login, hash_senha('giassi123'), perfil, fab_id)
                 )
 
     if c.execute("SELECT COUNT(*) FROM categorias_despesa").fetchone()[0] == 0:
