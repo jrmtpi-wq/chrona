@@ -6,6 +6,10 @@ import models as m
 app = Flask(__name__)
 app.secret_key = 'chrona_2025_producao_secret'
 
+@app.context_processor
+def inject_globals():
+    return dict(get_user=get_user, session=session)
+
 def login_required(f):
     @wraps(f)
     def dec(*a, **kw):
