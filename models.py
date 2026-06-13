@@ -277,6 +277,7 @@ CREATE TABLE IF NOT EXISTS operacoes (
     equipamento_id INTEGER,
     tempo_padrao REAL DEFAULT 0,
     tipo TEXT DEFAULT 'C',
+    modelo TEXT DEFAULT '',
     ativo INTEGER DEFAULT 1,
     FOREIGN KEY(equipamento_id) REFERENCES equipamentos(id)
 );
@@ -338,6 +339,26 @@ CREATE TABLE IF NOT EXISTS faturamento (
     obs TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
     FOREIGN KEY(op_id) REFERENCES ordens_producao(id)
+);
+CREATE TABLE IF NOT EXISTS tipos_ocorrencia (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL UNIQUE,
+    horas_padrao REAL DEFAULT 9,
+    ativo INTEGER DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS ocorrencias (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    funcionario_id INTEGER NOT NULL,
+    fabrica_id INTEGER,
+    data TEXT NOT NULL,
+    tipo_id INTEGER NOT NULL,
+    horas REAL DEFAULT 0,
+    direto TEXT DEFAULT 'DIRETO',
+    obs TEXT,
+    criado_em TEXT DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY(funcionario_id) REFERENCES funcionarios(id),
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
+    FOREIGN KEY(tipo_id) REFERENCES tipos_ocorrencia(id)
 );
 """
 
@@ -523,6 +544,7 @@ CREATE TABLE IF NOT EXISTS operacoes (
     equipamento_id INTEGER,
     tempo_padrao REAL DEFAULT 0,
     tipo TEXT DEFAULT 'C',
+    modelo TEXT DEFAULT '',
     ativo INTEGER DEFAULT 1,
     FOREIGN KEY(equipamento_id) REFERENCES equipamentos(id)
 );
@@ -585,6 +607,26 @@ CREATE TABLE IF NOT EXISTS faturamento (
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
     FOREIGN KEY(op_id) REFERENCES ordens_producao(id)
 );
+CREATE TABLE IF NOT EXISTS tipos_ocorrencia (
+    id SERIAL PRIMARY KEY,
+    nome TEXT NOT NULL UNIQUE,
+    horas_padrao REAL DEFAULT 9,
+    ativo INTEGER DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS ocorrencias (
+    id SERIAL PRIMARY KEY,
+    funcionario_id INTEGER NOT NULL,
+    fabrica_id INTEGER,
+    data TEXT NOT NULL,
+    tipo_id INTEGER NOT NULL,
+    horas REAL DEFAULT 0,
+    direto TEXT DEFAULT 'DIRETO',
+    obs TEXT,
+    criado_em TEXT DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS'),
+    FOREIGN KEY(funcionario_id) REFERENCES funcionarios(id),
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
+    FOREIGN KEY(tipo_id) REFERENCES tipos_ocorrencia(id)
+);
 """
 
 
@@ -592,6 +634,17 @@ def init():
     c = conn()
     schema = SCHEMA_PG if PG_MODE else SCHEMA_SQLITE
     _pg_exec(c, schema)
+    # Migrações: adicionar colunas que podem não existir em bancos antigos
+    if PG_MODE:
+        try:
+            c.execute("ALTER TABLE operacoes ADD COLUMN IF NOT EXISTS modelo TEXT DEFAULT ''")
+        except Exception:
+            pass
+    else:
+        try:
+            c.execute("ALTER TABLE operacoes ADD COLUMN modelo TEXT DEFAULT ''")
+        except Exception:
+            pass
     c.commit()
     c.close()
 

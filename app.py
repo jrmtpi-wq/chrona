@@ -721,13 +721,13 @@ def api_operacao_salvar():
     d = request.json; c = m.conn()
     try:
         if d.get('id'):
-            c.execute("UPDATE operacoes SET codigo=?,descricao=?,equipamento_id=?,tempo_padrao=?,tipo=? WHERE id=?",
+            c.execute("UPDATE operacoes SET codigo=?,descricao=?,equipamento_id=?,tempo_padrao=?,tipo=?,modelo=? WHERE id=?",
                       (d.get('codigo'), d['descricao'], d.get('equipamento_id'),
-                       float(d.get('tempo_padrao') or 0), d.get('tipo','C'), d['id']))
+                       float(d.get('tempo_padrao') or 0), d.get('tipo','C'), d.get('modelo',''), d['id']))
         else:
-            c.execute("INSERT INTO operacoes (codigo,descricao,equipamento_id,tempo_padrao,tipo) VALUES (?,?,?,?,?)",
+            c.execute("INSERT INTO operacoes (codigo,descricao,equipamento_id,tempo_padrao,tipo,modelo) VALUES (?,?,?,?,?,?)",
                       (d.get('codigo'), d['descricao'], d.get('equipamento_id'),
-                       float(d.get('tempo_padrao') or 0), d.get('tipo','C')))
+                       float(d.get('tempo_padrao') or 0), d.get('tipo','C'), d.get('modelo','')))
         c.commit(); c.close(); return jsonify({'ok': True})
     except Exception as e:
         c.close(); return jsonify({'ok': False, 'erro': str(e)})
