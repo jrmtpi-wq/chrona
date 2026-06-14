@@ -253,18 +253,7 @@
   <!-- COLUNA 1: OPERADORAS -->
   <div class="operadoras-panel">
     <div class="operadoras-title">👩 Operadoras</div>
-    <div class="operadoras-list" id="operadoras-disponiveis">
-      {% for f in funcionarios %}
-      <div class="operadora-chip" draggable="true" data-id="{{ f.id }}" data-nome="{{ f.nome }}" ondragstart="dragOperadora(event, {{ f.id }}, '{{ f.nome }}')">
-        <span class="drag-icon">⠿</span>
-        <div class="operadora-avatar">{{ f.nome[:2]|upper }}</div>
-        <span style="font-size:11px;flex:1">{{ f.nome.split()[0] }}</span>
-      </div>
-      {% endfor %}
-      {% if not funcionarios %}
-      <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Nenhuma operadora cadastrada</div>
-      {% endif %}
-    </div>
+    <div class="operadoras-list" id="operadoras-disponiveis"></div>
   </div>
 
   <!-- COLUNA 2: OPERAÇÕES -->
@@ -423,6 +412,9 @@
 <div id="toast" class="toast"></div>
 
 <script>
+// ── DADOS ESTÁTICOS ───────────────────────────────
+const FUNCIONARIOS = {{ funcionarios | tojson }};
+
 // ── ESTADO ────────────────────────────────────────
 let estado = {
   op: null,
@@ -475,6 +467,32 @@ async function carregarOP() {
   calcularMetas();
 }
 
+function renderOperadorasDisponiveis() {
+  const div = document.getElementById('operadoras-disponiveis');
+  if (!FUNCIONARIOS.length) {
+    div.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Nenhuma operadora cadastrada</div>';
+    return;
+  }
+  // IDs já alocadas em algum time
+  const usadas = new Set(estado.times.flatMap(t => t.operadoras.map(o => o.id)));
+  div.innerHTML = FUNCIONARIOS.map(f => {
+    const usada = usadas.has(f.id);
+    const bg    = usada ? '#fee2e2' : '#dcfce7';
+    const borda = usada ? '#fca5a5' : '#86efac';
+    const cor   = usada ? '#dc2626' : '#15803d';
+    const icon  = usada ? '🔴' : '🟢';
+    return `
+    <div class="operadora-chip" draggable="true"
+         style="background:${bg};border-color:${borda}"
+         ondragstart="dragOperadora(event, ${f.id}, '${f.nome.replace(/'/g,"\\'")}')">
+      <span class="drag-icon" style="color:${cor}">⠿</span>
+      <div class="operadora-avatar" style="background:${cor}">${f.nome.substring(0,2).toUpperCase()}</div>
+      <span style="font-size:11px;flex:1;color:${cor};font-weight:700">${f.nome.split(' ')[0]}</span>
+      <span style="font-size:10px">${icon}</span>
+    </div>`;
+  }).join('');
+}
+
 function renderOperacoesDisponiveis() {
   const div = document.getElementById('operacoes-disponiveis');
   if (!estado.operacoes.length) {
@@ -482,20 +500,29 @@ function renderOperacoesDisponiveis() {
     return;
   }
   const meta = estado.metaCiclo || 0;
+  // Operações já alocadas em algum time
+  const usadas = new Set(estado.times.flatMap(t => t.ops.map(o => o.idx)));
   div.innerHTML = estado.operacoes.map((op, i) => {
-    const carga = op.tempo_padrao * meta;
+    const carga  = op.tempo_padrao * meta;
+    const usada  = usadas.has(i);
+    const bg     = usada ? '#fee2e2' : '#dcfce7';
+    const borda  = usada ? '#fca5a5' : '#86efac';
+    const cor    = usada ? '#dc2626' : '#15803d';
+    const icon   = usada ? '🔴' : '🟢';
     return `
     <div class="op-seq-chip" draggable="true" data-idx="${i}"
+         style="background:${bg};border-color:${borda}"
          ondragstart="dragOperacao(event, ${i})">
       <span class="drag-icon" style="color:#d1d5db;font-size:12px">⠿</span>
-      <div class="op-num">${i+1}</div>
+      <div class="op-num" style="background:${cor}">${i+1}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${op.descricao}</div>
+        <div style="font-size:11px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:${cor};font-weight:700">${op.descricao}</div>
         <div style="font-size:10px;color:#6b7280;margin-top:1px">
-          <span title="Tempo padrão">${op.tempo_padrao.toFixed(2)} min</span>
-          ${meta > 0 ? `<span style="margin-left:6px;color:#1d4ed8;font-weight:700" title="Carga no ciclo">▶ ${carga.toFixed(1)}</span>` : ''}
+          <span>${op.tempo_padrao.toFixed(2)} min</span>
+          ${meta > 0 ? `<span style="margin-left:6px;color:#1d4ed8;font-weight:700">▶ ${carga.toFixed(1)}</span>` : ''}
         </div>
       </div>
+      <span style="font-size:10px">${icon}</span>
     </div>`;
   }).join('');
 }
@@ -535,6 +562,7 @@ function calcularMetas() {
   document.getElementById('m-meta-ciclo').textContent = metaCiclo;
   document.getElementById('m-op-ciclo').textContent = opsPorTime;
 
+  renderOperadorasDisponiveis();
   renderOperacoesDisponiveis();
   renderTimes();
 }
@@ -576,6 +604,8 @@ function renderTimes() {
   const grid = document.getElementById('times-grid');
   if (!estado.times.length) {
     grid.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px">Configure e clique em "Gerar Times" ou "Balancear Automático"</div>';
+    renderOperadorasDisponiveis();
+    renderOperacoesDisponiveis();
     return;
   }
 
@@ -695,6 +725,8 @@ function renderTimes() {
       </div>
     `;
   }).join('');
+  renderOperadorasDisponiveis();
+  renderOperacoesDisponiveis();
 }
 
 // ── DRAG & DROP OPERADORA ─────────────────────────
