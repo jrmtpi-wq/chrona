@@ -426,15 +426,23 @@ function renderOperacoesDisponiveis() {
     div.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">OP sem sequência cadastrada</div>';
     return;
   }
-  div.innerHTML = estado.operacoes.map((op, i) => `
+  const meta = estado.metaCiclo || 0;
+  div.innerHTML = estado.operacoes.map((op, i) => {
+    const carga = op.tempo_padrao * meta;
+    return `
     <div class="op-seq-chip" draggable="true" data-idx="${i}"
          ondragstart="dragOperacao(event, ${i})">
       <span class="drag-icon" style="color:#d1d5db;font-size:12px">⠿</span>
       <div class="op-num">${i+1}</div>
-      <span style="flex:1;font-size:11px">${op.descricao}</span>
-      <span class="op-tempo">${op.tempo_padrao.toFixed(2)}</span>
-    </div>
-  `).join('');
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${op.descricao}</div>
+        <div style="font-size:10px;color:#6b7280;margin-top:1px">
+          <span title="Tempo padrão">${op.tempo_padrao.toFixed(2)} min</span>
+          ${meta > 0 ? `<span style="margin-left:6px;color:#1d4ed8;font-weight:700" title="Carga no ciclo">▶ ${carga.toFixed(1)}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ── CALCULAR ──────────────────────────────────────
@@ -472,6 +480,7 @@ function calcularMetas() {
   document.getElementById('m-meta-ciclo').textContent = metaCiclo;
   document.getElementById('m-op-ciclo').textContent = opsPorTime;
 
+  renderOperacoesDisponiveis();
   renderTimes();
 }
 
