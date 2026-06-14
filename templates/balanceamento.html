@@ -35,12 +35,12 @@
 .metrica.destaque .metrica-lbl{color:#9ca3af}
 
 /* LAYOUT BALANCEAMENTO */
-.bal-layout{display:grid;grid-template-columns:220px 1fr;gap:16px;min-height:500px}
+.bal-layout{display:grid;grid-template-columns:190px 210px 1fr;gap:12px;min-height:500px;align-items:start}
 
 /* PAINEL OPERADORAS */
 .operadoras-panel{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:12px}
 .operadoras-title{font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px;letter-spacing:.5px}
-.operadoras-list{min-height:200px}
+.operadoras-list{min-height:200px;max-height:calc(100vh - 320px);overflow-y:auto}
 .operadora-chip{background:#f0f2f5;border:1px solid #e0e6f0;border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:grab;display:flex;align-items:center;gap:8px;transition:all .15s;font-size:12px;font-weight:600}
 .operadora-chip:hover{border-color:#1a1a2e;background:#e8eaf0}
 .operadora-chip.dragging{opacity:.4}
@@ -48,7 +48,7 @@
 .operadora-avatar{width:28px;height:28px;border-radius:50%;background:#1a1a2e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
 
 /* PAINEL OPERAÇÕES */
-.operacoes-panel{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:12px;margin-top:12px}
+.operacoes-panel{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:12px}
 .op-seq-chip{background:#f8f9fb;border:1px solid #e0e6f0;border-radius:6px;padding:6px 8px;margin-bottom:4px;cursor:grab;display:flex;align-items:center;gap:6px;font-size:11px;transition:all .15s}
 .op-seq-chip:hover{border-color:#1d4ed8;background:#eff6ff}
 .op-seq-chip.dragging{opacity:.4}
@@ -233,33 +233,32 @@
 
 <!-- LAYOUT PRINCIPAL -->
 <div class="bal-layout">
-  <!-- PAINEL ESQUERDO -->
-  <div>
-    <div class="operadoras-panel">
-      <div class="operadoras-title">👩 Operadoras Disponíveis</div>
-      <div class="operadoras-list" id="operadoras-disponiveis">
-        {% for f in funcionarios %}
-        <div class="operadora-chip" draggable="true" data-id="{{ f.id }}" data-nome="{{ f.nome }}" ondragstart="dragOperadora(event, {{ f.id }}, '{{ f.nome }}')">
-          <span class="drag-icon">⠿</span>
-          <div class="operadora-avatar">{{ f.nome[:2]|upper }}</div>
-          <span style="font-size:11px;flex:1">{{ f.nome.split()[0] }}</span>
-        </div>
-        {% endfor %}
-        {% if not funcionarios %}
-        <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Nenhuma operadora cadastrada</div>
-        {% endif %}
+  <!-- COLUNA 1: OPERADORAS -->
+  <div class="operadoras-panel">
+    <div class="operadoras-title">👩 Operadoras</div>
+    <div class="operadoras-list" id="operadoras-disponiveis">
+      {% for f in funcionarios %}
+      <div class="operadora-chip" draggable="true" data-id="{{ f.id }}" data-nome="{{ f.nome }}" ondragstart="dragOperadora(event, {{ f.id }}, '{{ f.nome }}')">
+        <span class="drag-icon">⠿</span>
+        <div class="operadora-avatar">{{ f.nome[:2]|upper }}</div>
+        <span style="font-size:11px;flex:1">{{ f.nome.split()[0] }}</span>
       </div>
-    </div>
-
-    <div class="operacoes-panel">
-      <div class="operadoras-title">⚙️ Operações da OP</div>
-      <div id="operacoes-disponiveis" style="max-height:300px;overflow-y:auto">
-        <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Selecione uma OP</div>
-      </div>
+      {% endfor %}
+      {% if not funcionarios %}
+      <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Nenhuma operadora cadastrada</div>
+      {% endif %}
     </div>
   </div>
 
-  <!-- TIMES -->
+  <!-- COLUNA 2: OPERAÇÕES -->
+  <div class="operacoes-panel">
+    <div class="operadoras-title">⚙️ Operações da OP</div>
+    <div id="operacoes-disponiveis" style="max-height:calc(100vh - 320px);overflow-y:auto">
+      <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Selecione uma OP</div>
+    </div>
+  </div>
+
+  <!-- COLUNA 3: TIMES -->
   <div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <div style="font-size:13px;font-weight:700;color:#1a1a2e">📋 Times de Produção</div>
@@ -270,6 +269,58 @@
         <div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px">
           Configure e clique em "Gerar Times" ou "Balancear Automático"
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DIVISÃO DE OPERAÇÃO -->
+<div class="modal-overlay" id="modal-divisao">
+  <div class="modal" style="width:420px">
+    <div class="modal-header">
+      <div class="modal-title">✂️ Dividir Operação</div>
+      <button class="modal-close" onclick="cancelarDivisao()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="div-time-idx">
+      <input type="hidden" id="div-op-data">
+      <div style="margin-bottom:14px">
+        <div style="font-size:14px;font-weight:700" id="div-op-nome">—</div>
+        <div style="font-size:12px;color:#6b7280">Tempo padrão: <span id="div-op-tempo">—</span> min &nbsp;|&nbsp; Meta/ciclo: <span id="div-meta">—</span> pcs</div>
+      </div>
+      <div style="background:#f8f9fb;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:#374151">
+        Você pode adicionar a operação inteira <strong>ou dividir</strong> a quantidade de peças do ciclo entre duas operadoras.
+      </div>
+      <div id="div-campos-divisao" style="display:none">
+        <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase">Divisão de peças por operadora</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group">
+            <label>Operadora 1 (pcs)</label>
+            <input type="number" id="div-qtd1" min="1" value="1" oninput="atualizarResumo()">
+          </div>
+          <div class="form-group">
+            <label>Operadora 2 (pcs)</label>
+            <input type="number" id="div-qtd2" min="1" value="1" oninput="atualizarResumo()">
+          </div>
+        </div>
+        <div style="background:#eff6ff;border-radius:8px;padding:10px;margin-top:8px;font-size:12px">
+          <div style="display:flex;justify-content:space-between">
+            <span>Carga Op.1:</span><strong id="div-carga1">—</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span>Carga Op.2:</span><strong id="div-carga2">—</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;border-top:1px solid #dbeafe;padding-top:4px">
+            <span>Total peças:</span><strong id="div-total-pcs" style="color:#1d4ed8">—</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-light" onclick="confirmarDivisao(false)">➕ Adicionar Inteira</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-warning" id="btn-toggle-divisao" onclick="toggleDivisao()">✂️ Dividir</button>
+        <button class="btn btn-primary" id="btn-confirmar-divisao" style="display:none" onclick="confirmarDivisao(true)">✅ Confirmar Divisão</button>
       </div>
     </div>
   </div>
@@ -476,7 +527,7 @@ function renderTimes() {
            ondragstart="dragOpDoTime(event, ${ti}, ${oi})"
            ondblclick="abrirAjuste(${ti}, ${oi})">
         <div class="op-num" style="width:16px;height:16px;font-size:8px">${op.idx+1}</div>
-        <span style="flex:1;font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${op.descricao}</span>
+        <span style="flex:1;font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" title="${op.label||op.descricao}">${op.label||op.descricao}</span>
         <span class="op-t">${(op.carga||0).toFixed(1)}</span>
         <button onclick="removerOpDoTime(${ti},${oi})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:10px;padding:0 2px">✕</button>
       </div>
@@ -554,13 +605,12 @@ function dragOpDoTime(e, ti, oi) {
 function dropOpNoTime(e, ti) {
   e.preventDefault(); e.stopPropagation();
   if (dragType === 'operacao-banco' && dragItem) {
-    const qtd = estado.metaCiclo || 1;
-    estado.times[ti].ops.push({...dragItem, qtd, carga: dragItem.tempo_padrao * qtd});
-    dragItem = null; dragType = null; renderTimes();
+    abrirDivisao(ti, dragItem);
+    dragItem = null; dragType = null;
   } else if (dragType === 'operacao-time' && dragItem) {
     const {ti: tiOrig, oi, op} = dragItem;
-    if (tiOrig !== ti) { estado.times[tiOrig].ops.splice(oi, 1); estado.times[ti].ops.push(op); }
-    dragItem = null; dragType = null; renderTimes();
+    if (tiOrig !== ti) { estado.times[tiOrig].ops.splice(oi, 1); estado.times[ti].ops.push(op); renderTimes(); }
+    dragItem = null; dragType = null;
   }
 }
 function dropNoTime(e, ti) {
@@ -572,6 +622,61 @@ function dropNoTime(e, ti) {
 }
 function allowDrop(e) { e.preventDefault(); }
 function removerOpDoTime(ti, oi) { estado.times[ti].ops.splice(oi, 1); renderTimes(); }
+
+// ── DIVISÃO DE OPERAÇÃO ───────────────────────────
+let _divOp = null;
+function abrirDivisao(ti, op) {
+  _divOp = op;
+  const meta = estado.metaCiclo || 1;
+  document.getElementById('div-time-idx').value = ti;
+  document.getElementById('div-op-nome').textContent = op.descricao;
+  document.getElementById('div-op-tempo').textContent = op.tempo_padrao.toFixed(2);
+  document.getElementById('div-meta').textContent = meta;
+  document.getElementById('div-qtd1').value = Math.ceil(meta / 2);
+  document.getElementById('div-qtd2').value = Math.floor(meta / 2);
+  document.getElementById('div-campos-divisao').style.display = 'none';
+  document.getElementById('btn-toggle-divisao').style.display = '';
+  document.getElementById('btn-confirmar-divisao').style.display = 'none';
+  atualizarResumo();
+  abrirModal('modal-divisao');
+}
+function toggleDivisao() {
+  const campos = document.getElementById('div-campos-divisao');
+  const visivel = campos.style.display !== 'none';
+  campos.style.display = visivel ? 'none' : '';
+  document.getElementById('btn-toggle-divisao').style.display = visivel ? '' : 'none';
+  document.getElementById('btn-confirmar-divisao').style.display = visivel ? 'none' : '';
+  atualizarResumo();
+}
+function atualizarResumo() {
+  const op = _divOp;
+  if (!op) return;
+  const q1 = parseInt(document.getElementById('div-qtd1').value) || 0;
+  const q2 = parseInt(document.getElementById('div-qtd2').value) || 0;
+  document.getElementById('div-carga1').textContent = (op.tempo_padrao * q1).toFixed(2) + ' min';
+  document.getElementById('div-carga2').textContent = (op.tempo_padrao * q2).toFixed(2) + ' min';
+  document.getElementById('div-total-pcs').textContent = (q1 + q2) + ' pcs';
+}
+function confirmarDivisao(dividir) {
+  const ti = parseInt(document.getElementById('div-time-idx').value);
+  const op = _divOp;
+  if (!op) return;
+  if (dividir) {
+    const q1 = parseInt(document.getElementById('div-qtd1').value) || 1;
+    const q2 = parseInt(document.getElementById('div-qtd2').value) || 1;
+    if (q1 > 0) estado.times[ti].ops.push({...op, qtd: q1, carga: op.tempo_padrao * q1, label: op.descricao + ' (Op.1)'});
+    if (q2 > 0) estado.times[ti].ops.push({...op, qtd: q2, carga: op.tempo_padrao * q2, label: op.descricao + ' (Op.2)'});
+  } else {
+    const qtd = estado.metaCiclo || 1;
+    estado.times[ti].ops.push({...op, qtd, carga: op.tempo_padrao * qtd});
+  }
+  _divOp = null;
+  fecharModal('modal-divisao');
+  renderTimes();
+}
+function cancelarDivisao() {
+  _divOp = null; fecharModal('modal-divisao');
+}
 
 // ── AJUSTE OPERAÇÃO ───────────────────────────────
 function abrirAjuste(ti, oi) {
