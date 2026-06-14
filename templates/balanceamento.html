@@ -87,7 +87,8 @@
 .time-distrib{padding:8px 10px;border-top:2px solid #e0e6f0;background:#fafbfc}
 .distrib-title{font-size:9px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.5px;margin-bottom:6px}
 .distrib-op{background:#fff;border:1px solid #e0e6f0;border-radius:8px;margin-bottom:6px;overflow:hidden}
-.distrib-op-header{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:#f0f2f5}
+.distrib-op-header{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:#f0f2f5;transition:all .15s;border-radius:4px}
+.distrib-op-header.drag-over-op{background:#dbeafe;outline:2px dashed #1d4ed8}
 .distrib-op-nome{font-size:11px;font-weight:700;color:#1a1a2e;flex:1}
 .distrib-op-total{font-size:10px;font-weight:700;margin-right:6px}
 .distrib-add-btn{background:#1a1a2e;color:#fff;border:none;border-radius:4px;width:18px;height:18px;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -588,10 +589,15 @@ function renderTimes() {
       `).join('');
       return `
         <div class="distrib-op">
-          <div class="distrib-op-header">
-            <span class="distrib-op-nome">${op.nome.split(' ')[0]}</span>
+          <div class="distrib-op-header"
+               ondragover="allowDrop(event)"
+               ondrop="dropOpNaOperadora(${ti},${oi},event)"
+               ondragenter="this.classList.add('drag-over-op')"
+               ondragleave="this.classList.remove('drag-over-op')"
+               title="Arraste uma operação aqui para atribuir automaticamente">
+            <span class="distrib-op-nome">👤 ${op.nome.split(' ')[0]}</span>
             <span class="distrib-op-total" style="color:${corOp}">${totalOp.toFixed(1)}/${ciclo}m</span>
-            <button class="distrib-add-btn" onclick="adicionarAtrib(${ti},${oi})" title="Adicionar operação">+</button>
+            <button class="distrib-add-btn" onclick="adicionarAtrib(${ti},${oi})" title="Adicionar manualmente">+</button>
           </div>
           ${rowsHtml || '<div class="distrib-op-vazia">Clique + para atribuir operação</div>'}
           ${atribs.length ? `<div class="distrib-restante" style="color:${corOp}">Restante: <strong>${restante.toFixed(1)} min</strong></div>` : ''}
@@ -651,6 +657,38 @@ function dropOperadoraNoTime(e, ti) {
   }
   estado.times[ti].operadoras.push({...dragItem, atribuicoes: []});
   dragItem = null; dragType = null; renderTimes();
+}
+
+// ── DROP OPERAÇÃO NA OPERADORA (auto-calcula peças) ──
+function dropOpNaOperadora(ti, oi, e) {
+  e.preventDefault(); e.stopPropagation();
+  e.currentTarget.classList.remove('drag-over-op');
+  if (dragType !== 'operacao-banco' || !dragItem) return;
+  const op = dragItem;
+  dragItem = null; dragType = null;
+
+  if (!estado.times[ti].operadoras[oi].atribuicoes) estado.times[ti].operadoras[oi].atribuicoes = [];
+  const atribs = estado.times[ti].operadoras[oi].atribuicoes;
+  const cargaAtual = atribs.reduce((s, a) => s + (a.carga || 0), 0);
+  const restante = estado.ciclo - cargaAtual;
+
+  if (restante <= 0.01) { toast(`${op.nome ? op.nome.split(' ')[0] : 'Operadora'} sem tempo no ciclo`, 'error'); return; }
+
+  const maxPcs = Math.floor(restante / op.tempo_padrao);
+  if (maxPcs < 1) { toast(`Tempo insuficiente para 1 peça (${op.tempo_padrao.toFixed(2)} min)`, 'error'); return; }
+
+  const op_idx = estado.operacoes.findIndex(o => o.operacao_id === op.operacao_id && o.descricao === op.descricao);
+  atribs.push({
+    op_idx: op_idx >= 0 ? op_idx : 0,
+    descricao: op.descricao,
+    tempo_padrao: op.tempo_padrao,
+    qtd: maxPcs,
+    carga: op.tempo_padrao * maxPcs
+  });
+
+  renderTimes();
+  const nomeOp = estado.times[ti].operadoras[oi].nome.split(' ')[0];
+  toast(`${nomeOp}: ${maxPcs} pcs de "${op.descricao}" (${(op.tempo_padrao * maxPcs).toFixed(1)} min)`);
 }
 
 // ── DISTRIBUIÇÃO POR OPERADORA ────────────────────
