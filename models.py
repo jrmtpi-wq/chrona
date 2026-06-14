@@ -340,6 +340,17 @@ CREATE TABLE IF NOT EXISTS faturamento (
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
     FOREIGN KEY(op_id) REFERENCES ordens_producao(id)
 );
+CREATE TABLE IF NOT EXISTS ref_sequencia (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    referencia_id INTEGER NOT NULL,
+    operacao_id INTEGER NOT NULL,
+    ordem INTEGER DEFAULT 0,
+    equipamento_id INTEGER,
+    funcionario_id INTEGER,
+    tempo_padrao REAL DEFAULT 0,
+    FOREIGN KEY(referencia_id) REFERENCES referencias(id),
+    FOREIGN KEY(operacao_id) REFERENCES operacoes(id)
+);
 CREATE TABLE IF NOT EXISTS tipos_ocorrencia (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL UNIQUE,
@@ -607,6 +618,17 @@ CREATE TABLE IF NOT EXISTS faturamento (
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
     FOREIGN KEY(op_id) REFERENCES ordens_producao(id)
 );
+CREATE TABLE IF NOT EXISTS ref_sequencia (
+    id SERIAL PRIMARY KEY,
+    referencia_id INTEGER NOT NULL,
+    operacao_id INTEGER NOT NULL,
+    ordem INTEGER DEFAULT 0,
+    equipamento_id INTEGER,
+    funcionario_id INTEGER,
+    tempo_padrao REAL DEFAULT 0,
+    FOREIGN KEY(referencia_id) REFERENCES referencias(id),
+    FOREIGN KEY(operacao_id) REFERENCES operacoes(id)
+);
 CREATE TABLE IF NOT EXISTS tipos_ocorrencia (
     id SERIAL PRIMARY KEY,
     nome TEXT NOT NULL UNIQUE,
@@ -640,9 +662,37 @@ def init():
             c.execute("ALTER TABLE operacoes ADD COLUMN IF NOT EXISTS modelo TEXT DEFAULT ''")
         except Exception:
             pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS ref_sequencia (
+                id SERIAL PRIMARY KEY,
+                referencia_id INTEGER NOT NULL,
+                operacao_id INTEGER NOT NULL,
+                ordem INTEGER DEFAULT 0,
+                equipamento_id INTEGER,
+                funcionario_id INTEGER,
+                tempo_padrao REAL DEFAULT 0,
+                FOREIGN KEY(referencia_id) REFERENCES referencias(id),
+                FOREIGN KEY(operacao_id) REFERENCES operacoes(id)
+            )""")
+        except Exception:
+            pass
     else:
         try:
             c.execute("ALTER TABLE operacoes ADD COLUMN modelo TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS ref_sequencia (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                referencia_id INTEGER NOT NULL,
+                operacao_id INTEGER NOT NULL,
+                ordem INTEGER DEFAULT 0,
+                equipamento_id INTEGER,
+                funcionario_id INTEGER,
+                tempo_padrao REAL DEFAULT 0,
+                FOREIGN KEY(referencia_id) REFERENCES referencias(id),
+                FOREIGN KEY(operacao_id) REFERENCES operacoes(id)
+            )""")
         except Exception:
             pass
     c.commit()
