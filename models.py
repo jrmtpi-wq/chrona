@@ -351,6 +351,26 @@ CREATE TABLE IF NOT EXISTS ref_sequencia (
     FOREIGN KEY(referencia_id) REFERENCES referencias(id),
     FOREIGN KEY(operacao_id) REFERENCES operacoes(id)
 );
+CREATE TABLE IF NOT EXISTS sequencias_banco (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    modelo TEXT DEFAULT '',
+    tempo_total REAL DEFAULT 0,
+    total_ops INTEGER DEFAULT 0,
+    criado_por INTEGER,
+    criado_em TEXT DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY(criado_por) REFERENCES usuarios(id)
+);
+CREATE TABLE IF NOT EXISTS sequencia_banco_ops (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sequencia_id INTEGER NOT NULL,
+    operacao_id INTEGER NOT NULL,
+    ordem INTEGER DEFAULT 0,
+    tempo_padrao REAL DEFAULT 0,
+    equipamento_id INTEGER,
+    FOREIGN KEY(sequencia_id) REFERENCES sequencias_banco(id),
+    FOREIGN KEY(operacao_id) REFERENCES operacoes(id)
+);
 CREATE TABLE IF NOT EXISTS tipos_ocorrencia (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL UNIQUE,
@@ -370,6 +390,28 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
     FOREIGN KEY(funcionario_id) REFERENCES funcionarios(id),
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
     FOREIGN KEY(tipo_id) REFERENCES tipos_ocorrencia(id)
+);
+CREATE TABLE IF NOT EXISTS notas_fiscais (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    numero TEXT,
+    data TEXT,
+    cliente TEXT,
+    fabrica_id INTEGER,
+    valor REAL DEFAULT 0,
+    ops_vinculadas TEXT,
+    obs TEXT,
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id)
+);
+CREATE TABLE IF NOT EXISTS despesas_docs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    numero TEXT,
+    data TEXT,
+    fornecedor TEXT,
+    categoria_id INTEGER,
+    fabrica_id INTEGER,
+    valor REAL DEFAULT 0,
+    obs TEXT,
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id)
 );
 """
 
@@ -629,6 +671,26 @@ CREATE TABLE IF NOT EXISTS ref_sequencia (
     FOREIGN KEY(referencia_id) REFERENCES referencias(id),
     FOREIGN KEY(operacao_id) REFERENCES operacoes(id)
 );
+CREATE TABLE IF NOT EXISTS sequencias_banco (
+    id SERIAL PRIMARY KEY,
+    nome TEXT NOT NULL,
+    modelo TEXT DEFAULT '',
+    tempo_total REAL DEFAULT 0,
+    total_ops INTEGER DEFAULT 0,
+    criado_por INTEGER,
+    criado_em TEXT DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS'),
+    FOREIGN KEY(criado_por) REFERENCES usuarios(id)
+);
+CREATE TABLE IF NOT EXISTS sequencia_banco_ops (
+    id SERIAL PRIMARY KEY,
+    sequencia_id INTEGER NOT NULL,
+    operacao_id INTEGER NOT NULL,
+    ordem INTEGER DEFAULT 0,
+    tempo_padrao REAL DEFAULT 0,
+    equipamento_id INTEGER,
+    FOREIGN KEY(sequencia_id) REFERENCES sequencias_banco(id),
+    FOREIGN KEY(operacao_id) REFERENCES operacoes(id)
+);
 CREATE TABLE IF NOT EXISTS tipos_ocorrencia (
     id SERIAL PRIMARY KEY,
     nome TEXT NOT NULL UNIQUE,
@@ -648,6 +710,28 @@ CREATE TABLE IF NOT EXISTS ocorrencias (
     FOREIGN KEY(funcionario_id) REFERENCES funcionarios(id),
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
     FOREIGN KEY(tipo_id) REFERENCES tipos_ocorrencia(id)
+);
+CREATE TABLE IF NOT EXISTS notas_fiscais (
+    id SERIAL PRIMARY KEY,
+    numero TEXT,
+    data TEXT,
+    cliente TEXT,
+    fabrica_id INTEGER,
+    valor REAL DEFAULT 0,
+    ops_vinculadas TEXT,
+    obs TEXT,
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id)
+);
+CREATE TABLE IF NOT EXISTS despesas_docs (
+    id SERIAL PRIMARY KEY,
+    numero TEXT,
+    data TEXT,
+    fornecedor TEXT,
+    categoria_id INTEGER,
+    fabrica_id INTEGER,
+    valor REAL DEFAULT 0,
+    obs TEXT,
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id)
 );
 """
 
@@ -673,6 +757,60 @@ def init():
                 tempo_padrao REAL DEFAULT 0,
                 FOREIGN KEY(referencia_id) REFERENCES referencias(id),
                 FOREIGN KEY(operacao_id) REFERENCES operacoes(id)
+            )""")
+        except Exception:
+            pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS sequencias_banco (
+                id SERIAL PRIMARY KEY,
+                nome TEXT NOT NULL,
+                modelo TEXT DEFAULT '',
+                tempo_total REAL DEFAULT 0,
+                total_ops INTEGER DEFAULT 0,
+                criado_por INTEGER,
+                criado_em TEXT DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS'),
+                FOREIGN KEY(criado_por) REFERENCES usuarios(id)
+            )""")
+        except Exception:
+            pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS sequencia_banco_ops (
+                id SERIAL PRIMARY KEY,
+                sequencia_id INTEGER NOT NULL,
+                operacao_id INTEGER NOT NULL,
+                ordem INTEGER DEFAULT 0,
+                tempo_padrao REAL DEFAULT 0,
+                equipamento_id INTEGER,
+                FOREIGN KEY(sequencia_id) REFERENCES sequencias_banco(id),
+                FOREIGN KEY(operacao_id) REFERENCES operacoes(id)
+            )""")
+        except Exception:
+            pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS notas_fiscais (
+                id SERIAL PRIMARY KEY,
+                numero TEXT,
+                data TEXT,
+                cliente TEXT,
+                fabrica_id INTEGER,
+                valor REAL DEFAULT 0,
+                ops_vinculadas TEXT,
+                obs TEXT,
+                FOREIGN KEY(fabrica_id) REFERENCES fabricas(id)
+            )""")
+        except Exception:
+            pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS despesas_docs (
+                id SERIAL PRIMARY KEY,
+                numero TEXT,
+                data TEXT,
+                fornecedor TEXT,
+                categoria_id INTEGER,
+                fabrica_id INTEGER,
+                valor REAL DEFAULT 0,
+                obs TEXT,
+                FOREIGN KEY(fabrica_id) REFERENCES fabricas(id)
             )""")
         except Exception:
             pass
