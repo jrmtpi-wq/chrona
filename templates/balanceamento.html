@@ -829,8 +829,29 @@ function dropOpNoTime(e, ti) {
     dragItem = null; dragType = null;
   } else if (dragType === 'operacao-time' && dragItem) {
     const {ti: tiOrig, oi, op} = dragItem;
-    if (tiOrig !== ti) { estado.times[tiOrig].ops.splice(oi, 1); estado.times[ti].ops.push(op); renderTimes(); }
     dragItem = null; dragType = null;
+    if (tiOrig === ti) return;
+
+    // Calcula peças já atribuídas a operadoras neste time de origem
+    const qtdAtrib = estado.times[tiOrig].operadoras.reduce((s, oper) =>
+      s + (oper.atribuicoes||[]).filter(a => a.op_idx === op.idx || a.descricao === op.descricao)
+           .reduce((ss, a) => ss + a.qtd, 0), 0);
+    const qtdTotal = op.qtd || 0;
+    const qtdRest = Math.max(0, qtdTotal - qtdAtrib);
+
+    if (qtdRest > 0 && qtdAtrib > 0) {
+      // Há parte atribuída e parte restante: mover só o restante para o novo time
+      const cargaRest = op.tempo_padrao * qtdRest;
+      estado.times[ti].ops.push({...op, qtd: qtdRest, carga: cargaRest});
+      // Atualizar op original para refletir apenas o que foi atribuído
+      estado.times[tiOrig].ops[oi] = {...op, qtd: qtdAtrib, carga: op.tempo_padrao * qtdAtrib};
+      toast(`Restante (${qtdRest} pcs / ${cargaRest.toFixed(1)}m) movido para Time ${ti+1}`);
+    } else {
+      // Nada atribuído ou tudo atribuído: mover o op inteiro
+      estado.times[tiOrig].ops.splice(oi, 1);
+      estado.times[ti].ops.push(op);
+    }
+    renderTimes();
   }
 }
 function dropNoTime(e, ti) {
