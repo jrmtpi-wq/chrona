@@ -291,6 +291,44 @@
   </div>
 </div>
 
+<!-- MODAL CONFIRMAR ATRIBUIÇÃO -->
+<div class="modal-overlay" id="modal-confirmar-atrib">
+  <div class="modal" style="width:380px">
+    <div class="modal-header">
+      <div class="modal-title">📋 Atribuir Operação</div>
+      <button class="modal-close" onclick="cancelarAtribModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;color:#1a1a2e" id="ca-op">—</div>
+        <div style="font-size:12px;color:#6b7280;margin-top:2px">Operadora: <strong id="ca-nome">—</strong> &nbsp;|&nbsp; Tempo padrão: <strong id="ca-tempo">—</strong> min</div>
+      </div>
+      <div style="background:#f8f9fb;border-radius:8px;padding:10px;margin-bottom:14px;font-size:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="color:#6b7280">Tempo livre no ciclo:</span>
+          <strong id="ca-restante-ciclo">—</strong> min
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:#6b7280">Situação da operação:</span>
+          <span id="ca-qtd-rest-op" style="color:#d97706;font-weight:600">—</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Quantas peças esta operadora vai fazer?</label>
+        <input type="number" id="ca-qtd" min="1" oninput="recalcConfirm()" style="font-size:18px;font-weight:700;text-align:center">
+      </div>
+      <div style="background:#eff6ff;border-radius:8px;padding:12px;margin-top:10px;text-align:center">
+        <div style="font-size:11px;color:#6b7280">Carga desta operadora</div>
+        <div style="font-size:22px;font-weight:800;color:#1d4ed8" id="ca-carga">0.00 min</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="cancelarAtribModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarAtrib()">✅ Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL DIVISÃO DE OPERAÇÃO -->
 <div class="modal-overlay" id="modal-divisao">
   <div class="modal" style="width:420px">
@@ -548,16 +586,31 @@ function renderTimes() {
     const cls = totalCarga > ciclo ? 'ciclo-over' : totalCarga > ciclo * 0.9 ? 'ciclo-warn' : 'ciclo-ok';
     const cor = totalCarga > ciclo ? '#dc2626' : totalCarga > ciclo * 0.9 ? '#d97706' : '#15803d';
 
-    const opsHtml = time.ops.map((op, oi) => `
+    const opsHtml = time.ops.map((op, oi) => {
+      // Calcula peças já atribuídas a alguma operadora neste time
+      const qtdAtrib = time.operadoras.reduce((s, oper) =>
+        s + (oper.atribuicoes||[]).filter(a => a.op_idx === op.idx).reduce((ss, a) => ss + a.qtd, 0), 0);
+      const cargaAtrib = op.tempo_padrao * qtdAtrib;
+      const qtdRest = (op.qtd||0) - qtdAtrib;
+      const cargaRest = op.tempo_padrao * qtdRest;
+      const tudo = qtdAtrib >= (op.qtd||0) && (op.qtd||0) > 0;
+      return `
       <div class="time-op-item" draggable="true"
            ondragstart="dragOpDoTime(event, ${ti}, ${oi})"
            ondblclick="abrirAjuste(${ti}, ${oi})">
-        <div class="op-num" style="width:16px;height:16px;font-size:8px">${op.idx+1}</div>
-        <span style="flex:1;font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" title="${op.label||op.descricao}">${op.label||op.descricao}</span>
-        <span class="op-t">${(op.carga||0).toFixed(1)}</span>
-        <button onclick="removerOpDoTime(${ti},${oi})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:10px;padding:0 2px">✕</button>
-      </div>
-    `).join('');
+        <div class="op-num" style="width:16px;height:16px;font-size:8px">${(op.idx||oi)+1}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${op.label||op.descricao}</div>
+          <div style="font-size:9px;margin-top:1px;display:flex;gap:4px">
+            <span style="color:#6b7280">Total: ${(op.carga||0).toFixed(1)}m</span>
+            ${qtdAtrib > 0 ? `<span style="color:#15803d">✓ ${cargaAtrib.toFixed(1)}m</span>` : ''}
+            ${qtdRest > 0 ? `<span style="color:#d97706">⚠ ${cargaRest.toFixed(1)}m rest.</span>` : ''}
+            ${tudo ? `<span style="color:#15803d;font-weight:700">✓ Completa</span>` : ''}
+          </div>
+        </div>
+        <button onclick="removerOpDoTime(${ti},${oi})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:10px;padding:0 2px;flex-shrink:0">✕</button>
+      </div>`;
+    }).join('');
 
     const opersHtml = time.operadoras.map((op, oi) => `
       <span class="op-tag" onclick="removerOperadoraDoTime(${ti}, ${oi})" title="Remover">
@@ -659,36 +712,77 @@ function dropOperadoraNoTime(e, ti) {
   dragItem = null; dragType = null; renderTimes();
 }
 
-// ── DROP OPERAÇÃO NA OPERADORA (auto-calcula peças) ──
+// ── DROP OPERAÇÃO NA OPERADORA ────────────────────
+let _pendingAtrib = null;
+
 function dropOpNaOperadora(ti, oi, e) {
   e.preventDefault(); e.stopPropagation();
   e.currentTarget.classList.remove('drag-over-op');
-  if (dragType !== 'operacao-banco' || !dragItem) return;
-  const op = dragItem;
+
+  // Aceita drag do painel esquerdo OU das operações do time
+  let op = null;
+  let op_idx = -1;
+  if (dragType === 'operacao-banco' && dragItem) {
+    op = dragItem;
+    op_idx = estado.operacoes.findIndex(o => o.descricao === op.descricao);
+  } else if (dragType === 'operacao-time' && dragItem) {
+    op = dragItem.op;
+    op_idx = op.idx >= 0 ? op.idx : estado.operacoes.findIndex(o => o.descricao === op.descricao);
+  } else { return; }
   dragItem = null; dragType = null;
 
   if (!estado.times[ti].operadoras[oi].atribuicoes) estado.times[ti].operadoras[oi].atribuicoes = [];
-  const atribs = estado.times[ti].operadoras[oi].atribuicoes;
-  const cargaAtual = atribs.reduce((s, a) => s + (a.carga || 0), 0);
-  const restante = estado.ciclo - cargaAtual;
 
-  if (restante <= 0.01) { toast(`${op.nome ? op.nome.split(' ')[0] : 'Operadora'} sem tempo no ciclo`, 'error'); return; }
+  // Tempo restante desta operadora no ciclo
+  const cargaAtual = estado.times[ti].operadoras[oi].atribuicoes.reduce((s, a) => s + (a.carga||0), 0);
+  const restanteCiclo = estado.ciclo - cargaAtual;
 
-  const maxPcs = Math.floor(restante / op.tempo_padrao);
-  if (maxPcs < 1) { toast(`Tempo insuficiente para 1 peça (${op.tempo_padrao.toFixed(2)} min)`, 'error'); return; }
+  // Peças restantes não atribuídas desta operação no time
+  const opNoTime = estado.times[ti].ops.find(o => o.idx === op_idx || o.descricao === op.descricao);
+  const qtdTotal = opNoTime ? (opNoTime.qtd || 0) : 0;
+  const qtdJaAtrib = estado.times[ti].operadoras.reduce((s, oper) =>
+    s + (oper.atribuicoes||[]).filter(a => a.op_idx === op_idx).reduce((ss, a) => ss + a.qtd, 0), 0);
+  const qtdRestanteOp = Math.max(0, qtdTotal - qtdJaAtrib);
 
-  const op_idx = estado.operacoes.findIndex(o => o.operacao_id === op.operacao_id && o.descricao === op.descricao);
-  atribs.push({
-    op_idx: op_idx >= 0 ? op_idx : 0,
-    descricao: op.descricao,
-    tempo_padrao: op.tempo_padrao,
-    qtd: maxPcs,
-    carga: op.tempo_padrao * maxPcs
-  });
+  if (restanteCiclo <= 0.01) { toast('Operadora sem tempo restante no ciclo', 'error'); return; }
+  const maxPeloCiclo = Math.floor(restanteCiclo / op.tempo_padrao);
+  if (maxPeloCiclo < 1) { toast(`Tempo insuficiente para 1 peça (${op.tempo_padrao.toFixed(2)} min)`, 'error'); return; }
 
+  // Sugestão: máximo que cabe no ciclo, limitado ao que falta da operação
+  const sugestao = qtdRestanteOp > 0 ? Math.min(maxPeloCiclo, qtdRestanteOp) : maxPeloCiclo;
+
+  _pendingAtrib = { ti, oi, op_idx, op };
+  document.getElementById('ca-nome').textContent = estado.times[ti].operadoras[oi].nome.split(' ')[0];
+  document.getElementById('ca-op').textContent = op.descricao;
+  document.getElementById('ca-tempo').textContent = op.tempo_padrao.toFixed(2);
+  document.getElementById('ca-restante-ciclo').textContent = restanteCiclo.toFixed(1);
+  document.getElementById('ca-qtd-rest-op').textContent = qtdRestanteOp > 0 ? `${qtdRestanteOp} pcs restantes da operação` : 'Operação não vinculada ao time';
+  document.getElementById('ca-qtd').value = sugestao;
+  recalcConfirm();
+  abrirModal('modal-confirmar-atrib');
+}
+
+function recalcConfirm() {
+  const qtd = parseInt(document.getElementById('ca-qtd').value) || 0;
+  const op = _pendingAtrib ? _pendingAtrib.op : null;
+  if (!op) return;
+  const carga = op.tempo_padrao * qtd;
+  document.getElementById('ca-carga').textContent = carga.toFixed(2) + ' min';
+}
+
+function confirmarAtrib() {
+  if (!_pendingAtrib) return;
+  const {ti, oi, op_idx, op} = _pendingAtrib;
+  const qtd = parseInt(document.getElementById('ca-qtd').value) || 1;
+  const carga = op.tempo_padrao * qtd;
+  estado.times[ti].operadoras[oi].atribuicoes.push({op_idx, descricao: op.descricao, tempo_padrao: op.tempo_padrao, qtd, carga});
+  _pendingAtrib = null;
+  fecharModal('modal-confirmar-atrib');
   renderTimes();
-  const nomeOp = estado.times[ti].operadoras[oi].nome.split(' ')[0];
-  toast(`${nomeOp}: ${maxPcs} pcs de "${op.descricao}" (${(op.tempo_padrao * maxPcs).toFixed(1)} min)`);
+}
+
+function cancelarAtribModal() {
+  _pendingAtrib = null; fecharModal('modal-confirmar-atrib');
 }
 
 // ── DISTRIBUIÇÃO POR OPERADORA ────────────────────
@@ -702,24 +796,18 @@ function adicionarAtrib(ti, oi) {
   renderTimes();
 }
 function removerAtrib(ti, oi, ai) {
-  estado.times[ti].operadoras[oi].atribuicoes.splice(ai, 1);
-  renderTimes();
+  estado.times[ti].operadoras[oi].atribuicoes.splice(ai, 1); renderTimes();
 }
 function atualizarAtribOp(ti, oi, ai, val) {
   const idx = parseInt(val);
-  const op = estado.operacoes[idx];
-  if (!op) return;
+  const op = estado.operacoes[idx]; if (!op) return;
   const a = estado.times[ti].operadoras[oi].atribuicoes[ai];
-  a.op_idx = idx; a.descricao = op.descricao;
-  a.tempo_padrao = op.tempo_padrao;
-  a.carga = op.tempo_padrao * a.qtd;
-  renderTimes();
+  a.op_idx = idx; a.descricao = op.descricao; a.tempo_padrao = op.tempo_padrao;
+  a.carga = op.tempo_padrao * a.qtd; renderTimes();
 }
 function atualizarAtribQtd(ti, oi, ai, val) {
   const a = estado.times[ti].operadoras[oi].atribuicoes[ai];
-  a.qtd = parseInt(val) || 1;
-  a.carga = a.tempo_padrao * a.qtd;
-  renderTimes();
+  a.qtd = parseInt(val) || 1; a.carga = a.tempo_padrao * a.qtd; renderTimes();
 }
 function removerOperadoraDoTime(ti, oi) {
   estado.times[ti].operadoras.splice(oi, 1); renderTimes();
