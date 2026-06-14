@@ -56,12 +56,12 @@
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
 .modal-overlay.open{display:flex}
 .modal{background:#fff;border-radius:16px;width:600px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
-.modal-lg{width:780px}
-.modal-header{padding:20px 24px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.modal-lg{width:860px;max-height:90vh;display:flex;flex-direction:column}
+.modal-lg .modal-header{padding:16px 20px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .modal-title{font-size:16px;font-weight:700;color:#1a1a2e}
 .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280}
-.modal-body{padding:24px}
-.modal-footer{padding:16px 24px;border-top:1px solid #f0f2f5;display:flex;justify-content:flex-end;gap:8px;position:sticky;bottom:0;background:#fff}
+.modal-lg .modal-body{padding:16px 20px;flex:1;overflow:hidden;display:flex;flex-direction:column}
+.modal-lg .modal-footer{padding:12px 20px;border-top:1px solid #f0f2f5;display:flex;justify-content:flex-end;gap:8px;flex-shrink:0}
 .form-row{display:grid;gap:16px;margin-bottom:16px}
 .form-row.cols-2{grid-template-columns:1fr 1fr}
 .form-row.cols-3{grid-template-columns:1fr 1fr 1fr}
@@ -69,9 +69,10 @@
 .form-group input,.form-group select,.form-group textarea{width:100%;padding:9px 12px;border:1px solid #e0e6f0;border-radius:8px;font-size:13px;outline:none}
 .form-group input:focus,.form-group select:focus{border-color:#1a1a2e}
 .form-group textarea{resize:vertical;min-height:70px}
-.seq-container{display:grid;grid-template-columns:1fr 1fr;gap:16px;min-height:400px}
-.seq-titulo{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #e0e6f0}
-.ops-banco{max-height:320px;overflow-y:auto}
+.seq-container{display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1;overflow:hidden}
+.seq-container > div{display:flex;flex-direction:column;overflow:hidden}
+.seq-titulo{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid #e0e6f0;flex-shrink:0}
+.ops-banco{flex:1;overflow-y:auto;min-height:0}
 .op-banco-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;transition:background .1s}
 .op-banco-item:hover{background:#f0f2f5}
 .op-banco-add{background:#1a1a2e;color:#fff;border:none;border-radius:4px;width:22px;height:22px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -362,8 +363,8 @@
         </div>
         <div>
           <div class="seq-titulo">📋 Sequência da Referência</div>
-          <div id="seq-ref-lista"><div class="drop-zone">Clique nas operações ao lado para adicionar</div></div>
-          <div class="tempo-total" id="tempo-total-ref" style="display:none">
+          <div id="seq-ref-lista" style="flex:1;overflow-y:auto;min-height:0"><div class="drop-zone">Clique nas operações ao lado para adicionar</div></div>
+          <div class="tempo-total" id="tempo-total-ref" style="display:none;flex-shrink:0">
             <div><div class="tempo-total-lbl">TEMPO TOTAL</div><div class="tempo-total-val" id="tempo-total-ref-val">0.00 min</div></div>
             <div style="text-align:right"><div class="tempo-total-lbl">OPERAÇÕES</div><div class="tempo-total-val" id="tempo-total-ref-qtd">0</div></div>
           </div>
@@ -404,8 +405,8 @@
         </div>
         <div>
           <div class="seq-titulo">📋 Sequência da OP</div>
-          <div id="seq-op-lista"><div class="drop-zone">Clique nas operações ao lado para adicionar</div></div>
-          <div class="tempo-total" id="tempo-total-op" style="display:none">
+          <div id="seq-op-lista" style="flex:1;overflow-y:auto;min-height:0"><div class="drop-zone">Clique nas operações ao lado para adicionar</div></div>
+          <div class="tempo-total" id="tempo-total-op" style="display:none;flex-shrink:0">
             <div><div class="tempo-total-lbl">TEMPO TOTAL</div><div class="tempo-total-val" id="tempo-total-op-val">0.00 min</div></div>
             <div style="text-align:right"><div class="tempo-total-lbl">OPERAÇÕES</div><div class="tempo-total-val" id="tempo-total-op-qtd">0</div></div>
           </div>
