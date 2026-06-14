@@ -636,12 +636,11 @@ def api_op_salvar():
                        d.get('obs',''), d['id']))
             op_id = d['id']
         else:
-            c.execute("""INSERT INTO ordens_producao (numero,fabrica_id,referencia_id,descricao,
+            op_id = c.insert_id("""INSERT INTO ordens_producao (numero,fabrica_id,referencia_id,descricao,
                          quantidade_total,valor_unitario,valor_total,data_entrada,data_entrega,obs)
                          VALUES (?,?,?,?,?,?,?,?,?,?)""",
                       (d['numero'], fab_id, ref_id, d.get('descricao',''),
                        qtd, unit, total, d.get('data_entrada'), d.get('data_entrega'), d.get('obs','')))
-            op_id = c.execute("SELECT last_insert_rowid()").fetchone()[0]
  
             # Copiar sequência da referência se solicitado
             if d.get('copiar_sequencia') and ref_id:
@@ -660,8 +659,9 @@ def api_op_salvar():
  
         c.commit(); c.close(); return jsonify({'ok': True, 'op_id': op_id})
     except Exception as e:
+        import traceback; traceback.print_exc()
         c.close(); return jsonify({'ok': False, 'erro': str(e)})
- 
+
 @app.route('/api/op/<int:oid>')
 @login_required
 def api_op_get(oid):
@@ -873,10 +873,9 @@ def api_sequencia_salvar():
             seq_id = d['id']
             c.execute("DELETE FROM sequencia_banco_ops WHERE sequencia_id=?", (seq_id,))
         else:
-            c.execute("""INSERT INTO sequencias_banco (nome,modelo,tempo_total,total_ops,criado_por)
+            seq_id = c.insert_id("""INSERT INTO sequencias_banco (nome,modelo,tempo_total,total_ops,criado_por)
                          VALUES (?,?,?,?,?)""",
                       (d['nome'], d['modelo'], tempo_total, total_ops, user['id']))
-            seq_id = c.execute("SELECT last_insert_rowid()").fetchone()[0]
 
         for op in d.get('operacoes', []):
             c.execute("""INSERT INTO sequencia_banco_ops
