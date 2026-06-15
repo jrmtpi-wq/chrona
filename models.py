@@ -759,6 +759,11 @@ def init():
         except Exception:
             pass
         try:
+            c.execute("ALTER TABLE funcoes ADD COLUMN IF NOT EXISTS ativa INTEGER DEFAULT 1")
+            c.execute("UPDATE funcoes SET ativa=1 WHERE ativa IS NULL")
+        except Exception:
+            pass
+        try:
             c.execute("""CREATE TABLE IF NOT EXISTS ref_sequencia (
                 id SERIAL PRIMARY KEY,
                 referencia_id INTEGER NOT NULL,
@@ -837,6 +842,11 @@ def init():
             pass
         try:
             c.execute("ALTER TABLE operacoes ADD COLUMN modelo TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE funcoes ADD COLUMN ativa INTEGER DEFAULT 1")
+            c.execute("UPDATE funcoes SET ativa=1 WHERE ativa IS NULL")
         except Exception:
             pass
         try:
