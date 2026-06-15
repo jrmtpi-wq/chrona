@@ -241,7 +241,11 @@ CREATE TABLE IF NOT EXISTS despesas (
     fabrica_id INTEGER,
     categoria_id INTEGER,
     mes TEXT NOT NULL,
+    data TEXT,
     valor REAL DEFAULT 0,
+    tipo TEXT DEFAULT 'FIXA',
+    numero_doc TEXT DEFAULT '',
+    fornecedor TEXT DEFAULT '',
     obs TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
     FOREIGN KEY(categoria_id) REFERENCES categorias_despesa(id)
@@ -565,7 +569,11 @@ CREATE TABLE IF NOT EXISTS despesas (
     fabrica_id INTEGER,
     categoria_id INTEGER,
     mes TEXT NOT NULL,
+    data TEXT,
     valor REAL DEFAULT 0,
+    tipo TEXT DEFAULT 'FIXA',
+    numero_doc TEXT DEFAULT '',
+    fornecedor TEXT DEFAULT '',
     obs TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
     FOREIGN KEY(categoria_id) REFERENCES categorias_despesa(id)
@@ -776,6 +784,22 @@ def init():
         except Exception:
             pass
         try:
+            c.execute("ALTER TABLE despesas ADD COLUMN IF NOT EXISTS data TEXT")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE despesas ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'FIXA'")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE despesas ADD COLUMN IF NOT EXISTS numero_doc TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE despesas ADD COLUMN IF NOT EXISTS fornecedor TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
             c.execute("""CREATE TABLE IF NOT EXISTS ref_sequencia (
                 id SERIAL PRIMARY KEY,
                 referencia_id INTEGER NOT NULL,
@@ -867,6 +891,22 @@ def init():
             pass
         try:
             c.execute("ALTER TABLE faturamento ADD COLUMN tipo TEXT DEFAULT 'CONCLUIDA'")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE despesas ADD COLUMN data TEXT")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE despesas ADD COLUMN tipo TEXT DEFAULT 'FIXA'")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE despesas ADD COLUMN numero_doc TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE despesas ADD COLUMN fornecedor TEXT DEFAULT ''")
         except Exception:
             pass
         try:
