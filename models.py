@@ -338,6 +338,8 @@ CREATE TABLE IF NOT EXISTS faturamento (
     quantidade INTEGER DEFAULT 0,
     valor_unitario REAL DEFAULT 0,
     valor_total REAL DEFAULT 0,
+    numero_nf TEXT DEFAULT '',
+    tipo TEXT DEFAULT 'CONCLUIDA',
     obs TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
     FOREIGN KEY(op_id) REFERENCES ordens_producao(id)
@@ -660,6 +662,8 @@ CREATE TABLE IF NOT EXISTS faturamento (
     quantidade INTEGER DEFAULT 0,
     valor_unitario REAL DEFAULT 0,
     valor_total REAL DEFAULT 0,
+    numero_nf TEXT DEFAULT '',
+    tipo TEXT DEFAULT 'CONCLUIDA',
     obs TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
     FOREIGN KEY(op_id) REFERENCES ordens_producao(id)
@@ -764,6 +768,14 @@ def init():
         except Exception:
             pass
         try:
+            c.execute("ALTER TABLE faturamento ADD COLUMN IF NOT EXISTS numero_nf TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE faturamento ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'CONCLUIDA'")
+        except Exception:
+            pass
+        try:
             c.execute("""CREATE TABLE IF NOT EXISTS ref_sequencia (
                 id SERIAL PRIMARY KEY,
                 referencia_id INTEGER NOT NULL,
@@ -847,6 +859,14 @@ def init():
         try:
             c.execute("ALTER TABLE funcoes ADD COLUMN ativa INTEGER DEFAULT 1")
             c.execute("UPDATE funcoes SET ativa=1 WHERE ativa IS NULL")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE faturamento ADD COLUMN numero_nf TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE faturamento ADD COLUMN tipo TEXT DEFAULT 'CONCLUIDA'")
         except Exception:
             pass
         try:
