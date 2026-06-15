@@ -163,9 +163,6 @@
           <label class="form-label">Função</label>
           <select class="form-control" id="fn-funcao">
             <option value="">Selecione...</option>
-            {% for fc in funcoes %}
-            <option value="{{ fc.id }}">{{ fc.nome }}</option>
-            {% endfor %}
           </select>
         </div>
         <div class="form-group">
@@ -234,7 +231,20 @@
 <script>
 let delId = null;
 
-function novoFunc(){
+async function carregarFuncoes(selecionado=null){
+  const sel = document.getElementById('fn-funcao');
+  const funcoes = await api('/api/funcoes');
+  sel.innerHTML = '<option value="">Selecione...</option>';
+  funcoes.forEach(fc=>{
+    const opt = document.createElement('option');
+    opt.value = fc.id;
+    opt.textContent = fc.nome;
+    if(selecionado && fc.id==selecionado) opt.selected=true;
+    sel.appendChild(opt);
+  });
+}
+
+async function novoFunc(){
   document.getElementById('fn-id').value='';
   document.getElementById('modal-func-title').textContent='Novo Funcionário';
   ['fn-nome','fn-cpf','fn-rg','fn-tel','fn-cel','fn-email',
@@ -247,8 +257,8 @@ function novoFunc(){
   document.getElementById('fn-nasc').value='';
   document.getElementById('fn-adm').value=new Date().toISOString().slice(0,10);
   document.getElementById('fn-dem').value='';
-  document.getElementById('fn-funcao').value='';
   document.getElementById('fn-uf').value='SC';
+  await carregarFuncoes();
   abrirModal('modal-func');
 }
 
@@ -271,7 +281,7 @@ async function editarFunc(id){
   document.getElementById('fn-uf').value=f.estado||'';
   document.getElementById('fn-cep').value=f.cep||'';
   document.getElementById('fn-fab').value=f.fabrica_id||'';
-  document.getElementById('fn-funcao').value=f.funcao_id||'';
+  await carregarFuncoes(f.funcao_id||null);
   document.getElementById('fn-sit').value=f.situacao||'ATIVO';
   document.getElementById('fn-adm').value=f.data_admissao||'';
   document.getElementById('fn-dem').value=f.data_demissao||'';
