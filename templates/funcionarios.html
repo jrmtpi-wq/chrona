@@ -188,6 +188,14 @@
           <input type="number" class="form-control" id="fn-sal" step="0.01" value="0" placeholder="0,00">
         </div>
         <div class="form-group">
+          <label class="form-label">Bonificação (R$)</label>
+          <input type="number" class="form-control" id="fn-bonificacao" step="0.01" value="0" placeholder="0,00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">iFood (R$)</label>
+          <input type="number" class="form-control" id="fn-ifood" step="0.01" value="0" placeholder="0,00">
+        </div>
+        <div class="form-group">
           <label class="form-label">Data de Demissão</label>
           <input type="date" class="form-control" id="fn-dem">
         </div>
@@ -268,6 +276,8 @@ async function editarFunc(id){
   document.getElementById('fn-adm').value=f.data_admissao||'';
   document.getElementById('fn-dem').value=f.data_demissao||'';
   document.getElementById('fn-sal').value=f.salario||0;
+  document.getElementById('fn-bonificacao').value=f.bonificacao||0;
+  document.getElementById('fn-ifood').value=f.ifood||0;
   document.getElementById('fn-obs').value=f.observacao||'';
   abrirModal('modal-func');
 }
@@ -295,6 +305,8 @@ async function salvar(){
     data_admissao:document.getElementById('fn-adm').value,
     data_demissao:document.getElementById('fn-dem').value,
     salario:document.getElementById('fn-sal').value,
+    bonificacao:document.getElementById('fn-bonificacao').value,
+    ifood:document.getElementById('fn-ifood').value,
     situacao:document.getElementById('fn-sit').value,
     observacao:document.getElementById('fn-obs').value,
   };

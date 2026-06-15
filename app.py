@@ -114,14 +114,15 @@ def api_func_salvar():
     fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
     campos = ['fabrica_id','funcao_id','nome','cpf','rg','sexo','data_nascimento',
               'telefone','celular','email','endereco','numero','bairro','cidade',
-              'estado','cep','data_admissao','salario','situacao','observacao']
+              'estado','cep','data_admissao','salario','bonificacao','ifood','situacao','observacao']
     vals = [fab_id, d.get('funcao_id') or None, d.get('nome','').strip(),
             d.get('cpf',''), d.get('rg',''), d.get('sexo',''),
             d.get('data_nascimento',''), d.get('telefone',''), d.get('celular',''),
             d.get('email',''), d.get('endereco',''), d.get('numero',''),
             d.get('bairro',''), d.get('cidade',''), d.get('estado',''),
             d.get('cep',''), d.get('data_admissao',''),
-            float(d.get('salario') or 0), d.get('situacao','ATIVO'), d.get('observacao','')]
+            float(d.get('salario') or 0), float(d.get('bonificacao') or 0),
+            float(d.get('ifood') or 0), d.get('situacao','ATIVO'), d.get('observacao','')]
     try:
         if d.get('id'):
             sets = ','.join(f"{c2}=?" for c2 in campos)

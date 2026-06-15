@@ -141,6 +141,8 @@ CREATE TABLE IF NOT EXISTS funcionarios (
     data_admissao TEXT,
     data_demissao TEXT,
     salario REAL DEFAULT 0,
+    bonificacao REAL DEFAULT 0,
+    ifood REAL DEFAULT 0,
     situacao TEXT DEFAULT 'ATIVO',
     observacao TEXT,
     foto TEXT,
@@ -461,6 +463,8 @@ CREATE TABLE IF NOT EXISTS funcionarios (
     data_admissao TEXT,
     data_demissao TEXT,
     salario REAL DEFAULT 0,
+    bonificacao REAL DEFAULT 0,
+    ifood REAL DEFAULT 0,
     situacao TEXT DEFAULT 'ATIVO',
     observacao TEXT,
     foto TEXT,
@@ -743,6 +747,14 @@ def init():
     # Migrações: adicionar colunas que podem não existir em bancos antigos
     if PG_MODE:
         try:
+            c.execute("ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS bonificacao REAL DEFAULT 0")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS ifood REAL DEFAULT 0")
+        except Exception:
+            pass
+        try:
             c.execute("ALTER TABLE operacoes ADD COLUMN IF NOT EXISTS modelo TEXT DEFAULT ''")
         except Exception:
             pass
@@ -815,6 +827,14 @@ def init():
         except Exception:
             pass
     else:
+        try:
+            c.execute("ALTER TABLE funcionarios ADD COLUMN bonificacao REAL DEFAULT 0")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE funcionarios ADD COLUMN ifood REAL DEFAULT 0")
+        except Exception:
+            pass
         try:
             c.execute("ALTER TABLE operacoes ADD COLUMN modelo TEXT DEFAULT ''")
         except Exception:
