@@ -29,7 +29,8 @@
       <option value="{{ f.id }}">{{ f.nome }}</option>
       {% endfor %}
     </select>
-    <div id="count-funcs" style="color:var(--cinza);font-size:13px;margin-left:auto"></div>
+    <div id="totais-funcs" style="display:flex;gap:18px;margin-left:auto;font-size:12px;color:var(--cinza)"></div>
+    <div id="count-funcs" style="color:var(--cinza);font-size:13px"></div>
   </div>
 </div>
 
@@ -369,6 +370,16 @@ async function carregarLista(){
   const rows=await api(url);
   const tb=document.getElementById('tbody-funcs');
   document.getElementById('count-funcs').textContent=`${rows.length} funcionário(s)`;
+  const totSal=rows.reduce((s,f)=>s+(parseFloat(f.salario)||0),0);
+  const totGrat=rows.reduce((s,f)=>s+(parseFloat(f.bonificacao)||0),0);
+  const totIfood=rows.reduce((s,f)=>s+(parseFloat(f.ifood)||0),0);
+  const totGeral=totSal+totGrat+totIfood;
+  document.getElementById('totais-funcs').innerHTML = rows.length ? `
+    <span>Salários: <strong style="color:var(--azul)">${fmtR(totSal)}</strong></span>
+    <span>Gratificações: <strong style="color:var(--azul)">${fmtR(totGrat)}</strong></span>
+    <span>iFood: <strong style="color:var(--azul)">${fmtR(totIfood)}</strong></span>
+    <span>Total Geral: <strong style="color:var(--azul)">${fmtR(totGeral)}</strong></span>
+  ` : '';
   if(!rows.length){
     tb.innerHTML='<tr><td colspan="12" class="empty"><span class="empty-icon">👷</span>Nenhum funcionário encontrado</td></tr>';return;
   }
