@@ -246,9 +246,35 @@ CREATE TABLE IF NOT EXISTS despesas (
     tipo TEXT DEFAULT 'FIXA',
     numero_doc TEXT DEFAULT '',
     fornecedor TEXT DEFAULT '',
+    foto TEXT,
     obs TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
     FOREIGN KEY(categoria_id) REFERENCES categorias_despesa(id)
+);
+CREATE TABLE IF NOT EXISTS contas_pagar (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fabrica_id INTEGER,
+    categoria_id INTEGER,
+    fornecedor TEXT,
+    descricao TEXT,
+    valor_total REAL DEFAULT 0,
+    num_parcelas INTEGER DEFAULT 1,
+    data_lancamento TEXT,
+    obs TEXT,
+    criado_em TEXT DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
+    FOREIGN KEY(categoria_id) REFERENCES categorias_despesa(id)
+);
+CREATE TABLE IF NOT EXISTS contas_pagar_parcelas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    conta_id INTEGER NOT NULL,
+    numero INTEGER DEFAULT 1,
+    valor REAL DEFAULT 0,
+    data_vencimento TEXT,
+    status TEXT DEFAULT 'PENDENTE',
+    data_pagamento TEXT,
+    foto TEXT,
+    FOREIGN KEY(conta_id) REFERENCES contas_pagar(id)
 );
 CREATE TABLE IF NOT EXISTS referencias (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -407,6 +433,7 @@ CREATE TABLE IF NOT EXISTS notas_fiscais (
     fabrica_id INTEGER,
     valor REAL DEFAULT 0,
     ops_vinculadas TEXT,
+    foto TEXT,
     obs TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id)
 );
@@ -574,9 +601,35 @@ CREATE TABLE IF NOT EXISTS despesas (
     tipo TEXT DEFAULT 'FIXA',
     numero_doc TEXT DEFAULT '',
     fornecedor TEXT DEFAULT '',
+    foto TEXT,
     obs TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
     FOREIGN KEY(categoria_id) REFERENCES categorias_despesa(id)
+);
+CREATE TABLE IF NOT EXISTS contas_pagar (
+    id SERIAL PRIMARY KEY,
+    fabrica_id INTEGER,
+    categoria_id INTEGER,
+    fornecedor TEXT,
+    descricao TEXT,
+    valor_total REAL DEFAULT 0,
+    num_parcelas INTEGER DEFAULT 1,
+    data_lancamento TEXT,
+    obs TEXT,
+    criado_em TEXT DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS'),
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
+    FOREIGN KEY(categoria_id) REFERENCES categorias_despesa(id)
+);
+CREATE TABLE IF NOT EXISTS contas_pagar_parcelas (
+    id SERIAL PRIMARY KEY,
+    conta_id INTEGER NOT NULL,
+    numero INTEGER DEFAULT 1,
+    valor REAL DEFAULT 0,
+    data_vencimento TEXT,
+    status TEXT DEFAULT 'PENDENTE',
+    data_pagamento TEXT,
+    foto TEXT,
+    FOREIGN KEY(conta_id) REFERENCES contas_pagar(id)
 );
 CREATE TABLE IF NOT EXISTS referencias (
     id SERIAL PRIMARY KEY,
@@ -735,6 +788,7 @@ CREATE TABLE IF NOT EXISTS notas_fiscais (
     fabrica_id INTEGER,
     valor REAL DEFAULT 0,
     ops_vinculadas TEXT,
+    foto TEXT,
     obs TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id)
 );
@@ -797,6 +851,49 @@ def init():
             pass
         try:
             c.execute("ALTER TABLE despesas ADD COLUMN IF NOT EXISTS fornecedor TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE despesas ADD COLUMN IF NOT EXISTS foto TEXT")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE despesas_docs ADD COLUMN IF NOT EXISTS foto TEXT")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE notas_fiscais ADD COLUMN IF NOT EXISTS foto TEXT")
+        except Exception:
+            pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS contas_pagar (
+                id SERIAL PRIMARY KEY,
+                fabrica_id INTEGER,
+                categoria_id INTEGER,
+                fornecedor TEXT,
+                descricao TEXT,
+                valor_total REAL DEFAULT 0,
+                num_parcelas INTEGER DEFAULT 1,
+                data_lancamento TEXT,
+                obs TEXT,
+                criado_em TEXT DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS'),
+                FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
+                FOREIGN KEY(categoria_id) REFERENCES categorias_despesa(id)
+            )""")
+        except Exception:
+            pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS contas_pagar_parcelas (
+                id SERIAL PRIMARY KEY,
+                conta_id INTEGER NOT NULL,
+                numero INTEGER DEFAULT 1,
+                valor REAL DEFAULT 0,
+                data_vencimento TEXT,
+                status TEXT DEFAULT 'PENDENTE',
+                data_pagamento TEXT,
+                foto TEXT,
+                FOREIGN KEY(conta_id) REFERENCES contas_pagar(id)
+            )""")
         except Exception:
             pass
         try:
@@ -907,6 +1004,49 @@ def init():
             pass
         try:
             c.execute("ALTER TABLE despesas ADD COLUMN fornecedor TEXT DEFAULT ''")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE despesas ADD COLUMN foto TEXT")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE despesas_docs ADD COLUMN foto TEXT")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE notas_fiscais ADD COLUMN foto TEXT")
+        except Exception:
+            pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS contas_pagar (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                fabrica_id INTEGER,
+                categoria_id INTEGER,
+                fornecedor TEXT,
+                descricao TEXT,
+                valor_total REAL DEFAULT 0,
+                num_parcelas INTEGER DEFAULT 1,
+                data_lancamento TEXT,
+                obs TEXT,
+                criado_em TEXT DEFAULT (datetime('now','localtime')),
+                FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
+                FOREIGN KEY(categoria_id) REFERENCES categorias_despesa(id)
+            )""")
+        except Exception:
+            pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS contas_pagar_parcelas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conta_id INTEGER NOT NULL,
+                numero INTEGER DEFAULT 1,
+                valor REAL DEFAULT 0,
+                data_vencimento TEXT,
+                status TEXT DEFAULT 'PENDENTE',
+                data_pagamento TEXT,
+                foto TEXT,
+                FOREIGN KEY(conta_id) REFERENCES contas_pagar(id)
+            )""")
         except Exception:
             pass
         try:

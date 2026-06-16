@@ -57,6 +57,9 @@ tfoot td{padding:10px 12px;font-size:12px;font-weight:700;background:#f8f9fb;bor
 .badge-concluida{background:#dcfce7;color:#15803d}
 .badge-parcial{background:#fef9c3;color:#854d0e}
 .badge-nf{background:#dbeafe;color:#1d4ed8}
+.foto-preview{margin-top:8px;display:flex;align-items:center;gap:8px}
+.foto-preview img{height:50px;border-radius:6px;border:1px solid #e0e6f0}
+.foto-link{font-size:11px;color:#1d4ed8;text-decoration:underline;cursor:pointer}
 
 /* MODAL */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
@@ -326,6 +329,12 @@ tfoot td{padding:10px 12px;font-size:12px;font-weight:700;background:#f8f9fb;bor
           <input type="text" id="nf-ops" placeholder="Ex: OP001, OP002">
         </div>
       </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Foto da Nota Fiscal</label>
+        <input type="file" id="nf-foto-arquivo" accept="image/*,.pdf" onchange="uploadFoto(this,'nf-foto-path')">
+        <div class="foto-preview" id="nf-foto-preview"></div>
+        <input type="hidden" id="nf-foto-path">
+      </div>
       <div class="form-group">
         <label>Observação</label>
         <textarea id="nf-obs" rows="2" placeholder="Opcional..."></textarea>
@@ -348,6 +357,21 @@ function fecharModal(id){document.getElementById(id).classList.remove('open')}
 function abrirModal(id){document.getElementById(id).classList.add('open')}
 function fmtR(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function fmtN(v){return Number(v||0).toLocaleString('pt-BR')}
+
+async function uploadFoto(input, hiddenId){
+  const file=input.files[0];
+  if(!file)return;
+  const fd=new FormData();
+  fd.append('foto', file);
+  const r=await fetch('/api/upload-foto',{method:'POST',body:fd}).then(r=>r.json());
+  if(r.ok){
+    document.getElementById(hiddenId).value=r.path;
+    const previewId=hiddenId.replace('-path','-preview');
+    const prev=document.getElementById(previewId);
+    if(prev) prev.innerHTML = file.type.startsWith('image/') ? `<img src="${r.path}"><span style="font-size:11px;color:#15803d">Anexado!</span>` : `<span style="font-size:11px;color:#15803d">📎 Arquivo anexado!</span>`;
+    toast('Foto enviada!');
+  } else toast(r.erro||'Erro ao enviar foto','error');
+}
 
 function setTab(tab, btn) {
   tabAtual = tab;
@@ -552,6 +576,9 @@ function abrirModalNF() {
   document.getElementById('nf-cliente').value='';
   document.getElementById('nf-valor').value='';
   document.getElementById('nf-ops').value='';
+  document.getElementById('nf-foto-path').value='';
+  document.getElementById('nf-foto-preview').innerHTML='';
+  document.getElementById('nf-foto-arquivo').value='';
   document.getElementById('nf-obs').value='';
   abrirModal('modal-nf');
 }
@@ -563,7 +590,7 @@ async function salvarNF() {
   const valor=parseFloat(document.getElementById('nf-valor').value)||0;
   if(!num||!data||!cliente||!valor){toast('Preencha os campos obrigatórios','error');return}
   const id=document.getElementById('nf-edit-id').value;
-  const d={id:id||null,numero:num,data,cliente,fabrica_id:document.getElementById('nf-fabrica').value,valor,ops_vinculadas:document.getElementById('nf-ops').value,obs:document.getElementById('nf-obs').value};
+  const d={id:id||null,numero:num,data,cliente,fabrica_id:document.getElementById('nf-fabrica').value,valor,ops_vinculadas:document.getElementById('nf-ops').value,foto:document.getElementById('nf-foto-path').value||null,obs:document.getElementById('nf-obs').value};
   const r=await fetch('/api/nota-fiscal/salvar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
   if(r.ok){fecharModal('modal-nf');carregarDados();toast(id?'NF atualizada!':'NF salva!')}
   else toast(r.erro||'Erro','error');
@@ -579,6 +606,9 @@ async function editarNF(id) {
   document.getElementById('nf-fabrica').value=r.fabrica_id||'';
   document.getElementById('nf-valor').value=r.valor||'';
   document.getElementById('nf-ops').value=r.ops_vinculadas||'';
+  document.getElementById('nf-foto-path').value=r.foto||'';
+  document.getElementById('nf-foto-preview').innerHTML=r.foto?`<a class="foto-link" href="${r.foto}" target="_blank">Ver foto atual</a>`:'';
+  document.getElementById('nf-foto-arquivo').value='';
   document.getElementById('nf-obs').value=r.obs||'';
   abrirModal('modal-nf');
 }

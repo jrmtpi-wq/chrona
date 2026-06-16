@@ -1,10 +1,27 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 from functools import wraps
 from datetime import datetime, date
+from werkzeug.utils import secure_filename
+import os, uuid
 import models as m
 
 app = Flask(__name__)
 app.secret_key = 'chrona_2025_producao_secret'
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+EXTENSOES_OK = {'png','jpg','jpeg','gif','webp','pdf'}
+
+def salvar_upload(arquivo):
+    """Salva arquivo enviado e retorna o caminho relativo (/static/uploads/xxx) ou None."""
+    if not arquivo or not arquivo.filename:
+        return None
+    ext = arquivo.filename.rsplit('.', 1)[-1].lower() if '.' in arquivo.filename else ''
+    if ext not in EXTENSOES_OK:
+        return None
+    nome = f"{uuid.uuid4().hex}.{ext}"
+    arquivo.save(os.path.join(UPLOAD_DIR, secure_filename(nome)))
+    return f"/static/uploads/{nome}"
 
 @app.context_processor
 def inject_globals():
@@ -1167,14 +1184,16 @@ def api_nf_salvar():
     try:
         if d.get('id'):
             c.execute("""UPDATE notas_fiscais SET numero=?,data=?,cliente=?,
-                         fabrica_id=?,valor=?,ops_vinculadas=?,obs=? WHERE id=?""",
+                         fabrica_id=?,valor=?,ops_vinculadas=?,foto=?,obs=? WHERE id=?""",
                       (d['numero'],d['data'],d['cliente'],fab_id,
-                       d['valor'],d.get('ops_vinculadas',''),d.get('obs',''),d['id']))
+                       d['valor'],d.get('ops_vinculadas',''),d.get('foto'),
+                       d.get('obs',''),d['id']))
         else:
             c.execute("""INSERT INTO notas_fiscais (numero,data,cliente,fabrica_id,
-                         valor,ops_vinculadas,obs) VALUES (?,?,?,?,?,?,?)""",
+                         valor,ops_vinculadas,foto,obs) VALUES (?,?,?,?,?,?,?,?)""",
                       (d['numero'],d['data'],d['cliente'],fab_id,
-                       d['valor'],d.get('ops_vinculadas',''),d.get('obs','')))
+                       d['valor'],d.get('ops_vinculadas',''),d.get('foto'),
+                       d.get('obs','')))
         c.commit(); c.close(); return jsonify({'ok': True})
     except Exception as e:
         c.close(); return jsonify({'ok': False, 'erro': str(e)})
@@ -1194,6 +1213,18 @@ def api_nf_excluir(nid):
     c = m.conn()
     c.execute("DELETE FROM notas_fiscais WHERE id=?", (nid,))
     c.commit(); c.close(); return jsonify({'ok': True})
+
+
+@app.route('/api/upload-foto', methods=['POST'])
+@login_required
+def api_upload_foto():
+    arquivo = request.files.get('foto')
+    path = salvar_upload(arquivo)
+    if path:
+        return jsonify({'ok': True, 'path': path})
+    return jsonify({'ok': False, 'erro': 'Arquivo inválido (use jpg, png, gif, webp ou pdf)'})
+
+
 # ── DESPESAS ───────────────────────────────────────────────────
 @app.route('/despesas')
 @login_required
@@ -1258,18 +1289,20 @@ def api_despesa_salvar():
     try:
         if d.get('id'):
             c.execute("""UPDATE despesas SET categoria_id=?,fabrica_id=?,mes=?,
-                         data=?,valor=?,tipo=?,numero_doc=?,fornecedor=?,obs=? WHERE id=?""",
+                         data=?,valor=?,tipo=?,numero_doc=?,fornecedor=?,foto=?,obs=? WHERE id=?""",
                       (d['categoria_id'], fab_id, mes, d['data'],
                        d['valor'], d.get('tipo','FIXA'),
                        d.get('numero_doc',''), d.get('fornecedor',''),
+                       d.get('foto'),
                        d.get('obs',''), d['id']))
         else:
             c.execute("""INSERT INTO despesas (categoria_id,fabrica_id,mes,data,valor,
-                         tipo,numero_doc,fornecedor,obs)
-                         VALUES (?,?,?,?,?,?,?,?,?)""",
+                         tipo,numero_doc,fornecedor,foto,obs)
+                         VALUES (?,?,?,?,?,?,?,?,?,?)""",
                       (d['categoria_id'], fab_id, mes, d['data'],
                        d['valor'], d.get('tipo','FIXA'),
                        d.get('numero_doc',''), d.get('fornecedor',''),
+                       d.get('foto'),
                        d.get('obs','')))
         c.commit(); c.close(); return jsonify({'ok': True})
     except Exception as e:
@@ -1324,16 +1357,18 @@ def api_despesa_doc_salvar():
     try:
         if d.get('id'):
             c.execute("""UPDATE despesas_docs SET numero=?,data=?,fornecedor=?,
-                         categoria_id=?,fabrica_id=?,valor=?,obs=? WHERE id=?""",
+                         categoria_id=?,fabrica_id=?,valor=?,foto=?,obs=? WHERE id=?""",
                       (d['numero'],d['data'],d['fornecedor'],
                        d.get('categoria_id'),fab_id,d['valor'],
+                       d.get('foto'),
                        d.get('obs',''),d['id']))
         else:
             c.execute("""INSERT INTO despesas_docs (numero,data,fornecedor,
-                         categoria_id,fabrica_id,valor,obs)
-                         VALUES (?,?,?,?,?,?,?)""",
+                         categoria_id,fabrica_id,valor,foto,obs)
+                         VALUES (?,?,?,?,?,?,?,?)""",
                       (d['numero'],d['data'],d['fornecedor'],
-                       d.get('categoria_id'),fab_id,d['valor'],d.get('obs','')))
+                       d.get('categoria_id'),fab_id,d['valor'],
+                       d.get('foto'),d.get('obs','')))
         c.commit(); c.close(); return jsonify({'ok': True})
     except Exception as e:
         c.close(); return jsonify({'ok': False, 'erro': str(e)})
@@ -1353,6 +1388,148 @@ def api_despesa_doc_excluir(did):
     c = m.conn()
     c.execute("DELETE FROM despesas_docs WHERE id=?", (did,))
     c.commit(); c.close(); return jsonify({'ok': True})
+
+
+# ── CONTAS A PAGAR ─────────────────────────────────────────────
+def add_months(data_str, n):
+    import calendar
+    y, mo, d = map(int, data_str.split('-'))
+    mo2 = mo - 1 + n
+    y2 = y + mo2 // 12
+    mo2 = mo2 % 12 + 1
+    d2 = min(d, calendar.monthrange(y2, mo2)[1])
+    return f"{y2:04d}-{mo2:02d}-{d2:02d}"
+
+
+@app.route('/contas-pagar')
+@login_required
+def contas_pagar():
+    user = get_user()
+    fids_list = fab_ids(user)
+    ph = ','.join('?'*len(fids_list))
+    c = m.conn()
+    fabricas = c.execute(f"SELECT * FROM fabricas WHERE id IN ({ph})", fids_list).fetchall()
+    categorias = c.execute("SELECT * FROM categorias_despesa ORDER BY ordem,nome").fetchall()
+    c.close()
+    hoje = date.today().strftime('%Y-%m-%d')
+    return render_template('contas_pagar.html', user=user,
+        fabricas=[dict(r) for r in fabricas],
+        categorias=[dict(r) for r in categorias], hoje=hoje)
+
+
+@app.route('/api/contas-pagar')
+@login_required
+def api_contas_pagar_lista():
+    user = get_user(); fids_list = fab_ids(user)
+    ph = ','.join('?'*len(fids_list))
+    status = request.args.get('status','')
+    fab_id = request.args.get('fabrica_id','')
+    c = m.conn()
+    sql = f"""
+        SELECT p.*, cp.fornecedor, cp.descricao, cp.categoria_id, cp.fabrica_id,
+               cat.nome cat_nome, fab.nome fab_nome
+        FROM contas_pagar_parcelas p
+        JOIN contas_pagar cp ON p.conta_id=cp.id
+        LEFT JOIN categorias_despesa cat ON cp.categoria_id=cat.id
+        LEFT JOIN fabricas fab ON cp.fabrica_id=fab.id
+        WHERE cp.fabrica_id IN ({ph})
+    """
+    params = list(fids_list)
+    if status: sql += " AND p.status=?"; params.append(status)
+    if fab_id: sql += " AND cp.fabrica_id=?"; params.append(fab_id)
+    sql += " ORDER BY p.data_vencimento"
+    rows = [dict(r) for r in c.execute(sql, params).fetchall()]
+    c.close(); return jsonify(rows)
+
+
+@app.route('/api/conta-pagar/salvar', methods=['POST'])
+@login_required
+def api_conta_pagar_salvar():
+    user = get_user(); d = request.json; c = m.conn()
+    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    try:
+        num_parcelas = max(1, int(d.get('num_parcelas', 1)))
+        valor_total = float(d.get('valor_total', 0))
+        valor_parcela = round(valor_total / num_parcelas, 2)
+        conta_id = c.insert_id("""INSERT INTO contas_pagar (fabrica_id,categoria_id,fornecedor,
+                     descricao,valor_total,num_parcelas,data_lancamento,obs)
+                     VALUES (?,?,?,?,?,?,?,?)""",
+                  (fab_id, d.get('categoria_id'), d.get('fornecedor',''),
+                   d.get('descricao',''), valor_total, num_parcelas,
+                   d.get('data_lancamento'), d.get('obs','')))
+        primeira = d.get('primeiro_vencimento') or d.get('data_lancamento')
+        for i in range(num_parcelas):
+            venc = add_months(primeira, i)
+            valor = valor_parcela if i < num_parcelas-1 else round(valor_total - valor_parcela*(num_parcelas-1), 2)
+            c.execute("""INSERT INTO contas_pagar_parcelas (conta_id,numero,valor,data_vencimento,status)
+                         VALUES (?,?,?,?,?)""", (conta_id, i+1, valor, venc, 'PENDENTE'))
+        c.commit(); c.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        c.close(); return jsonify({'ok': False, 'erro': str(e)})
+
+
+@app.route('/api/conta-pagar/<int:cid>')
+@login_required
+def api_conta_pagar_get(cid):
+    c = m.conn()
+    conta = c.execute("SELECT * FROM contas_pagar WHERE id=?", (cid,)).fetchone()
+    parcelas = c.execute("SELECT * FROM contas_pagar_parcelas WHERE conta_id=? ORDER BY numero", (cid,)).fetchall()
+    c.close()
+    if not conta: return jsonify({})
+    r = dict(conta)
+    r['parcelas'] = [dict(p) for p in parcelas]
+    return jsonify(r)
+
+
+@app.route('/api/conta-pagar/excluir/<int:cid>', methods=['DELETE'])
+@login_required
+def api_conta_pagar_excluir(cid):
+    c = m.conn()
+    c.execute("DELETE FROM contas_pagar_parcelas WHERE conta_id=?", (cid,))
+    c.execute("DELETE FROM contas_pagar WHERE id=?", (cid,))
+    c.commit(); c.close(); return jsonify({'ok': True})
+
+
+@app.route('/api/parcela/<int:pid>')
+@login_required
+def api_parcela_get(pid):
+    c = m.conn()
+    r = c.execute("""SELECT p.*, cp.fornecedor, cp.descricao FROM contas_pagar_parcelas p
+                      JOIN contas_pagar cp ON p.conta_id=cp.id WHERE p.id=?""", (pid,)).fetchone()
+    c.close(); return jsonify(dict(r) if r else {})
+
+
+@app.route('/api/parcela/pagar', methods=['POST'])
+@login_required
+def api_parcela_pagar():
+    d = request.json; c = m.conn()
+    try:
+        c.execute("""UPDATE contas_pagar_parcelas SET status='PAGO',data_pagamento=?,
+                     foto=COALESCE(?,foto) WHERE id=?""",
+                  (d.get('data_pagamento') or date.today().strftime('%Y-%m-%d'),
+                   d.get('foto'), d['id']))
+        c.commit(); c.close(); return jsonify({'ok': True})
+    except Exception as e:
+        c.close(); return jsonify({'ok': False, 'erro': str(e)})
+
+
+@app.route('/api/parcela/reabrir/<int:pid>', methods=['POST'])
+@login_required
+def api_parcela_reabrir(pid):
+    c = m.conn()
+    c.execute("UPDATE contas_pagar_parcelas SET status='PENDENTE',data_pagamento=NULL WHERE id=?", (pid,))
+    c.commit(); c.close(); return jsonify({'ok': True})
+
+
+@app.route('/api/parcela/foto', methods=['POST'])
+@login_required
+def api_parcela_foto():
+    d = request.json; c = m.conn()
+    c.execute("UPDATE contas_pagar_parcelas SET foto=? WHERE id=?", (d.get('foto'), d['id']))
+    c.commit(); c.close(); return jsonify({'ok': True})
+
+
 # ── DRE ────────────────────────────────────────────────────────
 @app.route('/dre')
 @login_required

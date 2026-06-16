@@ -1,0 +1,384 @@
+{% extends 'base.html' %}
+{% block title %}Contas a Pagar{% endblock %}
+{% block content %}
+<style>
+.card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:20px;margin-bottom:16px}
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1a1a2e;color:#fff}.btn-primary:hover{background:#2d3a6e}
+.btn-success{background:#15803d;color:#fff}.btn-success:hover{background:#166534}
+.btn-danger{background:#dc2626;color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-light{background:#f0f2f5;color:#374151}.btn-light:hover{background:#e5e7eb}
+.btn-purple{background:#7c3aed;color:#fff}.btn-purple:hover{background:#6d28d9}
+.btn-sm{padding:5px 10px;font-size:11px}
+.form-group label{display:block;font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 12px;border:1px solid #e0e6f0;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#1a1a2e}
+.form-row{display:grid;gap:12px}
+.cols-2{grid-template-columns:1fr 1fr}
+.cols-3{grid-template-columns:1fr 1fr 1fr}
+
+/* MÉTRICAS */
+.metricas{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.metrica{background:#fff;border-radius:10px;border:1px solid #e0e6f0;padding:14px;position:relative;overflow:hidden}
+.metrica::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.metrica.verm::before{background:#dc2626}
+.metrica.azul::before{background:#1d4ed8}
+.metrica.amar::before{background:#d97706}
+.metrica.verde::before{background:#15803d}
+.metrica-val{font-size:22px;font-weight:800;color:#1a1a2e}
+.metrica-lbl{font-size:11px;color:#6b7280;margin-top:3px}
+
+/* FILTROS */
+.filtros{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.filtro-sel{padding:6px 12px;border:1.5px solid #e0e6f0;border-radius:8px;font-size:12px;outline:none;background:#fff}
+
+/* TABELA */
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid #e0e6f0}
+table{width:100%;border-collapse:collapse}
+thead{background:#1a1a2e}
+thead th{padding:10px 12px;color:#fff;font-size:11px;font-weight:700;text-align:left;white-space:nowrap}
+tbody tr{border-bottom:1px solid #f0f2f5;transition:.1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f8f9fb}
+tbody td{padding:9px 12px;font-size:12px;vertical-align:middle}
+tfoot td{padding:10px 12px;font-size:12px;font-weight:700;background:#f8f9fb;border-top:2px solid #e0e6f0}
+
+.badge{padding:3px 8px;border-radius:10px;font-size:10px;font-weight:700;display:inline-block}
+.badge-pendente{background:#fef9c3;color:#854d0e}
+.badge-pago{background:#dcfce7;color:#15803d}
+.badge-vencida{background:#fee2e2;color:#dc2626}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;width:580px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-header{padding:16px 20px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1}
+.modal-title{font-size:15px;font-weight:700;color:#1a1a2e}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid #f0f2f5;display:flex;justify-content:flex-end;gap:8px}
+
+.foto-preview{margin-top:8px;display:flex;align-items:center;gap:8px}
+.foto-preview img{height:50px;border-radius:6px;border:1px solid #e0e6f0}
+.foto-link{font-size:11px;color:#1d4ed8;text-decoration:underline;cursor:pointer}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:#15803d}
+.toast.error{background:#dc2626}
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+  <div style="font-size:18px;font-weight:700;color:#1a1a2e">🧾 Contas a Pagar</div>
+  <button class="btn btn-primary btn-sm" onclick="abrirModalConta()">➕ Lançar Conta / Boleto</button>
+</div>
+
+<!-- FILTROS -->
+<div class="filtros">
+  <select class="filtro-sel" id="fil-status" onchange="carregarParcelas()">
+    <option value="">Todos os status</option>
+    <option value="PENDENTE">Pendentes</option>
+    <option value="PAGO">Pagos</option>
+  </select>
+  <select class="filtro-sel" id="fil-fabrica" onchange="carregarParcelas()">
+    <option value="">Todas as Fábricas</option>
+    {% for f in fabricas %}
+    <option value="{{ f.id }}">{{ f.nome }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-light btn-sm" onclick="carregarParcelas()">🔄 Atualizar</button>
+</div>
+
+<!-- MÉTRICAS -->
+<div class="metricas">
+  <div class="metrica verm">
+    <div class="metrica-val" id="m-pendente">R$ 0</div>
+    <div class="metrica-lbl">Total Pendente</div>
+  </div>
+  <div class="metrica amar">
+    <div class="metrica-val" id="m-vencidas">0</div>
+    <div class="metrica-lbl">Parcelas Vencidas</div>
+  </div>
+  <div class="metrica verde">
+    <div class="metrica-val" id="m-pago">R$ 0</div>
+    <div class="metrica-lbl">Total Pago</div>
+  </div>
+  <div class="metrica azul">
+    <div class="metrica-val" id="m-qtd">0</div>
+    <div class="metrica-lbl">Parcelas no Filtro</div>
+  </div>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Vencimento</th>
+        <th>Fornecedor</th>
+        <th>Descrição</th>
+        <th>Categoria</th>
+        <th>Fábrica</th>
+        <th>Parcela</th>
+        <th>Valor</th>
+        <th>Status</th>
+        <th>Foto</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="tbody-parcelas">
+      <tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:24px">Nenhuma conta no filtro</td></tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="6">TOTAL</td>
+        <td id="tf-total">R$ 0,00</td>
+        <td colspan="3"></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<!-- MODAL LANÇAR CONTA -->
+<div class="modal-overlay" id="modal-conta">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">➕ Lançar Conta / Boleto Parcelado</div>
+      <button class="modal-close" onclick="fecharModal('modal-conta')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Fornecedor *</label>
+          <input type="text" id="cp-fornecedor" placeholder="Nome do fornecedor">
+        </div>
+        <div class="form-group">
+          <label>Categoria</label>
+          <select id="cp-categoria">
+            <option value="">Selecione...</option>
+            {% for cat in categorias %}
+            <option value="{{ cat.id }}">{{ cat.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Descrição</label>
+        <input type="text" id="cp-descricao" placeholder="Ex: Compra de tecido, aluguel...">
+      </div>
+      <div class="form-row cols-3" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Valor Total *</label>
+          <input type="number" id="cp-valor" step="0.01" min="0" placeholder="0,00">
+        </div>
+        <div class="form-group">
+          <label>Nº de Parcelas *</label>
+          <input type="number" id="cp-parcelas" min="1" value="1" placeholder="1">
+        </div>
+        <div class="form-group">
+          <label>Fábrica</label>
+          <select id="cp-fabrica">
+            {% for f in fabricas %}
+            <option value="{{ f.id }}">{{ f.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-row cols-2" style="margin-bottom:12px">
+        <div class="form-group">
+          <label>Data de Lançamento</label>
+          <input type="date" id="cp-data-lanc" value="{{ hoje }}">
+        </div>
+        <div class="form-group">
+          <label>1º Vencimento *</label>
+          <input type="date" id="cp-primeiro-venc" value="{{ hoje }}">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Foto da Nota/Boleto</label>
+        <input type="file" id="cp-foto-arquivo" accept="image/*,.pdf" onchange="uploadFoto(this,'cp-foto-path')">
+        <div class="foto-preview" id="cp-foto-preview"></div>
+        <input type="hidden" id="cp-foto-path">
+      </div>
+      <div class="form-group">
+        <label>Observação</label>
+        <textarea id="cp-obs" rows="2" placeholder="Opcional..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-conta')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarConta()">💾 Salvar e Gerar Parcelas</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PAGAR PARCELA -->
+<div class="modal-overlay" id="modal-pagar">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">✅ Confirmar Pagamento</div>
+      <button class="modal-close" onclick="fecharModal('modal-pagar')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="pg-parcela-id">
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Data do Pagamento</label>
+        <input type="date" id="pg-data" value="{{ hoje }}">
+      </div>
+      <div class="form-group">
+        <label>Foto do Comprovante</label>
+        <input type="file" id="pg-foto-arquivo" accept="image/*,.pdf" onchange="uploadFoto(this,'pg-foto-path')">
+        <div class="foto-preview" id="pg-foto-preview"></div>
+        <input type="hidden" id="pg-foto-path">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-pagar')">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarPagamento()">✅ Marcar como Pago</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+function toast(msg,tipo='success'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+tipo+' show';setTimeout(()=>t.classList.remove('show'),2800)}
+function fecharModal(id){document.getElementById(id).classList.remove('open')}
+function abrirModal(id){document.getElementById(id).classList.add('open')}
+function fmtR(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtData(v){if(!v)return '—';const [y,m,d]=v.split('-');return `${d}/${m}/${y}`}
+
+async function uploadFoto(input, hiddenId){
+  const file=input.files[0];
+  if(!file)return;
+  const fd=new FormData();
+  fd.append('foto', file);
+  const r=await fetch('/api/upload-foto',{method:'POST',body:fd}).then(r=>r.json());
+  if(r.ok){
+    document.getElementById(hiddenId).value=r.path;
+    const previewId=hiddenId.replace('-path','-preview');
+    const prev=document.getElementById(previewId);
+    if(prev) prev.innerHTML = file.type.startsWith('image/') ? `<img src="${r.path}"><span style="font-size:11px;color:#15803d">Anexado!</span>` : `<span style="font-size:11px;color:#15803d">📎 Arquivo anexado!</span>`;
+    toast('Foto enviada!');
+  } else toast(r.erro||'Erro ao enviar foto','error');
+}
+
+async function carregarParcelas(){
+  const status=document.getElementById('fil-status').value;
+  const fabId=document.getElementById('fil-fabrica').value;
+  let url=`/api/contas-pagar?`;
+  if(status) url+=`status=${status}&`;
+  if(fabId) url+=`fabrica_id=${fabId}&`;
+  const rows=await fetch(url).then(r=>r.json());
+  renderParcelas(rows);
+  atualizarMetricas(rows);
+}
+
+function renderParcelas(rows){
+  const tbody=document.getElementById('tbody-parcelas');
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:24px">Nenhuma conta no filtro</td></tr>';document.getElementById('tf-total').textContent='R$ 0,00';return}
+  const hoje=new Date().toISOString().slice(0,10);
+  const total=rows.reduce((s,r)=>s+parseFloat(r.valor||0),0);
+  tbody.innerHTML=rows.map(r=>{
+    const vencida = r.status==='PENDENTE' && r.data_vencimento < hoje;
+    const statusLabel = r.status==='PAGO' ? 'Pago' : (vencida ? 'Vencida' : 'Pendente');
+    const statusClass = r.status==='PAGO' ? 'badge-pago' : (vencida ? 'badge-vencida' : 'badge-pendente');
+    return `
+    <tr>
+      <td>${fmtData(r.data_vencimento)}</td>
+      <td><strong>${r.fornecedor||'—'}</strong></td>
+      <td style="font-size:11px;color:#6b7280">${r.descricao||'—'}</td>
+      <td>${r.cat_nome||'—'}</td>
+      <td>${r.fab_nome||'—'}</td>
+      <td>${r.numero}</td>
+      <td style="font-weight:700;color:#dc2626">${fmtR(r.valor)}</td>
+      <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+      <td>${r.foto?`<a class="foto-link" href="${r.foto}" target="_blank">Ver</a>`:'—'}</td>
+      <td>
+        ${r.status==='PENDENTE'?`<button class="btn btn-success btn-sm" onclick="abrirModalPagar(${r.id})" style="padding:3px 7px;font-size:10px">✅ Pagar</button>`:`<button class="btn btn-light btn-sm" onclick="reabrirParcela(${r.id})" style="padding:3px 7px;font-size:10px">↺ Reabrir</button>`}
+        <button class="btn btn-danger btn-sm" onclick="excluirConta(${r.conta_id})" style="padding:3px 7px;font-size:10px">✕</button>
+      </td>
+    </tr>`}).join('');
+  document.getElementById('tf-total').textContent=fmtR(total);
+}
+
+function atualizarMetricas(rows){
+  const hoje=new Date().toISOString().slice(0,10);
+  const pendentes=rows.filter(r=>r.status==='PENDENTE');
+  const pagos=rows.filter(r=>r.status==='PAGO');
+  const vencidas=pendentes.filter(r=>r.data_vencimento<hoje);
+  document.getElementById('m-pendente').textContent=fmtR(pendentes.reduce((s,r)=>s+parseFloat(r.valor||0),0));
+  document.getElementById('m-pago').textContent=fmtR(pagos.reduce((s,r)=>s+parseFloat(r.valor||0),0));
+  document.getElementById('m-vencidas').textContent=vencidas.length;
+  document.getElementById('m-qtd').textContent=rows.length;
+}
+
+// MODAL CONTA
+function abrirModalConta(){
+  document.getElementById('cp-fornecedor').value='';
+  document.getElementById('cp-categoria').value='';
+  document.getElementById('cp-descricao').value='';
+  document.getElementById('cp-valor').value='';
+  document.getElementById('cp-parcelas').value='1';
+  document.getElementById('cp-data-lanc').value='{{ hoje }}';
+  document.getElementById('cp-primeiro-venc').value='{{ hoje }}';
+  document.getElementById('cp-foto-path').value='';
+  document.getElementById('cp-foto-preview').innerHTML='';
+  document.getElementById('cp-foto-arquivo').value='';
+  document.getElementById('cp-obs').value='';
+  abrirModal('modal-conta');
+}
+
+async function salvarConta(){
+  const fornecedor=document.getElementById('cp-fornecedor').value.trim();
+  const valor=parseFloat(document.getElementById('cp-valor').value)||0;
+  const parcelas=parseInt(document.getElementById('cp-parcelas').value)||1;
+  const primeiroVenc=document.getElementById('cp-primeiro-venc').value;
+  if(!fornecedor||!valor||!primeiroVenc){toast('Preencha os campos obrigatórios','error');return}
+  const d={
+    fornecedor, valor_total:valor, num_parcelas:parcelas,
+    categoria_id:document.getElementById('cp-categoria').value||null,
+    fabrica_id:document.getElementById('cp-fabrica').value,
+    descricao:document.getElementById('cp-descricao').value,
+    data_lancamento:document.getElementById('cp-data-lanc').value,
+    primeiro_vencimento:primeiroVenc,
+    obs:document.getElementById('cp-obs').value
+  };
+  const r=await fetch('/api/conta-pagar/salvar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
+  if(r.ok){fecharModal('modal-conta');carregarParcelas();toast(`Conta lançada com ${parcelas} parcela(s)!`)}
+  else toast(r.erro||'Erro','error');
+}
+
+async function excluirConta(contaId){
+  if(!confirm('Excluir esta conta e todas as parcelas?'))return;
+  const r=await fetch('/api/conta-pagar/excluir/'+contaId,{method:'DELETE'}).then(r=>r.json());
+  if(r.ok){carregarParcelas();toast('Excluído!')}else toast(r.erro||'Erro','error');
+}
+
+// MODAL PAGAR
+function abrirModalPagar(parcelaId){
+  document.getElementById('pg-parcela-id').value=parcelaId;
+  document.getElementById('pg-data').value='{{ hoje }}';
+  document.getElementById('pg-foto-path').value='';
+  document.getElementById('pg-foto-preview').innerHTML='';
+  document.getElementById('pg-foto-arquivo').value='';
+  abrirModal('modal-pagar');
+}
+
+async function confirmarPagamento(){
+  const id=document.getElementById('pg-parcela-id').value;
+  const d={id, data_pagamento:document.getElementById('pg-data').value, foto:document.getElementById('pg-foto-path').value||null};
+  const r=await fetch('/api/parcela/pagar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
+  if(r.ok){fecharModal('modal-pagar');carregarParcelas();toast('Pagamento confirmado!')}
+  else toast(r.erro||'Erro','error');
+}
+
+async function reabrirParcela(id){
+  if(!confirm('Reabrir esta parcela como pendente?'))return;
+  const r=await fetch('/api/parcela/reabrir/'+id,{method:'POST'}).then(r=>r.json());
+  if(r.ok){carregarParcelas();toast('Parcela reaberta!')}else toast(r.erro||'Erro','error');
+}
+
+carregarParcelas();
+</script>
+{% endblock %}

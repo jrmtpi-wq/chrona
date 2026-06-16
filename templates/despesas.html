@@ -76,6 +76,9 @@ tfoot td{padding:10px 12px;font-size:12px;font-weight:700;background:#f8f9fb;bor
 .badge-fixa{background:#dbeafe;color:#1d4ed8}
 .badge-variavel{background:#fef9c3;color:#854d0e}
 .badge-nf{background:#dcfce7;color:#15803d}
+.foto-preview{margin-top:8px;display:flex;align-items:center;gap:8px}
+.foto-preview img{height:50px;border-radius:6px;border:1px solid #e0e6f0}
+.foto-link{font-size:11px;color:#1d4ed8;text-decoration:underline;cursor:pointer}
 </style>
 
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
@@ -149,6 +152,7 @@ tfoot td{padding:10px 12px;font-size:12px;font-weight:700;background:#f8f9fb;bor
           <th>Nº Doc.</th>
           <th>Fornecedor</th>
           <th>Obs</th>
+          <th>Foto</th>
           <th></th>
         </tr>
       </thead>
@@ -186,17 +190,18 @@ tfoot td{padding:10px 12px;font-size:12px;font-weight:700;background:#f8f9fb;bor
           <th>Categoria</th>
           <th>Valor</th>
           <th>Obs</th>
+          <th>Foto</th>
           <th></th>
         </tr>
       </thead>
       <tbody id="tbody-nfs-desp">
-        <tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:24px">Nenhum documento no período</td></tr>
+        <tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:24px">Nenhum documento no período</td></tr>
       </tbody>
       <tfoot>
         <tr>
           <td colspan="5">TOTAL</td>
           <td id="tf-nf-total">R$ 0,00</td>
-          <td colspan="2"></td>
+          <td colspan="3"></td>
         </tr>
       </tfoot>
     </table>
@@ -258,6 +263,12 @@ tfoot td{padding:10px 12px;font-size:12px;font-weight:700;background:#f8f9fb;bor
           <input type="text" id="desp-fornecedor" placeholder="Nome do fornecedor">
         </div>
       </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Foto da Nota/Boleto</label>
+        <input type="file" id="desp-foto-arquivo" accept="image/*,.pdf" onchange="uploadFoto(this,'desp-foto-path')">
+        <div class="foto-preview" id="desp-foto-preview"></div>
+        <input type="hidden" id="desp-foto-path">
+      </div>
       <div class="form-group">
         <label>Observação</label>
         <input type="text" id="desp-obs" placeholder="Opcional...">
@@ -318,6 +329,12 @@ tfoot td{padding:10px 12px;font-size:12px;font-weight:700;background:#f8f9fb;bor
           </select>
         </div>
       </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Foto da Nota/Recibo</label>
+        <input type="file" id="nfd-foto-arquivo" accept="image/*,.pdf" onchange="uploadFoto(this,'nfd-foto-path')">
+        <div class="foto-preview" id="nfd-foto-preview"></div>
+        <input type="hidden" id="nfd-foto-path">
+      </div>
       <div class="form-group">
         <label>Observação</label>
         <textarea id="nfd-obs" rows="2" placeholder="Opcional..."></textarea>
@@ -338,6 +355,21 @@ function fecharModal(id){document.getElementById(id).classList.remove('open')}
 function abrirModal(id){document.getElementById(id).classList.add('open')}
 function fmtR(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function fmtN(v){return Number(v||0).toLocaleString('pt-BR')}
+
+async function uploadFoto(input, hiddenId){
+  const file=input.files[0];
+  if(!file)return;
+  const fd=new FormData();
+  fd.append('foto', file);
+  const r=await fetch('/api/upload-foto',{method:'POST',body:fd}).then(r=>r.json());
+  if(r.ok){
+    document.getElementById(hiddenId).value=r.path;
+    const previewId=hiddenId.replace('-path','-preview');
+    const prev=document.getElementById(previewId);
+    if(prev) prev.innerHTML = file.type.startsWith('image/') ? `<img src="${r.path}"><span style="font-size:11px;color:#15803d">Anexado!</span>` : `<span style="font-size:11px;color:#15803d">📎 Arquivo anexado!</span>`;
+    toast('Foto enviada!');
+  } else toast(r.erro||'Erro ao enviar foto','error');
+}
 
 function setTab(tab,btn){
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
@@ -362,7 +394,7 @@ async function carregarDados(){
 
 function renderDespesas(rows){
   const tbody=document.getElementById('tbody-despesas');
-  if(!rows.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:24px">Nenhuma despesa no período</td></tr>';document.getElementById('tf-total').textContent='R$ 0,00';return}
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="10" style="text-align:center;color:#9ca3af;padding:24px">Nenhuma despesa no período</td></tr>';document.getElementById('tf-total').textContent='R$ 0,00';return}
   const total=rows.reduce((s,r)=>s+parseFloat(r.valor||0),0);
   tbody.innerHTML=rows.map(r=>`
     <tr>
@@ -374,6 +406,7 @@ function renderDespesas(rows){
       <td>${r.numero_doc?`<span class="badge badge-nf">${r.numero_doc}</span>`:'—'}</td>
       <td style="font-size:11px;color:#6b7280">${r.fornecedor||'—'}</td>
       <td style="font-size:11px;color:#6b7280">${r.obs||'—'}</td>
+      <td>${r.foto?`<a class="foto-link" href="${r.foto}" target="_blank">Ver</a>`:'—'}</td>
       <td>
         <button class="btn btn-light btn-sm" onclick="editarDesp(${r.id})" style="padding:3px 7px;font-size:10px">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="excluirDesp(${r.id})" style="padding:3px 7px;font-size:10px">✕</button>
@@ -422,7 +455,7 @@ async function carregarNFsDesp(){
   if(fabId) url+=`&fabrica_id=${fabId}`;
   const rows=await fetch(url).then(r=>r.json());
   const tbody=document.getElementById('tbody-nfs-desp');
-  if(!rows.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:#9ca3af;padding:24px">Nenhum documento no período</td></tr>';document.getElementById('tf-nf-total').textContent='R$ 0,00';document.getElementById('m-nfs').textContent=0;return}
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:#9ca3af;padding:24px">Nenhum documento no período</td></tr>';document.getElementById('tf-nf-total').textContent='R$ 0,00';document.getElementById('m-nfs').textContent=0;return}
   const total=rows.reduce((s,r)=>s+parseFloat(r.valor||0),0);
   document.getElementById('m-nfs').textContent=rows.length;
   document.getElementById('tf-nf-total').textContent=fmtR(total);
@@ -435,6 +468,7 @@ async function carregarNFsDesp(){
       <td>${r.cat_nome||'—'}</td>
       <td style="font-weight:700;color:#dc2626">${fmtR(r.valor)}</td>
       <td style="font-size:11px;color:#6b7280">${r.obs||'—'}</td>
+      <td>${r.foto?`<a class="foto-link" href="${r.foto}" target="_blank">Ver</a>`:'—'}</td>
       <td>
         <button class="btn btn-light btn-sm" onclick="editarNFDesp(${r.id})" style="padding:3px 7px;font-size:10px">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="excluirNFDesp(${r.id})" style="padding:3px 7px;font-size:10px">✕</button>
@@ -452,6 +486,9 @@ function abrirModalDespesa(){
   document.getElementById('desp-tipo').value='FIXA';
   document.getElementById('desp-doc').value='';
   document.getElementById('desp-fornecedor').value='';
+  document.getElementById('desp-foto-path').value='';
+  document.getElementById('desp-foto-preview').innerHTML='';
+  document.getElementById('desp-foto-arquivo').value='';
   document.getElementById('desp-obs').value='';
   abrirModal('modal-despesa');
 }
@@ -462,7 +499,7 @@ async function salvarDespesa(){
   const valor=parseFloat(document.getElementById('desp-valor').value)||0;
   if(!cat||!data||!valor){toast('Preencha os campos obrigatórios','error');return}
   const id=document.getElementById('desp-edit-id').value;
-  const d={id:id||null,categoria_id:cat,data,valor,tipo:document.getElementById('desp-tipo').value,fabrica_id:document.getElementById('desp-fabrica').value,numero_doc:document.getElementById('desp-doc').value,fornecedor:document.getElementById('desp-fornecedor').value,obs:document.getElementById('desp-obs').value};
+  const d={id:id||null,categoria_id:cat,data,valor,tipo:document.getElementById('desp-tipo').value,fabrica_id:document.getElementById('desp-fabrica').value,numero_doc:document.getElementById('desp-doc').value,fornecedor:document.getElementById('desp-fornecedor').value,foto:document.getElementById('desp-foto-path').value||null,obs:document.getElementById('desp-obs').value};
   const r=await fetch('/api/despesa/salvar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
   if(r.ok){fecharModal('modal-despesa');carregarDados();toast(id?'Atualizado!':'Despesa salva!')}
   else toast(r.erro||'Erro','error');
@@ -479,6 +516,9 @@ async function editarDesp(id){
   document.getElementById('desp-fabrica').value=r.fabrica_id||'';
   document.getElementById('desp-doc').value=r.numero_doc||'';
   document.getElementById('desp-fornecedor').value=r.fornecedor||'';
+  document.getElementById('desp-foto-path').value=r.foto||'';
+  document.getElementById('desp-foto-preview').innerHTML=r.foto?`<a class="foto-link" href="${r.foto}" target="_blank">Ver foto atual</a>`:'';
+  document.getElementById('desp-foto-arquivo').value='';
   document.getElementById('desp-obs').value=r.obs||'';
   abrirModal('modal-despesa');
 }
@@ -498,6 +538,9 @@ function abrirModalNFDesp(){
   document.getElementById('nfd-fornecedor').value='';
   document.getElementById('nfd-categoria').value='';
   document.getElementById('nfd-valor').value='';
+  document.getElementById('nfd-foto-path').value='';
+  document.getElementById('nfd-foto-preview').innerHTML='';
+  document.getElementById('nfd-foto-arquivo').value='';
   document.getElementById('nfd-obs').value='';
   abrirModal('modal-nf-desp');
 }
@@ -509,7 +552,7 @@ async function salvarNFDesp(){
   const valor=parseFloat(document.getElementById('nfd-valor').value)||0;
   if(!num||!data||!forn||!valor){toast('Preencha os campos obrigatórios','error');return}
   const id=document.getElementById('nfd-edit-id').value;
-  const d={id:id||null,numero:num,data,fornecedor:forn,categoria_id:document.getElementById('nfd-categoria').value||null,fabrica_id:document.getElementById('nfd-fabrica').value,valor,obs:document.getElementById('nfd-obs').value};
+  const d={id:id||null,numero:num,data,fornecedor:forn,categoria_id:document.getElementById('nfd-categoria').value||null,fabrica_id:document.getElementById('nfd-fabrica').value,valor,foto:document.getElementById('nfd-foto-path').value||null,obs:document.getElementById('nfd-obs').value};
   const r=await fetch('/api/despesa/doc/salvar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json());
   if(r.ok){fecharModal('modal-nf-desp');carregarDados();carregarNFsDesp();toast(id?'Atualizado!':'Documento salvo!')}
   else toast(r.erro||'Erro','error');
@@ -525,6 +568,9 @@ async function editarNFDesp(id){
   document.getElementById('nfd-categoria').value=r.categoria_id||'';
   document.getElementById('nfd-fabrica').value=r.fabrica_id||'';
   document.getElementById('nfd-valor').value=r.valor||'';
+  document.getElementById('nfd-foto-path').value=r.foto||'';
+  document.getElementById('nfd-foto-preview').innerHTML=r.foto?`<a class="foto-link" href="${r.foto}" target="_blank">Ver foto atual</a>`:'';
+  document.getElementById('nfd-foto-arquivo').value='';
   document.getElementById('nfd-obs').value=r.obs||'';
   abrirModal('modal-nf-desp');
 }
