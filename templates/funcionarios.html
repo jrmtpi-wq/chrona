@@ -47,11 +47,12 @@
         <th>Salário</th>
         <th>Gratificação</th>
         <th>iFood</th>
+        <th>Total</th>
         <th>Situação</th>
         <th style="width:100px">Ações</th>
       </tr></thead>
       <tbody id="tbody-funcs">
-        <tr><td colspan="11" class="empty">
+        <tr><td colspan="12" class="empty">
           <span class="empty-icon">👷</span>
           Carregando funcionários...</td></tr>
       </tbody>
@@ -369,7 +370,7 @@ async function carregarLista(){
   const tb=document.getElementById('tbody-funcs');
   document.getElementById('count-funcs').textContent=`${rows.length} funcionário(s)`;
   if(!rows.length){
-    tb.innerHTML='<tr><td colspan="11" class="empty"><span class="empty-icon">👷</span>Nenhum funcionário encontrado</td></tr>';return;
+    tb.innerHTML='<tr><td colspan="12" class="empty"><span class="empty-icon">👷</span>Nenhum funcionário encontrado</td></tr>';return;
   }
   tb.innerHTML=rows.map(f=>`
     <tr>
@@ -390,6 +391,7 @@ async function carregarLista(){
       <td><strong>${f.salario>0?fmtR(f.salario):'—'}</strong></td>
       <td>${f.bonificacao>0?fmtR(f.bonificacao):'—'}</td>
       <td>${f.ifood>0?fmtR(f.ifood):'—'}</td>
+      <td><strong style="color:var(--azul)">${fmtR((parseFloat(f.salario)||0)+(parseFloat(f.bonificacao)||0)+(parseFloat(f.ifood)||0))}</strong></td>
       <td><span class="tag ${f.situacao==='ATIVO'?'tag-ativo':'tag-inativo'}">${f.situacao}</span></td>
       <td>
         <div class="btn-group">
