@@ -561,8 +561,49 @@ def ref_op():
         equipamentos=[dict(r) for r in equipamentos],
         generos=[dict(r) for r in generos],
         tipos=[dict(r) for r in tipos])
- 
- 
+
+
+# ── CADASTRO DE OP (tela simplificada em tabela) ──────────────
+@app.route('/cadastro-op')
+@login_required
+def cadastro_op():
+    user = get_user()
+    fids_list = fab_ids(user)
+    ph = ','.join('?'*len(fids_list))
+    c = m.conn()
+    fabricas = c.execute(f"SELECT * FROM fabricas WHERE id IN ({ph})", fids_list).fetchall()
+    referencias = c.execute("SELECT * FROM referencias WHERE ativo=1 ORDER BY codigo").fetchall()
+    c.close()
+    return render_template('cadastro_op.html', user=user,
+        fabricas=[dict(r) for r in fabricas],
+        referencias=[dict(r) for r in referencias])
+
+
+@app.route('/api/ops/cadastro-lista')
+@login_required
+def api_ops_cadastro_lista():
+    user = get_user(); fids_list = fab_ids(user)
+    ph = ','.join('?'*len(fids_list))
+    q = request.args.get('q','').strip()
+    situacao = request.args.get('situacao','ATIVAS')
+    fab_id = request.args.get('fab','')
+    c = m.conn()
+    sql = f"""
+        SELECT op.*,r.codigo ref_codigo
+        FROM ordens_producao op
+        LEFT JOIN referencias r ON op.referencia_id=r.id
+        WHERE op.fabrica_id IN ({ph})
+    """
+    params = list(fids_list)
+    if situacao == 'ATIVAS': sql += " AND op.situacao != 'CANCELADA'"
+    elif situacao == 'CANCELADAS': sql += " AND op.situacao = 'CANCELADA'"
+    if fab_id: sql += " AND op.fabrica_id=?"; params.append(fab_id)
+    if q: sql += " AND (LOWER(op.numero) LIKE ? OR LOWER(r.codigo) LIKE ?)"; params += [f'%{q.lower()}%', f'%{q.lower()}%']
+    sql += " ORDER BY op.id DESC"
+    rows = [dict(r) for r in c.execute(sql, params).fetchall()]
+    c.close(); return jsonify(rows)
+
+
 # ── APIs REFERÊNCIA ───────────────────────────────────────────
 @app.route('/api/referencia/salvar', methods=['POST'])
 @login_required
@@ -648,17 +689,19 @@ def api_op_salvar():
         if d.get('id'):
             c.execute("""UPDATE ordens_producao SET numero=?,fabrica_id=?,referencia_id=?,
                          descricao=?,quantidade_total=?,valor_unitario=?,valor_total=?,
-                         data_entrada=?,data_entrega=?,obs=? WHERE id=?""",
+                         data_entrada=?,data_entrega=?,data_entrega_costura=?,obs=? WHERE id=?""",
                       (d['numero'], fab_id, ref_id, d.get('descricao',''),
                        qtd, unit, total, d.get('data_entrada'), d.get('data_entrega'),
+                       d.get('data_entrega_costura'),
                        d.get('obs',''), d['id']))
             op_id = d['id']
         else:
             op_id = c.insert_id("""INSERT INTO ordens_producao (numero,fabrica_id,referencia_id,descricao,
-                         quantidade_total,valor_unitario,valor_total,data_entrada,data_entrega,obs)
-                         VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                         quantidade_total,valor_unitario,valor_total,data_entrada,data_entrega,data_entrega_costura,obs)
+                         VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                       (d['numero'], fab_id, ref_id, d.get('descricao',''),
-                       qtd, unit, total, d.get('data_entrada'), d.get('data_entrega'), d.get('obs','')))
+                       qtd, unit, total, d.get('data_entrada'), d.get('data_entrega'),
+                       d.get('data_entrega_costura'), d.get('obs','')))
  
             # Copiar sequência da referência se solicitado
             if d.get('copiar_sequencia') and ref_id:

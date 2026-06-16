@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+{% block title %}Ordens de Produção{% endblock %}
+{% block page_title %}📝 Ordens de Produção{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Ordens de Produção</h1>
+    <p>Cadastro de OPs: referência, quantidade, datas de entrega e preço por peça</p>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-primary" onclick="novaOP()">＋ Nova OP</button>
+  </div>
+</div>
+
+<!-- FILTROS -->
+<div class="card" style="margin-bottom:16px;padding:14px 20px">
+  <div class="search-bar">
+    <input type="text" class="search-input" id="busca" placeholder="🔍  Buscar por OP ou referência..."
+           oninput="carregarLista()">
+    <select class="form-control" id="filt-situacao" style="width:160px" onchange="carregarLista()">
+      <option value="ATIVAS">Ativas</option>
+      <option value="CANCELADAS">Canceladas</option>
+      <option value="TODAS">Todas</option>
+    </select>
+    <select class="form-control" id="filt-fab" style="width:160px" onchange="carregarLista()">
+      <option value="">Todas as fábricas</option>
+      {% for f in fabricas %}
+      <option value="{{ f.id }}">{{ f.nome }}</option>
+      {% endfor %}
+    </select>
+    <div id="totais-ops" style="display:flex;gap:18px;margin-left:auto;font-size:12px;color:var(--cinza)"></div>
+    <div id="count-ops" style="color:var(--cinza);font-size:13px"></div>
+  </div>
+</div>
+
+<!-- TABELA -->
+<div class="card" style="padding:0">
+  <div class="table-wrap" style="border:none">
+    <table>
+      <thead><tr>
+        <th>OP</th>
+        <th>Referência</th>
+        <th>Quantidade de Peças</th>
+        <th>Entrega ao Cliente</th>
+        <th>Entrega da Costura</th>
+        <th>Preço/Peça</th>
+        <th style="width:100px">Ações</th>
+      </tr></thead>
+      <tbody id="tbody-ops">
+        <tr><td colspan="7" class="empty">
+          <span class="empty-icon">📝</span>
+          Carregando ordens de produção...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL OP -->
+<div class="modal-bg" id="modal-op">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-op-title">Nova OP</div>
+      <button class="modal-close" onclick="fecharModal('modal-op')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="op-id">
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Número da OP *</label>
+          <input type="text" class="form-control" id="op-numero" placeholder="Ex: OP-2026-001">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Referência *</label>
+          <select class="form-control" id="op-referencia">
+            <option value="">Selecione...</option>
+            {% for r in referencias %}
+            <option value="{{ r.id }}">{{ r.codigo }} — {{ r.descricao or '' }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">Quantidade de Peças *</label>
+          <input type="number" class="form-control" id="op-quantidade" min="1" placeholder="500" oninput="calcularTotalOP()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Preço por Peça (R$) *</label>
+          <input type="number" class="form-control" id="op-valor-unit" step="0.01" min="0" placeholder="15.00" oninput="calcularTotalOP()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Valor Total (R$)</label>
+          <input type="text" class="form-control" id="op-valor-total" readonly style="background:#f8f9fb;font-weight:700">
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Fábrica</label>
+          <select class="form-control" id="op-fabrica">
+            {% for f in fabricas %}
+            <option value="{{ f.id }}">{{ f.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Situação</label>
+          <select class="form-control" id="op-situacao">
+            <option value="ABERTA">Aberta</option>
+            <option value="PRODUCAO">Em Produção</option>
+            <option value="ENCERRADA">Encerrada</option>
+            <option value="CANCELADA">Cancelada</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Data de Entrega ao Cliente *</label>
+          <input type="date" class="form-control" id="op-data-entrega">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data de Entrega da Costura *</label>
+          <input type="date" class="form-control" id="op-data-entrega-costura">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-op')">Cancelar</button>
+      <button class="btn btn-success" onclick="salvarOPCad()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR CANCELAMENTO -->
+<div class="modal-bg" id="modal-del-op">
+  <div class="modal" style="width:380px">
+    <div class="modal-header">
+      <div class="modal-title">Cancelar OP</div>
+      <button class="modal-close" onclick="fecharModal('modal-del-op')">✕</button>
+    </div>
+    <div class="modal-body">
+      Cancelar a OP <strong id="del-op-nome"></strong>?
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-del-op')">Voltar</button>
+      <button class="btn btn-danger" onclick="confirmarCancelOP()">Cancelar OP</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let delOpId = null;
+
+function calcularTotalOP(){
+  const qtd = parseFloat(document.getElementById('op-quantidade').value) || 0;
+  const unit = parseFloat(document.getElementById('op-valor-unit').value) || 0;
+  document.getElementById('op-valor-total').value = fmtR(qtd * unit);
+}
+
+function novaOP(){
+  document.getElementById('op-id').value = '';
+  document.getElementById('modal-op-title').textContent = 'Nova OP';
+  document.getElementById('op-numero').value = '';
+  document.getElementById('op-referencia').value = '';
+  document.getElementById('op-quantidade').value = '';
+  document.getElementById('op-valor-unit').value = '';
+  document.getElementById('op-valor-total').value = '';
+  document.getElementById('op-fabrica').value = '';
+  document.getElementById('op-situacao').value = 'ABERTA';
+  document.getElementById('op-data-entrega').value = '';
+  document.getElementById('op-data-entrega-costura').value = '';
+  abrirModal('modal-op');
+}
+
+async function editarOPCad(id){
+  const r = await api('/api/op/'+id);
+  document.getElementById('op-id').value = r.id;
+  document.getElementById('modal-op-title').textContent = 'Editar OP '+r.numero;
+  document.getElementById('op-numero').value = r.numero || '';
+  document.getElementById('op-referencia').value = r.referencia_id || '';
+  document.getElementById('op-quantidade').value = r.quantidade_total || '';
+  document.getElementById('op-valor-unit').value = r.valor_unitario || '';
+  document.getElementById('op-fabrica').value = r.fabrica_id || '';
+  document.getElementById('op-situacao').value = r.situacao || 'ABERTA';
+  document.getElementById('op-data-entrega').value = r.data_entrega || '';
+  document.getElementById('op-data-entrega-costura').value = r.data_entrega_costura || '';
+  calcularTotalOP();
+  abrirModal('modal-op');
+}
+
+async function salvarOPCad(){
+  const numero = document.getElementById('op-numero').value.trim();
+  const referencia_id = document.getElementById('op-referencia').value;
+  const quantidade_total = parseInt(document.getElementById('op-quantidade').value) || 0;
+  const valor_unitario = parseFloat(document.getElementById('op-valor-unit').value) || 0;
+  const data_entrega = document.getElementById('op-data-entrega').value;
+  const data_entrega_costura = document.getElementById('op-data-entrega-costura').value;
+  if(!numero || !referencia_id || !quantidade_total || !valor_unitario || !data_entrega || !data_entrega_costura){
+    toast('Preencha todos os campos obrigatórios', 'err'); return;
+  }
+  const id = document.getElementById('op-id').value;
+  const d = {
+    id: id || null,
+    numero, referencia_id, quantidade_total, valor_unitario,
+    valor_total: quantidade_total * valor_unitario,
+    fabrica_id: document.getElementById('op-fabrica').value,
+    situacao: document.getElementById('op-situacao').value,
+    data_entrega, data_entrega_costura,
+  };
+  const r = await api('/api/op/salvar', 'POST', d);
+  if(r.ok){ fecharModal('modal-op'); carregarLista(); toast(id?'OP atualizada!':'OP cadastrada!'); }
+  else toast(r.erro || 'Erro ao salvar', 'err');
+}
+
+function pedirCancelOP(id, numero){
+  delOpId = id;
+  document.getElementById('del-op-nome').textContent = numero;
+  abrirModal('modal-del-op');
+}
+
+async function confirmarCancelOP(){
+  const r = await api('/api/op/situacao', 'POST', {id: delOpId, situacao: 'CANCELADA'});
+  fecharModal('modal-del-op');
+  if(r.ok){ carregarLista(); toast('OP cancelada!'); }
+  else toast(r.erro || 'Erro', 'err');
+}
+
+async function carregarLista(){
+  const q = document.getElementById('busca').value;
+  const sit = document.getElementById('filt-situacao').value;
+  const fab = document.getElementById('filt-fab').value;
+  let url = `/api/ops/cadastro-lista?q=${encodeURIComponent(q)}&situacao=${sit}`;
+  if(fab) url += `&fab=${fab}`;
+  const rows = await api(url);
+  const tb = document.getElementById('tbody-ops');
+  document.getElementById('count-ops').textContent = `${rows.length} OP(s)`;
+
+  const totQtd = rows.reduce((s,r)=>s+(parseInt(r.quantidade_total)||0),0);
+  const totValor = rows.reduce((s,r)=>s+(parseFloat(r.valor_total)||0),0);
+  document.getElementById('totais-ops').innerHTML = rows.length ? `
+    <span>Total de OPs: <strong style="color:var(--azul)">${rows.length}</strong></span>
+    <span>Total de Peças: <strong style="color:var(--azul)">${totQtd.toLocaleString('pt-BR')}</strong></span>
+    <span>Valor Total: <strong style="color:var(--azul)">${fmtR(totValor)}</strong></span>
+  ` : '';
+
+  if(!rows.length){
+    tb.innerHTML = '<tr><td colspan="7" class="empty"><span class="empty-icon">📝</span>Nenhuma OP encontrada</td></tr>';
+    return;
+  }
+  tb.innerHTML = rows.map(r=>`
+    <tr>
+      <td><strong style="color:var(--azul)">${r.numero}</strong>${r.situacao==='CANCELADA'?' <span class="tag tag-inativo">CANCELADA</span>':''}</td>
+      <td>${r.ref_codigo||'—'}</td>
+      <td>${(r.quantidade_total||0).toLocaleString('pt-BR')}</td>
+      <td>${r.data_entrega||'—'}</td>
+      <td>${r.data_entrega_costura||'—'}</td>
+      <td>${fmtR(r.valor_unitario)}</td>
+      <td>
+        <div class="btn-group">
+          <button class="btn btn-sm btn-primary" onclick="editarOPCad(${r.id})" title="Editar">✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="pedirCancelOP(${r.id},'${r.numero.replace(/'/g,"\\'")}')" title="Cancelar">🗑</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+carregarLista();
+</script>
+{% endblock %}

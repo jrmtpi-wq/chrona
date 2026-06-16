@@ -297,6 +297,7 @@ CREATE TABLE IF NOT EXISTS ordens_producao (
     valor_total REAL DEFAULT 0,
     data_entrada TEXT,
     data_entrega TEXT,
+    data_entrega_costura TEXT,
     situacao TEXT DEFAULT 'ABERTA',
     obs TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
@@ -652,6 +653,7 @@ CREATE TABLE IF NOT EXISTS ordens_producao (
     valor_total REAL DEFAULT 0,
     data_entrada TEXT,
     data_entrega TEXT,
+    data_entrega_costura TEXT,
     situacao TEXT DEFAULT 'ABERTA',
     obs TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
@@ -866,6 +868,10 @@ def init():
         except Exception:
             pass
         try:
+            c.execute("ALTER TABLE ordens_producao ADD COLUMN IF NOT EXISTS data_entrega_costura TEXT")
+        except Exception:
+            pass
+        try:
             c.execute("""CREATE TABLE IF NOT EXISTS contas_pagar (
                 id SERIAL PRIMARY KEY,
                 fabrica_id INTEGER,
@@ -1016,6 +1022,10 @@ def init():
             pass
         try:
             c.execute("ALTER TABLE notas_fiscais ADD COLUMN foto TEXT")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE ordens_producao ADD COLUMN data_entrega_costura TEXT")
         except Exception:
             pass
         try:
