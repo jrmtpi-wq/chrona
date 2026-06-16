@@ -34,13 +34,17 @@
 .metrica.destaque .metrica-val{color:#fff}
 .metrica.destaque .metrica-lbl{color:#9ca3af}
 
-/* LAYOUT BALANCEAMENTO */
-.bal-layout{display:grid;grid-template-columns:190px 210px 1fr;gap:12px;min-height:500px;align-items:start}
+/* PÁGINA: cabeçalho/config/métricas fixos, só os times rolam */
+.bal-page{display:flex;flex-direction:column;height:calc(100vh - 104px)}
+.bal-fixo{flex:0 0 auto}
+
+/* LAYOUT BALANCEAMENTO — esquerda: operações | meio: times (cascata) | direita: operadoras */
+.bal-layout{display:grid;grid-template-columns:210px 1fr 190px;gap:12px;flex:1 1 auto;min-height:0;overflow:hidden;align-items:stretch}
 
 /* PAINEL OPERADORAS */
-.operadoras-panel{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:12px}
-.operadoras-title{font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px;letter-spacing:.5px}
-.operadoras-list{min-height:200px;max-height:calc(100vh - 320px);overflow-y:auto}
+.operadoras-panel{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:12px;display:flex;flex-direction:column;height:100%;min-height:0}
+.operadoras-title{font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px;letter-spacing:.5px;flex:0 0 auto}
+.operadoras-list{flex:1 1 auto;min-height:0;overflow-y:auto}
 .operadora-chip{background:#f0f2f5;border:1px solid #e0e6f0;border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:grab;display:flex;align-items:center;gap:8px;transition:all .15s;font-size:12px;font-weight:600}
 .operadora-chip:hover{border-color:#1a1a2e;background:#e8eaf0}
 .operadora-chip.dragging{opacity:.4}
@@ -48,17 +52,20 @@
 .operadora-avatar{width:28px;height:28px;border-radius:50%;background:#1a1a2e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
 
 /* PAINEL OPERAÇÕES */
-.operacoes-panel{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:12px}
+.operacoes-panel{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:12px;display:flex;flex-direction:column;height:100%;min-height:0}
+#operacoes-disponiveis{flex:1 1 auto;min-height:0;overflow-y:auto}
 .op-seq-chip{background:#f8f9fb;border:1px solid #e0e6f0;border-radius:6px;padding:6px 8px;margin-bottom:4px;cursor:grab;display:flex;align-items:center;gap:6px;font-size:11px;transition:all .15s}
 .op-seq-chip:hover{border-color:#1d4ed8;background:#eff6ff}
 .op-seq-chip.dragging{opacity:.4}
 .op-num{background:#1a1a2e;color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
 .op-tempo{font-weight:700;color:#1a1a2e;margin-left:auto;font-size:11px}
 
-/* TIMES */
-.times-container{overflow-x:auto}
-.times-grid{display:flex;gap:10px;min-width:max-content;padding-bottom:8px}
-.time-card{background:#fff;border-radius:12px;border:2px solid #e0e6f0;min-width:280px;flex-shrink:0;transition:border-color .2s}
+/* TIMES — coluna central em cascata (vertical), única parte que rola */
+.times-col{display:flex;flex-direction:column;height:100%;min-height:0}
+.times-col-head{flex:0 0 auto;margin-bottom:10px}
+.times-container{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;padding-right:4px}
+.times-grid{display:flex;flex-direction:column;gap:10px;padding-bottom:8px}
+.time-card{background:#fff;border-radius:12px;border:2px solid #e0e6f0;width:100%;transition:border-color .2s}
 .time-card.drag-over{border-color:#1d4ed8;background:#eff6ff}
 .time-header{padding:10px 12px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between}
 .time-num{font-size:12px;font-weight:700;color:#1a1a2e}
@@ -180,102 +187,106 @@
 .imp-vazio { color: #9ca3af; font-size: 10px; font-style: italic; }
 </style>
 
-<div class="bal-header">
-  <div class="bal-title">⚖️ Balanceamento de Produção</div>
-  <div style="display:flex;gap:8px">
-    <button class="btn btn-print btn-sm" onclick="imprimirBalanceamento()">🖨️ Imprimir</button>
-    <button class="btn btn-light btn-sm" onclick="limparBalanceamento()">🗑️ Limpar</button>
-    <button class="btn btn-success btn-sm" onclick="salvarBalanceamento()">💾 Salvar</button>
-  </div>
-</div>
+<div class="bal-page">
+  <div class="bal-fixo">
+    <div class="bal-header">
+      <div class="bal-title">⚖️ Balanceamento de Produção</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-print btn-sm" onclick="imprimirBalanceamento()">🖨️ Imprimir</button>
+        <button class="btn btn-light btn-sm" onclick="limparBalanceamento()">🗑️ Limpar</button>
+        <button class="btn btn-success btn-sm" onclick="salvarBalanceamento()">💾 Salvar</button>
+      </div>
+    </div>
 
-<!-- CONFIGURAÇÃO -->
-<div class="card">
-  <div class="card-title">⚙️ Configuração do Balanceamento</div>
-  <div class="form-row cols-5">
-    <div class="form-group">
-      <label>Ordem de Produção *</label>
-      <select id="bal-op" onchange="carregarOP()">
-        <option value="">Selecione...</option>
-        {% for op in ops %}
-        <option value="{{ op.id }}" data-ref="{{ op.ref_codigo }}" data-desc="{{ op.descricao }}" data-num="{{ op.numero }}">OP {{ op.numero }} — {{ op.ref_codigo or '' }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Turno *</label>
-      <select id="bal-turno" onchange="atualizarMinutos()">
-        <option value="">Selecione...</option>
-        {% for t in turnos %}
-        <option value="{{ t.id }}" data-mins="{{ t.minutos_normal }}" data-nome="{{ t.nome }}">{{ t.nome }} ({{ t.minutos_normal }}min)</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Nº Operadoras</label>
-      <input type="number" id="bal-operadoras" value="20" min="1" max="100" oninput="calcularMetas()">
-    </div>
-    <div class="form-group">
-      <label>Ciclo (minutos)</label>
-      <select id="bal-ciclo" onchange="calcularMetas()">
-        <option value="10">10 min</option>
-        <option value="15" selected>15 min</option>
-        <option value="20">20 min</option>
-        <option value="25">25 min</option>
-        <option value="30">30 min</option>
-        <option value="60">60 min</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label>Nº de Times</label>
-      <input type="number" id="bal-times" value="10" min="1" max="50" oninput="calcularMetas()">
-    </div>
-  </div>
-  <div style="display:flex;gap:8px">
-    <button class="btn btn-primary" onclick="calcularMetas()">🔄 Calcular</button>
-    <button class="btn btn-success" onclick="balancearAutomatico()">⚡ Balancear Automático</button>
-    <button class="btn btn-light" onclick="gerarTimes()">📋 Gerar Times Vazios</button>
-  </div>
-</div>
-
-<!-- MÉTRICAS -->
-<div class="metricas" id="metricas-container">
-  <div class="metrica"><div class="metrica-val" id="m-mins">—</div><div class="metrica-lbl">Min. Disponíveis</div></div>
-  <div class="metrica"><div class="metrica-val" id="m-tempo">—</div><div class="metrica-lbl">Tempo Peça (min)</div></div>
-  <div class="metrica destaque"><div class="metrica-val" id="m-meta-dia">—</div><div class="metrica-lbl">Meta Dia (pcs)</div></div>
-  <div class="metrica destaque"><div class="metrica-val" id="m-ciclos">—</div><div class="metrica-lbl">Ciclos/Dia</div></div>
-  <div class="metrica destaque"><div class="metrica-val" id="m-meta-ciclo">—</div><div class="metrica-lbl">Meta/Ciclo (pcs)</div></div>
-  <div class="metrica"><div class="metrica-val" id="m-op-ciclo">—</div><div class="metrica-lbl">Ops/Time</div></div>
-</div>
-
-<!-- LAYOUT PRINCIPAL -->
-<div class="bal-layout">
-  <!-- COLUNA 1: OPERADORAS -->
-  <div class="operadoras-panel">
-    <div class="operadoras-title">👩 Operadoras</div>
-    <div class="operadoras-list" id="operadoras-disponiveis"></div>
-  </div>
-
-  <!-- COLUNA 2: OPERAÇÕES -->
-  <div class="operacoes-panel">
-    <div class="operadoras-title">⚙️ Operações da OP</div>
-    <div id="operacoes-disponiveis" style="max-height:calc(100vh - 320px);overflow-y:auto">
-      <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Selecione uma OP</div>
-    </div>
-  </div>
-
-  <!-- COLUNA 3: TIMES -->
-  <div>
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div style="font-size:13px;font-weight:700;color:#1a1a2e">📋 Times de Produção</div>
-      <div style="font-size:11px;color:#9ca3af">Arraste operadoras e operações para os times</div>
-    </div>
-    <div class="times-container">
-      <div class="times-grid" id="times-grid">
-        <div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px">
-          Configure e clique em "Gerar Times" ou "Balancear Automático"
+    <!-- CONFIGURAÇÃO -->
+    <div class="card">
+      <div class="card-title">⚙️ Configuração do Balanceamento</div>
+      <div class="form-row cols-5">
+        <div class="form-group">
+          <label>Ordem de Produção *</label>
+          <select id="bal-op" onchange="carregarOP()">
+            <option value="">Selecione...</option>
+            {% for op in ops %}
+            <option value="{{ op.id }}" data-ref="{{ op.ref_codigo }}" data-desc="{{ op.descricao }}" data-num="{{ op.numero }}">OP {{ op.numero }} — {{ op.ref_codigo or '' }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Turno *</label>
+          <select id="bal-turno" onchange="atualizarMinutos()">
+            <option value="">Selecione...</option>
+            {% for t in turnos %}
+            <option value="{{ t.id }}" data-mins="{{ t.minutos_normal }}" data-nome="{{ t.nome }}">{{ t.nome }} ({{ t.minutos_normal }}min)</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nº Operadoras</label>
+          <input type="number" id="bal-operadoras" value="20" min="1" max="100" oninput="calcularMetas()">
+        </div>
+        <div class="form-group">
+          <label>Ciclo (minutos)</label>
+          <select id="bal-ciclo" onchange="calcularMetas()">
+            <option value="10">10 min</option>
+            <option value="15" selected>15 min</option>
+            <option value="20">20 min</option>
+            <option value="25">25 min</option>
+            <option value="30">30 min</option>
+            <option value="60">60 min</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nº de Times</label>
+          <input type="number" id="bal-times" value="10" min="1" max="50" oninput="calcularMetas()">
         </div>
       </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary" onclick="calcularMetas()">🔄 Calcular</button>
+        <button class="btn btn-success" onclick="balancearAutomatico()">⚡ Balancear Automático</button>
+        <button class="btn btn-light" onclick="gerarTimes()">📋 Gerar Times Vazios</button>
+      </div>
+    </div>
+
+    <!-- MÉTRICAS -->
+    <div class="metricas" id="metricas-container">
+      <div class="metrica"><div class="metrica-val" id="m-mins">—</div><div class="metrica-lbl">Min. Disponíveis</div></div>
+      <div class="metrica"><div class="metrica-val" id="m-tempo">—</div><div class="metrica-lbl">Tempo Peça (min)</div></div>
+      <div class="metrica destaque"><div class="metrica-val" id="m-meta-dia">—</div><div class="metrica-lbl">Meta Dia (pcs)</div></div>
+      <div class="metrica destaque"><div class="metrica-val" id="m-ciclos">—</div><div class="metrica-lbl">Ciclos/Dia</div></div>
+      <div class="metrica destaque"><div class="metrica-val" id="m-meta-ciclo">—</div><div class="metrica-lbl">Meta/Ciclo (pcs)</div></div>
+      <div class="metrica"><div class="metrica-val" id="m-op-ciclo">—</div><div class="metrica-lbl">Ops/Time</div></div>
+    </div>
+  </div>
+
+  <!-- LAYOUT PRINCIPAL: Operações (esq.) | Times em cascata (meio, rola) | Operadoras (dir.) -->
+  <div class="bal-layout">
+    <!-- COLUNA ESQUERDA: OPERAÇÕES -->
+    <div class="operacoes-panel">
+      <div class="operadoras-title">⚙️ Operações da OP</div>
+      <div id="operacoes-disponiveis">
+        <div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Selecione uma OP</div>
+      </div>
+    </div>
+
+    <!-- COLUNA CENTRAL: TIMES (cascata, única que rola) -->
+    <div class="times-col">
+      <div class="times-col-head" style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:13px;font-weight:700;color:#1a1a2e">📋 Times de Produção</div>
+        <div style="font-size:11px;color:#9ca3af">Arraste operadoras e operações para os times</div>
+      </div>
+      <div class="times-container">
+        <div class="times-grid" id="times-grid">
+          <div style="text-align:center;color:#9ca3af;font-size:13px;padding:40px">
+            Configure e clique em "Gerar Times" ou "Balancear Automático"
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COLUNA DIREITA: OPERADORAS -->
+    <div class="operadoras-panel">
+      <div class="operadoras-title">👩 Operadoras</div>
+      <div class="operadoras-list" id="operadoras-disponiveis"></div>
     </div>
   </div>
 </div>
