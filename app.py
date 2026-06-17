@@ -679,7 +679,7 @@ def api_ref_sequencia_salvar():
 @login_required
 def api_op_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = user['fabrica_id'] or 1
+    fab_id = d.get('fabrica_id') or user['fabrica_id'] or 1
     try:
         ref_id = d.get('referencia_id')
         qtd = int(d.get('quantidade_total') or 0)
