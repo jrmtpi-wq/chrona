@@ -60,7 +60,7 @@
 
 <!-- MODAL OP -->
 <div class="modal-bg" id="modal-op">
-  <div class="modal">
+  <div class="modal modal-md">
     <div class="modal-header">
       <div class="modal-title" id="modal-op-title">Nova OP</div>
       <button class="modal-close" onclick="fecharModal('modal-op')">✕</button>
@@ -82,18 +82,12 @@
               data-genero="{{ r.gen_nome or '' }}">{{ r.codigo }} — {{ r.descricao or '' }}</option>
             {% endfor %}
           </select>
+          <div id="op-tipo-produto-badge" style="margin-top:4px;font-size:11px;color:#6b7280"></div>
         </div>
       </div>
-      <div class="form-row form-row-2">
-        <div class="form-group">
-          <label class="form-label">Descrição / Cliente</label>
-          <input type="text" class="form-control" id="op-descricao" placeholder="Ex: Pedido João Silva">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Tipo de Produto</label>
-          <input type="text" class="form-control" id="op-tipo-produto" readonly
-            style="background:#f8f9fb;color:#374151" placeholder="Preenchido pela referência">
-        </div>
+      <div class="form-group">
+        <label class="form-label">Descrição / Cliente</label>
+        <input type="text" class="form-control" id="op-descricao" placeholder="Ex: Pedido João Silva">
       </div>
       <div class="form-row form-row-3">
         <div class="form-group">
@@ -171,7 +165,10 @@ let delOpId = null;
 function preencherTipoRef(){
   const sel = document.getElementById('op-referencia');
   const opt = sel.options[sel.selectedIndex];
-  document.getElementById('op-tipo-produto').value = opt ? (opt.dataset.tipo || '') : '';
+  const tipo = opt ? (opt.dataset.tipo || '') : '';
+  const genero = opt ? (opt.dataset.genero || '') : '';
+  const badge = document.getElementById('op-tipo-produto-badge');
+  badge.innerHTML = tipo ? `🏷️ <strong>${tipo}</strong>${genero ? ' · '+genero : ''}` : '';
 }
 
 function calcularTotalOP(){
@@ -186,7 +183,7 @@ function novaOP(){
   document.getElementById('op-numero').value = '';
   document.getElementById('op-referencia').value = '';
   document.getElementById('op-descricao').value = '';
-  document.getElementById('op-tipo-produto').value = '';
+  document.getElementById('op-tipo-produto-badge').innerHTML = '';
   document.getElementById('op-quantidade').value = '';
   document.getElementById('op-valor-unit').value = '';
   document.getElementById('op-valor-total').value = '';
