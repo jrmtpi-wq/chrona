@@ -917,6 +917,20 @@ def init():
         except Exception:
             pass
         try:
+            c.execute("""CREATE TABLE IF NOT EXISTS fila_estado (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL UNIQUE,
+                turno_id INTEGER,
+                dt_inicio TEXT,
+                minutos INTEGER DEFAULT 540,
+                hora_entrada TEXT DEFAULT '07:00',
+                hora_saida TEXT DEFAULT '17:30',
+                fila_json TEXT DEFAULT '[]',
+                atualizado TEXT
+            )""")
+        except Exception:
+            pass
+        try:
             c.execute("""CREATE TABLE IF NOT EXISTS sequencias_banco (
                 id SERIAL PRIMARY KEY,
                 nome TEXT NOT NULL,
@@ -1070,6 +1084,21 @@ def init():
                 tempo_padrao REAL DEFAULT 0,
                 FOREIGN KEY(referencia_id) REFERENCES referencias(id),
                 FOREIGN KEY(operacao_id) REFERENCES operacoes(id)
+            )""")
+        except Exception:
+            pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS fila_estado (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                turno_id INTEGER,
+                dt_inicio TEXT,
+                minutos INTEGER DEFAULT 540,
+                hora_entrada TEXT DEFAULT '07:00',
+                hora_saida TEXT DEFAULT '17:30',
+                fila_json TEXT DEFAULT '[]',
+                atualizado TEXT,
+                UNIQUE(user_id)
             )""")
         except Exception:
             pass

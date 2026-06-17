@@ -277,6 +277,60 @@ let config = { turnoId:null, turnoNome:'', minutos:540, horaEntrada:'07:00', hor
 let fila = [];
 let tempSeqOp = {};
 
+async function salvarEstado(){
+  try{
+    const payload = {
+      turno_id: config.turnoId,
+      dt_inicio: config.dtInicio ? config.dtInicio.toISOString() : null,
+      minutos: config.minutos,
+      hora_entrada: config.horaEntrada,
+      hora_saida: config.horaSaida,
+      fila: fila.map(i=>({opId:i.opId,opNum:i.opNum,opRef:i.opRef,opDesc:i.opDesc,
+        valorUnit:i.valorUnit,qtd:i.qtd,operadores:i.operadores,nTimes:i.nTimes,
+        ciclo:i.ciclo,tempoPeca:i.tempoPeca,horasExtra:i.horasExtra||0,obsExtra:i.obsExtra||''}))
+    };
+    await fetch('/api/fila/estado/salvar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  }catch(e){}
+}
+
+async function carregarEstado(){
+  try{
+    const r = await fetch('/api/fila/estado').then(x=>x.json());
+    if(!r || !r.fila_json) return;
+    const filaItems = JSON.parse(r.fila_json||'[]');
+    if(!filaItems.length) return;
+    // Restaurar configuração do turno
+    if(r.turno_id){
+      const sel = document.getElementById('cfg-sel-turno');
+      if(sel){
+        sel.value = r.turno_id;
+        const opt = sel.options[sel.selectedIndex];
+        config.turnoId = r.turno_id;
+        config.turnoNome = opt ? opt.dataset.nome : '';
+        config.minutos = r.minutos || 540;
+        config.horaEntrada = r.hora_entrada || '07:00';
+        config.horaSaida = r.hora_saida || '17:30';
+        config.dtInicio = r.dt_inicio ? new Date(r.dt_inicio) : null;
+        atualizarBanner();
+      }
+    }
+    // Restaurar sequências das OPs salvas
+    for(const item of filaItems){
+      if(!tempSeqOp[item.opId]){
+        try{
+          const seq = await fetch('/api/op/sequencia/'+item.opId).then(x=>x.json());
+          tempSeqOp[item.opId] = seq;
+          if(seq && seq.length){
+            item.tempoPeca = seq.reduce((s,o)=>s+parseFloat(o.tempo_padrao||0),0);
+          }
+        }catch(e){}
+      }
+      fila.push(item);
+    }
+    recalcularTudo();
+  }catch(e){}
+}
+
 function toast(msg,tipo='success'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+tipo+' show';setTimeout(()=>t.classList.remove('show'),2800)}
 function fecharModal(id){document.getElementById(id).classList.remove('open')}
 function abrirModal(id){document.getElementById(id).classList.add('open')}
@@ -323,6 +377,7 @@ function confirmarConfig(){
   fecharModal('modal-config');
   atualizarBanner();
   recalcularTudo();
+  salvarEstado();
   toast('Configuração salva!');
 }
 function atualizarBanner(){
@@ -404,6 +459,7 @@ function adicionarOP(){
   fila.push({opId:opt.value,opNum:opt.dataset.num,opRef:opt.dataset.ref,opDesc:opt.dataset.desc,valorUnit:parseFloat(opt.dataset.unit)||0,qtd,operadores:parseInt(document.getElementById('add-operadores').value)||1,nTimes:parseInt(document.getElementById('add-times').value)||1,ciclo:parseInt(document.getElementById('add-ciclo').value)||15,tempoPeca:tempo,horasExtra:0,obsExtra:''});
   fecharModal('modal-add-op');
   recalcularTudo();
+  salvarEstado();
   toast('OP adicionada!');
 }
 
@@ -553,9 +609,10 @@ function removerOP(idx){
   if(!confirm('Remover esta OP da fila?'))return;
   fila.splice(idx,1);
   recalcularTudo();
+  salvarEstado();
   toast('OP removida');
 }
-function setHorasExtra(idx,val){fila[idx].horasExtra=parseFloat(val)||0;recalcularTudo()}
+function setHorasExtra(idx,val){fila[idx].horasExtra=parseFloat(val)||0;recalcularTudo();salvarEstado()}
 function setObsExtra(idx,val){fila[idx].obsExtra=val}
 
 // IMPRIMIR
@@ -676,5 +733,6 @@ tbody tr:nth-child(even){background:#f8f9fb}
 // Init
 const agora=new Date();
 document.getElementById('cfg-dt-inicio') && (document.getElementById('cfg-dt-inicio').value=`${agora.getFullYear()}-${pad(agora.getMonth()+1)}-${pad(agora.getDate())}T07:00`);
+document.addEventListener('DOMContentLoaded', carregarEstado);
 </script>
 {% endblock %}

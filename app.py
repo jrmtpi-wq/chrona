@@ -1087,6 +1087,40 @@ def api_lancamentos_lista():
     c.close()
     return jsonify(rows)
 # ── FILA DE PRODUÇÃO ───────────────────────────────────────────
+@app.route('/api/fila/estado')
+@login_required
+def api_fila_estado_get():
+    user = get_user(); c = m.conn()
+    row = c.execute("SELECT * FROM fila_estado WHERE user_id=?", (user['id'],)).fetchone()
+    c.close()
+    return jsonify(dict(row) if row else {})
+
+@app.route('/api/fila/estado/salvar', methods=['POST'])
+@login_required
+def api_fila_estado_salvar():
+    user = get_user(); d = request.json; c = m.conn()
+    import json as _json
+    fila_json = _json.dumps(d.get('fila', []))
+    agora = __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    try:
+        existing = c.execute("SELECT id FROM fila_estado WHERE user_id=?", (user['id'],)).fetchone()
+        if existing:
+            c.execute("""UPDATE fila_estado SET turno_id=?,dt_inicio=?,minutos=?,
+                         hora_entrada=?,hora_saida=?,fila_json=?,atualizado=? WHERE user_id=?""",
+                      (d.get('turno_id'), d.get('dt_inicio'), d.get('minutos',540),
+                       d.get('hora_entrada','07:00'), d.get('hora_saida','17:30'),
+                       fila_json, agora, user['id']))
+        else:
+            c.execute("""INSERT INTO fila_estado (user_id,turno_id,dt_inicio,minutos,
+                         hora_entrada,hora_saida,fila_json,atualizado)
+                         VALUES (?,?,?,?,?,?,?,?)""",
+                      (user['id'], d.get('turno_id'), d.get('dt_inicio'), d.get('minutos',540),
+                       d.get('hora_entrada','07:00'), d.get('hora_saida','17:30'),
+                       fila_json, agora))
+        c.commit(); c.close(); return jsonify({'ok': True})
+    except Exception as e:
+        c.close(); return jsonify({'ok': False, 'erro': str(e)})
+
 @app.route('/fila-producao')
 @login_required
 def fila_producao():
