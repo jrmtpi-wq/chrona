@@ -221,9 +221,13 @@ async function salvarOPCad(){
   const quantidade_total = parseInt(document.getElementById('op-quantidade').value) || 0;
   const valor_unitario = parseFloat(document.getElementById('op-valor-unit').value) || 0;
   const data_entrega = document.getElementById('op-data-entrega').value;
-  if(!numero || !referencia_id || !quantidade_total || !valor_unitario || !data_entrega){
-    toast('Preencha todos os campos obrigatórios', 'err'); return;
-  }
+  const faltando = [];
+  if(!numero) faltando.push('Número da OP');
+  if(!referencia_id) faltando.push('Referência');
+  if(!quantidade_total) faltando.push('Quantidade');
+  if(!valor_unitario) faltando.push('Preço por Peça');
+  if(!data_entrega) faltando.push('Data de Entrega ao Cliente');
+  if(faltando.length){ toast('Faltando: ' + faltando.join(', '), 'err'); return; }
   const id = document.getElementById('op-id').value;
   const d = {
     id: id || null,
