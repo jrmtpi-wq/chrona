@@ -243,8 +243,15 @@ async function carregarLista(){
   const fab = document.getElementById('filt-fab').value;
   let url = `/api/ops/cadastro-lista?q=${encodeURIComponent(q)}&situacao=${sit}`;
   if(fab) url += `&fab=${fab}`;
-  const rows = await api(url);
   const tb = document.getElementById('tbody-ops');
+  let rows;
+  try {
+    rows = await api(url);
+    if(!Array.isArray(rows)) throw new Error(rows?.erro || 'Resposta inválida');
+  } catch(e) {
+    tb.innerHTML = `<tr><td colspan="8" class="empty"><span class="empty-icon">⚠️</span>Erro ao carregar: ${e.message}</td></tr>`;
+    return;
+  }
   document.getElementById('count-ops').textContent = `${rows.length} OP(s)`;
 
   const totQtd = rows.reduce((s,r)=>s+(parseInt(r.quantidade_total)||0),0);

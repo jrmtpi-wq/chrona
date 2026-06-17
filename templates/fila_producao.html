@@ -334,7 +334,7 @@ function atualizarBanner(){
 }
 
 // ADD OP
-function abrirModalAddOP(){
+async function abrirModalAddOP(){
   if(!config.turnoId){toast('Configure o turno primeiro','error');abrirModalConfig();return}
   document.getElementById('add-op-sel').value='';
   document.getElementById('add-qtd').value='';
@@ -344,6 +344,15 @@ function abrirModalAddOP(){
   document.getElementById('seq-preview').style.display='none';
   ['prev-tempo','prev-meta-dia','prev-meta-ciclo','prev-atrav','prev-ciclos','prev-dias'].forEach(id=>document.getElementById(id).textContent='—');
   abrirModal('modal-add-op');
+  // Recarregar OPs dinamicamente para pegar as recém-cadastradas
+  try {
+    const ops = await fetch('/api/ops/cadastro-lista?situacao=ATIVAS').then(r=>r.json());
+    const sel = document.getElementById('add-op-sel');
+    const atual = sel.value;
+    sel.innerHTML = '<option value="">Selecione...</option>' +
+      ops.map(op=>`<option value="${op.id}" data-num="${op.numero}" data-ref="${op.ref_codigo||''}" data-desc="${(op.descricao||'').replace(/"/g,'&quot;')}" data-qtd="${op.quantidade_total||0}" data-unit="${op.valor_unitario||0}">OP ${op.numero} — ${op.ref_codigo||''}${op.descricao?' | '+op.descricao:''}</option>`).join('');
+    if(atual) sel.value = atual;
+  } catch(e) {}
 }
 async function opSelecionada(){
   const sel=document.getElementById('add-op-sel');
