@@ -572,7 +572,13 @@ def cadastro_op():
     ph = ','.join('?'*len(fids_list))
     c = m.conn()
     fabricas = c.execute(f"SELECT * FROM fabricas WHERE id IN ({ph})", fids_list).fetchall()
-    referencias = c.execute("SELECT * FROM referencias WHERE ativo=1 ORDER BY codigo").fetchall()
+    referencias = c.execute("""
+        SELECT r.*, t.nome tipo_nome, g.nome gen_nome
+        FROM referencias r
+        LEFT JOIN tipos_produto t ON r.tipo_produto_id=t.id
+        LEFT JOIN generos_produto g ON r.genero_id=g.id
+        WHERE r.ativo=1 ORDER BY r.codigo
+    """).fetchall()
     c.close()
     return render_template('cadastro_op.html', user=user,
         fabricas=[dict(r) for r in fabricas],
@@ -589,9 +595,10 @@ def api_ops_cadastro_lista():
     fab_id = request.args.get('fab','')
     c = m.conn()
     sql = f"""
-        SELECT op.*,r.codigo ref_codigo
+        SELECT op.*,r.codigo ref_codigo,t.nome tipo_nome
         FROM ordens_producao op
         LEFT JOIN referencias r ON op.referencia_id=r.id
+        LEFT JOIN tipos_produto t ON r.tipo_produto_id=t.id
         WHERE op.fabrica_id IN ({ph})
     """
     params = list(fids_list)

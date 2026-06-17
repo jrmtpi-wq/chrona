@@ -41,6 +41,7 @@
       <thead><tr>
         <th>OP</th>
         <th>Referência</th>
+        <th>Tipo de Produto</th>
         <th>Descrição / Cliente</th>
         <th>Quantidade de Peças</th>
         <th>Entrega ao Cliente</th>
@@ -49,7 +50,7 @@
         <th style="width:100px">Ações</th>
       </tr></thead>
       <tbody id="tbody-ops">
-        <tr><td colspan="8" class="empty">
+        <tr><td colspan="9" class="empty">
           <span class="empty-icon">📝</span>
           Carregando ordens de produção...</td></tr>
       </tbody>
@@ -73,17 +74,26 @@
         </div>
         <div class="form-group">
           <label class="form-label">Referência *</label>
-          <select class="form-control" id="op-referencia">
+          <select class="form-control" id="op-referencia" onchange="preencherTipoRef()">
             <option value="">Selecione...</option>
             {% for r in referencias %}
-            <option value="{{ r.id }}">{{ r.codigo }} — {{ r.descricao or '' }}</option>
+            <option value="{{ r.id }}"
+              data-tipo="{{ r.tipo_nome or '' }}"
+              data-genero="{{ r.gen_nome or '' }}">{{ r.codigo }} — {{ r.descricao or '' }}</option>
             {% endfor %}
           </select>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Descrição / Cliente</label>
-        <input type="text" class="form-control" id="op-descricao" placeholder="Ex: Pedido João Silva">
+      <div class="form-row form-row-2">
+        <div class="form-group">
+          <label class="form-label">Descrição / Cliente</label>
+          <input type="text" class="form-control" id="op-descricao" placeholder="Ex: Pedido João Silva">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo de Produto</label>
+          <input type="text" class="form-control" id="op-tipo-produto" readonly
+            style="background:#f8f9fb;color:#374151" placeholder="Preenchido pela referência">
+        </div>
       </div>
       <div class="form-row form-row-3">
         <div class="form-group">
@@ -158,6 +168,12 @@
 <script>
 let delOpId = null;
 
+function preencherTipoRef(){
+  const sel = document.getElementById('op-referencia');
+  const opt = sel.options[sel.selectedIndex];
+  document.getElementById('op-tipo-produto').value = opt ? (opt.dataset.tipo || '') : '';
+}
+
 function calcularTotalOP(){
   const qtd = parseFloat(document.getElementById('op-quantidade').value) || 0;
   const unit = parseFloat(document.getElementById('op-valor-unit').value) || 0;
@@ -170,6 +186,7 @@ function novaOP(){
   document.getElementById('op-numero').value = '';
   document.getElementById('op-referencia').value = '';
   document.getElementById('op-descricao').value = '';
+  document.getElementById('op-tipo-produto').value = '';
   document.getElementById('op-quantidade').value = '';
   document.getElementById('op-valor-unit').value = '';
   document.getElementById('op-valor-total').value = '';
@@ -186,6 +203,7 @@ async function editarOPCad(id){
   document.getElementById('modal-op-title').textContent = 'Editar OP '+r.numero;
   document.getElementById('op-numero').value = r.numero || '';
   document.getElementById('op-referencia').value = r.referencia_id || '';
+  preencherTipoRef();
   document.getElementById('op-descricao').value = r.descricao || '';
   document.getElementById('op-quantidade').value = r.quantidade_total || '';
   document.getElementById('op-valor-unit').value = r.valor_unitario || '';
@@ -249,7 +267,7 @@ async function carregarLista(){
     rows = await api(url);
     if(!Array.isArray(rows)) throw new Error(rows?.erro || 'Resposta inválida');
   } catch(e) {
-    tb.innerHTML = `<tr><td colspan="8" class="empty"><span class="empty-icon">⚠️</span>Erro ao carregar: ${e.message}</td></tr>`;
+    tb.innerHTML = `<tr><td colspan="9" class="empty"><span class="empty-icon">⚠️</span>Erro ao carregar: ${e.message}</td></tr>`;
     return;
   }
   document.getElementById('count-ops').textContent = `${rows.length} OP(s)`;
@@ -263,13 +281,14 @@ async function carregarLista(){
   ` : '';
 
   if(!rows.length){
-    tb.innerHTML = '<tr><td colspan="8" class="empty"><span class="empty-icon">📝</span>Nenhuma OP encontrada</td></tr>';
+    tb.innerHTML = '<tr><td colspan="9" class="empty"><span class="empty-icon">📝</span>Nenhuma OP encontrada</td></tr>';
     return;
   }
   tb.innerHTML = rows.map(r=>`
     <tr>
       <td><strong style="color:var(--azul)">${r.numero}</strong>${r.situacao==='CANCELADA'?' <span class="tag tag-inativo">CANCELADA</span>':''}</td>
       <td>${r.ref_codigo||'—'}</td>
+      <td style="font-size:11px;color:#6b7280">${r.tipo_nome||'—'}</td>
       <td style="color:#374151;font-size:12px">${r.descricao||'—'}</td>
       <td>${(r.quantidade_total||0).toLocaleString('pt-BR')}</td>
       <td>${r.data_entrega||'—'}</td>
