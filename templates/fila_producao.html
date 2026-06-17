@@ -419,6 +419,20 @@ function recalcularTudo(){
   });
   renderFila();
   atualizarResumo();
+  salvarSaidasNaOP();
+}
+
+function fmtDatetimeLocal(dt){
+  if(!dt)return null;
+  const pad=n=>String(n).padStart(2,'0');
+  return `${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+}
+
+async function salvarSaidasNaOP(){
+  if(!fila.length)return;
+  const items=fila.filter(i=>i.opId&&i.dtSaida).map(i=>({op_id:parseInt(i.opId),data_saida:fmtDatetimeLocal(i.dtSaida)}));
+  if(!items.length)return;
+  try{ await api('/api/op/atualizar-saida','POST',{items}); }catch(e){}
 }
 
 // RENDER TABELA

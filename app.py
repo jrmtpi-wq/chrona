@@ -736,7 +736,19 @@ def api_op_situacao():
     d = request.json; c = m.conn()
     c.execute("UPDATE ordens_producao SET situacao=? WHERE id=?", (d['situacao'], d['id']))
     c.commit(); c.close(); return jsonify({'ok': True})
- 
+
+@app.route('/api/op/atualizar-saida', methods=['POST'])
+@login_required
+def api_op_atualizar_saida():
+    d = request.json; c = m.conn()
+    try:
+        for item in d.get('items', []):
+            c.execute("UPDATE ordens_producao SET data_entrega_costura=? WHERE id=?",
+                      (item['data_saida'], item['op_id']))
+        c.commit(); c.close(); return jsonify({'ok': True})
+    except Exception as e:
+        c.close(); return jsonify({'ok': False, 'erro': str(e)})
+
 @app.route('/api/op/sequencia/<int:oid>')
 @login_required
 def api_op_sequencia_get(oid):
