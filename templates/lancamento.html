@@ -2,10 +2,10 @@
 {% block title %}Lançamento{% endblock %}
 {% block content %}
 <style>
-.lan-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
-.lan-title{font-size:18px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:8px}
-.card{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:20px;margin-bottom:16px}
-.card-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:16px;display:flex;align-items:center;gap:6px}
+.lan-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.lan-title{font-size:15px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:6px}
+.card{background:#fff;border-radius:10px;border:1px solid #e0e6f0;padding:12px;margin-bottom:10px}
+.card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
 .btn-primary{background:#1a1a2e;color:#fff}.btn-primary:hover{background:#2d3a6e}
 .btn-success{background:#15803d;color:#fff}.btn-success:hover{background:#166534}
@@ -13,7 +13,7 @@
 .btn-light{background:#f0f2f5;color:#374151}.btn-light:hover{background:#e5e7eb}
 .btn-sm{padding:5px 10px;font-size:11px}
 .form-group label{display:block;font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
-.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid #e0e6f0;border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+.form-group input,.form-group select{width:100%;padding:5px 8px;border:1px solid #e0e6f0;border-radius:6px;font-size:12px;outline:none;font-family:inherit}
 .form-group input:focus,.form-group select:focus{border-color:#1a1a2e}
 .form-row{display:grid;gap:12px}
 .cols-2{grid-template-columns:1fr 1fr}
@@ -22,16 +22,16 @@
 .cols-6{grid-template-columns:repeat(6,1fr)}
 
 /* MÉTRICAS DO DIA */
-.metricas-dia{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
-.metrica-card{border-radius:12px;padding:16px;text-align:center;border:2px solid}
+.metricas-dia{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}
+.metrica-card{border-radius:10px;padding:10px;text-align:center;border:2px solid}
 .metrica-card.neutro{background:#f8f9fb;border-color:#e0e6f0}
 .metrica-card.verde{background:#dcfce7;border-color:#15803d}
 .metrica-card.amarelo{background:#fef9c3;border-color:#d97706}
 .metrica-card.vermelho{background:#fee2e2;border-color:#dc2626}
 .metrica-card.azul{background:#dbeafe;border-color:#1d4ed8}
-.metrica-val{font-size:26px;font-weight:800;color:#1a1a2e;line-height:1}
-.metrica-lbl{font-size:10px;color:#6b7280;text-transform:uppercase;margin-top:4px;font-weight:600}
-.metrica-sub{font-size:11px;color:#6b7280;margin-top:2px}
+.metrica-val{font-size:20px;font-weight:800;color:#1a1a2e;line-height:1}
+.metrica-lbl{font-size:9px;color:#6b7280;text-transform:uppercase;margin-top:3px;font-weight:600}
+.metrica-sub{font-size:10px;color:#6b7280;margin-top:2px}
 
 /* FAROL GRANDE */
 .farol-grande{border-radius:16px;padding:20px;text-align:center;border:3px solid;transition:all .3s}
