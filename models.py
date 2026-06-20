@@ -314,6 +314,15 @@ CREATE TABLE IF NOT EXISTS operacoes (
     ativo INTEGER DEFAULT 1,
     FOREIGN KEY(equipamento_id) REFERENCES equipamentos(id)
 );
+CREATE TABLE IF NOT EXISTS operacao_tempos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    operacao_id INTEGER NOT NULL,
+    funcionario_id INTEGER NOT NULL,
+    tempo REAL NOT NULL,
+    criado_em TEXT DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY(operacao_id) REFERENCES operacoes(id),
+    FOREIGN KEY(funcionario_id) REFERENCES funcionarios(id)
+);
 CREATE TABLE IF NOT EXISTS sequencia_op (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     op_id INTEGER NOT NULL,
@@ -669,6 +678,15 @@ CREATE TABLE IF NOT EXISTS operacoes (
     modelo TEXT DEFAULT '',
     ativo INTEGER DEFAULT 1,
     FOREIGN KEY(equipamento_id) REFERENCES equipamentos(id)
+);
+CREATE TABLE IF NOT EXISTS operacao_tempos (
+    id SERIAL PRIMARY KEY,
+    operacao_id INTEGER NOT NULL,
+    funcionario_id INTEGER NOT NULL,
+    tempo REAL NOT NULL,
+    criado_em TEXT DEFAULT (NOW()::text),
+    FOREIGN KEY(operacao_id) REFERENCES operacoes(id),
+    FOREIGN KEY(funcionario_id) REFERENCES funcionarios(id)
 );
 CREATE TABLE IF NOT EXISTS sequencia_op (
     id SERIAL PRIMARY KEY,
@@ -1099,6 +1117,18 @@ def init():
                 fila_json TEXT DEFAULT '[]',
                 atualizado TEXT,
                 UNIQUE(user_id)
+            )""")
+        except Exception:
+            pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS operacao_tempos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                operacao_id INTEGER NOT NULL,
+                funcionario_id INTEGER NOT NULL,
+                tempo REAL NOT NULL,
+                criado_em TEXT DEFAULT (datetime('now','localtime')),
+                FOREIGN KEY(operacao_id) REFERENCES operacoes(id),
+                FOREIGN KEY(funcionario_id) REFERENCES funcionarios(id)
             )""")
         except Exception:
             pass

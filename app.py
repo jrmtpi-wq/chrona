@@ -910,9 +910,13 @@ def sequencia_op():
     equipamentos = c.execute(f"""
         SELECT * FROM equipamentos WHERE fabrica_id IN ({ph}) AND situacao='ATIVO' ORDER BY nome
     """, fids_list).fetchall()
+    funcionarios = c.execute(f"""
+        SELECT id, nome FROM funcionarios WHERE fabrica_id IN ({ph}) AND situacao='ATIVO' ORDER BY nome
+    """, fids_list).fetchall()
     c.close()
     return render_template('sequencia_op.html', user=user,
-        equipamentos=[dict(r) for r in equipamentos])
+        equipamentos=[dict(r) for r in equipamentos],
+        funcionarios=[dict(r) for r in funcionarios])
 
 
 @app.route('/api/operacoes/banco')
@@ -927,14 +931,60 @@ def api_operacoes_banco():
         WHERE o.ativo=1
         ORDER BY o.modelo, o.descricao
     """).fetchall()
+    tempos_rows = c.execute("""
+        SELECT ot.*, f.nome func_nome
+        FROM operacao_tempos ot
+        JOIN funcionarios f ON ot.funcionario_id=f.id
+        ORDER BY ot.operacao_id, ot.tempo
+    """).fetchall()
     c.close()
+    tempos_map = {}
+    for t in tempos_rows:
+        td = dict(t)
+        tempos_map.setdefault(td['operacao_id'], []).append(td)
     result = []
     for r in rows:
         d = dict(r)
         d['tipo_label'] = TIPOS.get(d.get('tipo','C'), '')
         d['modelo'] = d.get('modelo') or 'UNIVERSAL'
+        d['tempos'] = tempos_map.get(d['id'], [])
         result.append(d)
     return jsonify(result)
+
+
+@app.route('/api/operacao/tempos/<int:oid>')
+@login_required
+def api_operacao_tempos_get(oid):
+    c = m.conn()
+    rows = c.execute("""
+        SELECT ot.*, f.nome func_nome
+        FROM operacao_tempos ot
+        JOIN funcionarios f ON ot.funcionario_id=f.id
+        WHERE ot.operacao_id=?
+        ORDER BY ot.tempo
+    """, (oid,)).fetchall()
+    c.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route('/api/operacao/tempo/salvar', methods=['POST'])
+@login_required
+def api_operacao_tempo_salvar():
+    d = request.json; c = m.conn()
+    try:
+        c.execute("INSERT INTO operacao_tempos (operacao_id,funcionario_id,tempo) VALUES (?,?,?)",
+                  (d['operacao_id'], d['funcionario_id'], float(d['tempo'])))
+        c.commit(); c.close(); return jsonify({'ok': True})
+    except Exception as e:
+        c.close(); return jsonify({'ok': False, 'erro': str(e)})
+
+
+@app.route('/api/operacao/tempo/excluir/<int:tid>', methods=['DELETE'])
+@login_required
+def api_operacao_tempo_excluir(tid):
+    c = m.conn()
+    c.execute("DELETE FROM operacao_tempos WHERE id=?", (tid,))
+    c.commit(); c.close(); return jsonify({'ok': True})
 
 
 @app.route('/api/sequencia/salvar', methods=['POST'])

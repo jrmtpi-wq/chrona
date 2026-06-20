@@ -90,6 +90,13 @@
 .empty-state{text-align:center;padding:48px 20px;color:#9ca3af}
 .empty-icon{font-size:40px;display:block;margin-bottom:8px}
 .badge{padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700;display:inline-block}
+
+/* CHIPS DE OPERADORA */
+.op-chips{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px}
+.op-chip{padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#f0f2f5;color:#374151;display:inline-flex;align-items:center;gap:3px}
+.op-chip.melhor{background:#dcfce7;color:#15803d;border:1px solid #86efac}
+.op-chip .chip-tempo{color:#9ca3af;font-weight:400}
+.op-chip.melhor .chip-tempo{color:#16a34a}
 </style>
 
 <div class="seq-header">
@@ -299,6 +306,46 @@
   </div>
 </div>
 
+<!-- MODAL TEMPOS POR OPERADORA -->
+<div class="modal-overlay" id="modal-tempos">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <div class="modal-title">⏱ Tempos por Operadora — <span id="modal-tempos-op-nome" style="color:#6b7280;font-weight:400"></span></div>
+      <button class="modal-close" onclick="fecharModal('modal-tempos')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="tempos-op-id">
+      <!-- Adicionar novo tempo -->
+      <div style="background:#f8f9fb;border:1px solid #e0e6f0;border-radius:8px;padding:12px;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:8px">Adicionar Tempo Cronometrado</div>
+        <div class="form-row cols-2" style="margin-bottom:8px">
+          <div class="form-group">
+            <label>Operadora *</label>
+            <select id="tempo-funcionario">
+              <option value="">Selecione...</option>
+              {% for f in funcionarios %}
+              <option value="{{ f.id }}">{{ f.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tempo (min) *</label>
+            <input type="number" id="tempo-valor" step="0.01" min="0.01" placeholder="0.00">
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="adicionarTempo()">➕ Adicionar</button>
+      </div>
+      <!-- Lista de tempos -->
+      <div id="lista-tempos">
+        <div class="empty-state"><span class="empty-icon">⏱</span>Nenhum tempo registrado</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-tempos')">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script>
@@ -363,7 +410,17 @@ function renderBanco() {
     return;
   }
 
-  lista.innerHTML = items.map((op, i) => `
+  lista.innerHTML = items.map((op, i) => {
+    const tempos = op.tempos || [];
+    const melhorTempo = tempos.length ? Math.min(...tempos.map(t => t.tempo)) : null;
+    const chipsHtml = tempos.map(t => {
+      const isMelhor = t.tempo === melhorTempo;
+      return `<span class="op-chip${isMelhor ? ' melhor' : ''}" title="${isMelhor ? '⭐ Melhor tempo' : ''}">
+        ${isMelhor ? '⭐' : ''}${t.func_nome.split(' ')[0]}
+        <span class="chip-tempo">${parseFloat(t.tempo).toFixed(2)}min</span>
+      </span>`;
+    }).join('');
+    return `
     <div class="op-banco-item" draggable="true"
          ondragstart="dragDoBanco(event, ${op.id})"
          ondblclick="adicionarNaSeq(${op.id})">
@@ -376,14 +433,16 @@ function renderBanco() {
           ${op.equip_nome ? `<span class="tag-modelo tag-maq">🔧 ${op.equip_nome}</span>` : ''}
           <span style="color:#9ca3af">${op.tipo_label||''}</span>
         </div>
+        ${chipsHtml ? `<div class="op-chips">${chipsHtml}</div>` : ''}
       </div>
       <span class="op-banco-tempo">${parseFloat(op.tempo_padrao||0).toFixed(2)}min</span>
       <div style="display:flex;gap:3px;flex-shrink:0">
+        <button class="btn btn-xs btn-light" onclick="abrirTempos(${op.id}, '${op.descricao.replace(/'/g,"\\'")}', event)" title="Tempos por operadora">⏱</button>
         <button class="btn btn-xs btn-light" onclick="editarOp(${op.id})" title="Editar">✏️</button>
         <button class="btn btn-xs btn-danger" onclick="excluirOp(${op.id})" title="Excluir">✕</button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 // ── DRAG DO BANCO ─────────────────────────────────
@@ -625,6 +684,73 @@ async function excluirSeq(id) {
   if (!confirm('Excluir esta sequência?')) return;
   const r = await fetch(`/api/sequencia/excluir/${id}`, {method:'DELETE'}).then(r => r.json());
   if (r.ok) { await carregarSeqSalvas('TODOS'); toast('Sequência excluída!'); }
+  else toast(r.erro || 'Erro', 'error');
+}
+
+// ── TEMPOS POR OPERADORA ──────────────────────────
+let temposAtivos = [];
+
+async function abrirTempos(opId, opNome, e) {
+  if (e) e.stopPropagation();
+  document.getElementById('tempos-op-id').value = opId;
+  document.getElementById('modal-tempos-op-nome').textContent = opNome;
+  document.getElementById('tempo-funcionario').value = '';
+  document.getElementById('tempo-valor').value = '';
+  await recarregarTempos(opId);
+  abrirModal('modal-tempos');
+}
+
+async function recarregarTempos(opId) {
+  opId = opId || document.getElementById('tempos-op-id').value;
+  temposAtivos = await fetch(`/api/operacao/tempos/${opId}`).then(r => r.json());
+  renderTempos();
+  // Atualiza o banco local para refletir os chips
+  const op = banco.find(o => o.id == opId);
+  if (op) { op.tempos = temposAtivos; renderBanco(); }
+}
+
+function renderTempos() {
+  const lista = document.getElementById('lista-tempos');
+  if (!temposAtivos.length) {
+    lista.innerHTML = '<div class="empty-state"><span class="empty-icon">⏱</span>Nenhum tempo registrado</div>';
+    return;
+  }
+  const melhor = Math.min(...temposAtivos.map(t => t.tempo));
+  lista.innerHTML = temposAtivos.map(t => {
+    const isMelhor = t.tempo === melhor;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;margin-bottom:6px;background:${isMelhor ? '#f0fdf4' : '#f8f9fb'};border:1px solid ${isMelhor ? '#86efac' : '#e0e6f0'}">
+      <div style="flex:1">
+        <span style="font-size:13px;font-weight:700;color:${isMelhor ? '#15803d' : '#1a1a2e'}">${isMelhor ? '⭐ ' : ''}${t.func_nome}</span>
+        <span style="margin-left:8px;font-size:12px;font-weight:700;color:${isMelhor ? '#16a34a' : '#374151'}">${parseFloat(t.tempo).toFixed(2)} min</span>
+        ${isMelhor ? '<span style="margin-left:6px;font-size:10px;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:8px;font-weight:700">MELHOR</span>' : ''}
+      </div>
+      <button onclick="excluirTempo(${t.id})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:16px;padding:0 4px" title="Remover">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function adicionarTempo() {
+  const opId = document.getElementById('tempos-op-id').value;
+  const funcId = document.getElementById('tempo-funcionario').value;
+  const tempo = parseFloat(document.getElementById('tempo-valor').value);
+  if (!funcId) { toast('Selecione a operadora', 'error'); return; }
+  if (!tempo || tempo <= 0) { toast('Informe o tempo', 'error'); return; }
+  const r = await fetch('/api/operacao/tempo/salvar', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({operacao_id: parseInt(opId), funcionario_id: parseInt(funcId), tempo})
+  }).then(r => r.json());
+  if (r.ok) {
+    document.getElementById('tempo-funcionario').value = '';
+    document.getElementById('tempo-valor').value = '';
+    await recarregarTempos(opId);
+    toast('Tempo adicionado!');
+  } else toast(r.erro || 'Erro', 'error');
+}
+
+async function excluirTempo(tid) {
+  const opId = document.getElementById('tempos-op-id').value;
+  const r = await fetch(`/api/operacao/tempo/excluir/${tid}`, {method:'DELETE'}).then(r => r.json());
+  if (r.ok) { await recarregarTempos(opId); toast('Tempo removido!'); }
   else toast(r.erro || 'Erro', 'error');
 }
 
