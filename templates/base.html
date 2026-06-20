@@ -19,59 +19,108 @@ body{font-family:'Inter',sans-serif;background:#F0F2F5;color:#1a1a2e;font-size:1
   --sem-verd-bg:#EAFAF1;--sem-amar-bg:#FEF9E7;--sem-verm-bg:#FDEDEC;--sem-azul-bg:#E8F0FE;
 }
 
-/* LAYOUT */
-.layout{display:flex;height:100vh;overflow:hidden}
-.sidebar{width:230px;background:var(--sid);display:flex;flex-direction:column;
-  flex-shrink:0;box-shadow:4px 0 20px rgba(0,0,0,.15)}
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-.content{flex:1;overflow-y:auto;padding:24px}
+/* ── LAYOUT ─────────────────────────────────────────── */
+body{overflow:hidden}
+.layout{display:flex;flex-direction:column;height:100vh}
 
-/* SIDEBAR */
-.sid-logo{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
-.sid-logo-inner{display:flex;align-items:center;gap:10px}
-.sid-logo-icon{width:40px;height:40px;background:var(--amar);border-radius:10px;
-  display:flex;align-items:center;justify-content:center;font-size:20px}
-.sid-logo h1{color:#fff;font-size:20px;font-weight:800;letter-spacing:1px}
-.sid-logo small{color:rgba(255,255,255,.5);font-size:10px;display:block}
-.sid-fab{margin:10px 12px;padding:8px 12px;background:rgba(255,255,255,.08);
-  border-radius:8px;border-left:3px solid var(--amar)}
-.sid-fab span{color:rgba(255,255,255,.5);font-size:10px;text-transform:uppercase;font-weight:600}
-.sid-fab strong{color:#fff;font-size:12px;display:block;margin-top:2px}
-.nav-section{padding:12px 20px 4px;color:rgba(255,255,255,.3);font-size:10px;
-  font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
-.nav-item{display:flex;align-items:center;padding:10px 20px;color:rgba(255,255,255,.6);
-  text-decoration:none;transition:all .15s;border-left:3px solid transparent;gap:12px}
-.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav-item.active{background:rgba(245,166,35,.12);color:#fff;border-left-color:var(--amar)}
-.nav-item.active .nav-icon{color:var(--amar)}
-.nav-icon{font-size:16px;width:20px;text-align:center}
-.nav-label{font-size:13px;font-weight:500}
-.sid-bottom{margin-top:auto;padding:12px 20px;border-top:1px solid rgba(255,255,255,.1)}
-.sid-bottom a{color:rgba(255,255,255,.5);font-size:12px;text-decoration:none;
-  display:flex;align-items:center;gap:8px;transition:.15s}
-.sid-bottom a:hover{color:#fff}
-
-/* TOPBAR */
-.topbar{background:var(--white);border-bottom:1px solid var(--borda);
-  padding:0 24px;height:56px;display:flex;align-items:center;
-  justify-content:space-between;flex-shrink:0;
-  box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.topbar-title{font-size:16px;font-weight:700;color:var(--azul)}
-.topbar-right{display:flex;align-items:center;gap:12px}
+/* ── TOPBAR — sempre fixo no topo ───────────────────── */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:500;
+  background:var(--white);border-bottom:1px solid var(--borda);
+  height:52px;display:flex;align-items:center;
+  padding:0 16px 0 8px;gap:8px;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+.topbar-menu-btn{
+  background:none;border:none;cursor:pointer;
+  width:40px;height:40px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;color:var(--azul);transition:.15s;flex-shrink:0;
+}
+.topbar-menu-btn:hover{background:var(--bg)}
+.topbar-logo{display:flex;align-items:center;gap:8px;margin-right:auto}
+.topbar-logo-icon{width:32px;height:32px;background:var(--amar);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.topbar-logo-text{font-size:15px;font-weight:800;color:var(--azul);letter-spacing:.3px}
+.topbar-page{font-size:13px;font-weight:600;color:var(--cinza);
+  border-left:2px solid var(--borda);padding-left:12px;margin-left:4px}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
 .badge-admin{background:#FEF3E2;color:var(--amar2)}
 .badge-op{background:#E8F0FE;color:var(--azul3)}
 .user-info{font-size:12px;color:var(--cinza)}
 
-/* CARDS */
+/* ── SIDEBAR — overlay drawer ───────────────────────── */
+.sid-overlay{
+  display:none;position:fixed;inset:0;z-index:800;
+  background:rgba(0,0,0,.45);
+}
+.sid-overlay.open{display:block}
+
+.sidebar{
+  position:fixed;top:0;left:0;bottom:0;z-index:900;
+  width:248px;background:var(--sid);
+  display:flex;flex-direction:column;
+  box-shadow:6px 0 32px rgba(0,0,0,.22);
+  transform:translateX(-100%);
+  transition:transform .25s ease;
+}
+.sidebar.open{transform:translateX(0)}
+
+.sid-head{
+  padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.1);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.sid-head-inner{display:flex;align-items:center;gap:10px}
+.sid-logo-icon{width:36px;height:36px;background:var(--amar);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.sid-logo h1{color:#fff;font-size:15px;font-weight:800;letter-spacing:.3px}
+.sid-logo small{color:rgba(255,255,255,.45);font-size:10px;display:block}
+.sid-close{
+  background:none;border:none;cursor:pointer;
+  color:rgba(255,255,255,.5);font-size:20px;
+  width:32px;height:32px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  transition:.15s;flex-shrink:0;
+}
+.sid-close:hover{background:rgba(255,255,255,.12);color:#fff}
+
+.sid-fab{margin:8px 12px;padding:7px 12px;background:rgba(255,255,255,.08);
+  border-radius:8px;border-left:3px solid var(--amar)}
+.sid-fab span{color:rgba(255,255,255,.45);font-size:10px;text-transform:uppercase;font-weight:600}
+.sid-fab strong{color:#fff;font-size:12px;display:block;margin-top:2px}
+
+.nav-section{padding:10px 20px 3px;color:rgba(255,255,255,.3);font-size:10px;
+  font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+.nav-item{display:flex;align-items:center;padding:10px 20px;color:rgba(255,255,255,.65);
+  text-decoration:none;transition:all .15s;border-left:3px solid transparent;gap:12px}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:rgba(245,166,35,.12);color:#fff;border-left-color:var(--amar)}
+.nav-item.active .nav-icon{color:var(--amar)}
+.nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
+.nav-label{font-size:13px;font-weight:500}
+
+.sid-bottom{margin-top:auto;padding:12px 20px;border-top:1px solid rgba(255,255,255,.1)}
+.sid-bottom a{color:rgba(255,255,255,.5);font-size:12px;text-decoration:none;
+  display:flex;align-items:center;gap:10px;transition:.15s;padding:6px 0}
+.sid-bottom a:hover{color:#fff}
+.sid-bottom-icon{font-size:18px}
+
+/* ── CONTENT — ocupa tela toda abaixo da topbar ──────── */
+.main{
+  position:fixed;top:52px;left:0;right:0;bottom:0;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.content{flex:1;overflow-y:auto;padding:24px}
+
+/* ── CARDS ───────────────────────────────────────────── */
 .card{background:var(--white);border:1px solid var(--borda);border-radius:10px;padding:20px;
   box-shadow:0 2px 8px rgba(0,0,0,.04)}
 .card-header{display:flex;align-items:center;justify-content:space-between;
   margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--borda)}
-.card-title{font-size:15px;font-weight:700;color:var(--azul);
-  display:flex;align-items:center;gap:8px}
+.card-title{font-size:15px;font-weight:700;color:var(--azul);display:flex;align-items:center;gap:8px}
 
-/* GRID */
+/* ── GRID ────────────────────────────────────────────── */
 .grid{display:grid;gap:16px}
 .grid-2{grid-template-columns:repeat(2,1fr)}
 .grid-3{grid-template-columns:repeat(3,1fr)}
@@ -79,7 +128,7 @@ body{font-family:'Inter',sans-serif;background:#F0F2F5;color:#1a1a2e;font-size:1
 .row{display:flex;gap:16px;flex-wrap:wrap}
 .col{flex:1;min-width:0}
 
-/* STAT CARDS */
+/* ── STAT CARDS ──────────────────────────────────────── */
 .stat-card{background:var(--white);border:1px solid var(--borda);border-radius:10px;
   padding:18px;position:relative;overflow:hidden}
 .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
@@ -97,7 +146,7 @@ body{font-family:'Inter',sans-serif;background:#F0F2F5;color:#1a1a2e;font-size:1
 .stat-label{font-size:12px;color:var(--cinza);margin-top:4px;font-weight:500}
 .stat-sub{font-size:11px;color:var(--cinza);margin-top:6px}
 
-/* FORM */
+/* ── FORM ────────────────────────────────────────────── */
 .form-group{margin-bottom:14px}
 .form-label{display:block;font-size:12px;color:var(--cinza);font-weight:600;
   margin-bottom:5px;text-transform:uppercase;letter-spacing:.3px}
@@ -115,7 +164,7 @@ select.form-control{cursor:pointer}
   letter-spacing:.5px;padding:10px 0 6px;border-bottom:2px solid var(--amar);
   margin-bottom:12px;margin-top:8px}
 
-/* BUTTONS */
+/* ── BUTTONS ─────────────────────────────────────────── */
 .btn{padding:9px 18px;border:none;border-radius:7px;font-size:13px;font-weight:600;
   cursor:pointer;transition:.15s;font-family:inherit;display:inline-flex;
   align-items:center;gap:6px;text-decoration:none}
@@ -132,7 +181,7 @@ select.form-control{cursor:pointer}
 .btn-sm{padding:5px 12px;font-size:12px}
 .btn-group{display:flex;gap:8px;flex-wrap:wrap}
 
-/* TABELA */
+/* ── TABELA ──────────────────────────────────────────── */
 .table-wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--borda)}
 table{width:100%;border-collapse:collapse}
 thead{background:var(--azul)}
@@ -144,7 +193,7 @@ tbody tr:nth-child(even){background:#FAFBFC}
 tbody tr:hover{background:#EEF2FF}
 tbody td{padding:10px 14px;font-size:13px;vertical-align:middle}
 
-/* SEMAFORO */
+/* ── SEMÁFORO ────────────────────────────────────────── */
 .sem{padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;display:inline-block}
 .sem-verd{background:var(--sem-verd-bg);color:var(--sem-verd)}
 .sem-amar{background:var(--sem-amar-bg);color:var(--sem-amar)}
@@ -152,7 +201,7 @@ tbody td{padding:10px 14px;font-size:13px;vertical-align:middle}
 .sem-azul{background:var(--sem-azul-bg);color:var(--sem-azul)}
 .sem-neutro{background:#F1F3F4;color:var(--cinza)}
 
-/* FAROL GRANDE */
+/* ── FAROL GRANDE ────────────────────────────────────── */
 .farol{border-radius:12px;padding:16px;text-align:center;transition:.3s}
 .farol-verm{background:var(--sem-verm-bg);border:2px solid var(--sem-verm)}
 .farol-amar{background:var(--sem-amar-bg);border:2px solid var(--sem-amar)}
@@ -162,14 +211,14 @@ tbody td{padding:10px 14px;font-size:13px;vertical-align:middle}
 .farol-val{font-size:48px;font-weight:800;line-height:1}
 .farol-label{font-size:12px;font-weight:600;margin-top:4px;text-transform:uppercase}
 
-/* TAGS */
+/* ── TAGS ────────────────────────────────────────────── */
 .tag{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;display:inline-block}
 .tag-ativo{background:#EAFAF1;color:var(--verde)}
 .tag-inativo{background:#FDEDEC;color:var(--verm)}
 .tag-m{background:#E8F0FE;color:var(--azul3)}
 .tag-f{background:#FDF2FF;color:#8E44AD}
 
-/* MODAL */
+/* ── MODAL ───────────────────────────────────────────── */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;
   align-items:center;justify-content:center;padding:20px}
 .modal-bg.open{display:flex}
@@ -191,8 +240,8 @@ tbody td{padding:10px 14px;font-size:13px;vertical-align:middle}
   border-radius:0 0 12px 12px}
 @keyframes fadeUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 
-/* TOAST */
-.toast-container{position:fixed;top:20px;right:20px;z-index:9999;
+/* ── TOAST ───────────────────────────────────────────── */
+.toast-container{position:fixed;top:64px;right:20px;z-index:9999;
   display:flex;flex-direction:column;gap:8px}
 .toast{padding:12px 18px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;
   box-shadow:0 4px 16px rgba(0,0,0,.15);display:flex;align-items:center;gap:8px;
@@ -202,7 +251,7 @@ tbody td{padding:10px 14px;font-size:13px;vertical-align:middle}
 .toast-warn{background:var(--amar)}
 @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 
-/* MISC */
+/* ── MISC ────────────────────────────────────────────── */
 .page-header{margin-bottom:20px;display:flex;align-items:flex-end;justify-content:space-between}
 .page-header-left h1{font-size:22px;font-weight:800;color:var(--azul)}
 .page-header-left p{color:var(--cinza);font-size:13px;margin-top:3px}
@@ -217,11 +266,11 @@ tbody td{padding:10px 14px;font-size:13px;vertical-align:middle}
   font-size:13px;background:var(--white);outline:none;transition:.2s;min-width:220px}
 .search-input:focus{border-color:var(--azul3)}
 
-/* RESPONSIVE */
+/* ── RESPONSIVE ──────────────────────────────────────── */
 @media(max-width:768px){
-  .sidebar{display:none}
   .grid-4{grid-template-columns:repeat(2,1fr)}
   .form-row-3,.form-row-4{grid-template-columns:1fr}
+  .topbar-page{display:none}
 }
 </style>
 {% block extra_css %}{% endblock %}
@@ -229,104 +278,127 @@ tbody td{padding:10px 14px;font-size:13px;vertical-align:middle}
 <body>
 <div id="toast-container" class="toast-container"></div>
 
-<div class="layout">
-  <!-- SIDEBAR -->
-  <nav class="sidebar">
-    <div class="sid-logo">
-      <div class="sid-logo-inner">
-        <div class="sid-logo-icon">⏱</div>
-        <div>
-          <h1>GIASSI CONFECÇÕES</h1>
-          <small>Sistema de Produção</small>
-        </div>
+<!-- OVERLAY para fechar sidebar clicando fora -->
+<div class="sid-overlay" id="sidOverlay"></div>
+
+<!-- SIDEBAR DRAWER -->
+<nav class="sidebar" id="sidebar">
+  <div class="sid-head">
+    <div class="sid-head-inner">
+      <div class="sid-logo-icon">⏱</div>
+      <div class="sid-logo">
+        <h1>GIASSI CONFECÇÕES</h1>
+        <small>Sistema de Produção</small>
       </div>
     </div>
+    <button class="sid-close" id="sidClose" title="Fechar menu">✕</button>
+  </div>
 
-    {% if session.fab_id %}
-    <div class="sid-fab">
-      <span>Fábrica Atual</span>
-      <strong>{{ get_user().fab_nome if get_user() else '—' }}</strong>
-    </div>
-    {% else %}
-    <div class="sid-fab">
-      <span>Acesso</span>
-      <strong>Central — Todas as Fábricas</strong>
-    </div>
+  {% if session.fab_id %}
+  <div class="sid-fab">
+    <span>Fábrica Atual</span>
+    <strong>{{ get_user().fab_nome if get_user() else '—' }}</strong>
+  </div>
+  {% else %}
+  <div class="sid-fab">
+    <span>Acesso</span>
+    <strong>Central — Todas as Fábricas</strong>
+  </div>
+  {% endif %}
+
+  <div style="overflow-y:auto;flex:1">
+    <span class="nav-section">Principal</span>
+    <a href="/dashboard" class="nav-item {% if request.path=='/dashboard' %}active{% endif %}">
+      <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></a>
+
+    <span class="nav-section">Cadastros</span>
+    <a href="/funcionarios" class="nav-item {% if 'funcionarios' in request.path %}active{% endif %}">
+      <span class="nav-icon">👷</span><span class="nav-label">Funcionários</span></a>
+    <a href="/funcoes" class="nav-item {% if 'funcoes' in request.path %}active{% endif %}">
+      <span class="nav-icon">🏷️</span><span class="nav-label">Funções</span></a>
+    <a href="/equipamentos" class="nav-item {% if 'equipamentos' in request.path %}active{% endif %}">
+      <span class="nav-icon">🔧</span><span class="nav-label">Equipamentos</span></a>
+    <a href="/produtos" class="nav-item {% if 'produtos' in request.path %}active{% endif %}">
+      <span class="nav-icon">👕</span><span class="nav-label">Produtos</span></a>
+    <a href="/cadastro-op" class="nav-item {% if 'cadastro-op' in request.path %}active{% endif %}">
+      <span class="nav-icon">📝</span><span class="nav-label">Ordens de Produção</span></a>
+
+    <span class="nav-section">Produção</span>
+    <a href="/ref-op" class="nav-item {% if 'ref-op' in request.path %}active{% endif %}">
+      <span class="nav-icon">📋</span><span class="nav-label">Ref / OP</span></a>
+    <a href="/sequencia-op" class="nav-item {% if 'sequencia-op' in request.path %}active{% endif %}">
+      <span class="nav-icon">⚙️</span><span class="nav-label">Sequência OP</span></a>
+    <a href="/balanceamento" class="nav-item {% if 'balanceamento' in request.path %}active{% endif %}">
+      <span class="nav-icon">⚖️</span><span class="nav-label">Balanceamento</span></a>
+    <a href="/fila-producao" class="nav-item {% if 'fila-producao' in request.path %}active{% endif %}">
+      <span class="nav-icon">📅</span><span class="nav-label">Fila de Produção</span></a>
+    <a href="/lancamento" class="nav-item {% if 'lancamento' in request.path %}active{% endif %}">
+      <span class="nav-icon">🏭</span><span class="nav-label">Lançamento</span></a>
+
+    <span class="nav-section">Financeiro</span>
+    <a href="/faturamento" class="nav-item {% if 'faturamento' in request.path %}active{% endif %}">
+      <span class="nav-icon">💰</span><span class="nav-label">Faturamento</span></a>
+    <a href="/despesas" class="nav-item {% if 'despesas' in request.path %}active{% endif %}">
+      <span class="nav-icon">📊</span><span class="nav-label">Despesas</span></a>
+    <a href="/contas-pagar" class="nav-item {% if 'contas-pagar' in request.path %}active{% endif %}">
+      <span class="nav-icon">🧾</span><span class="nav-label">Contas a Pagar</span></a>
+    <a href="/dre" class="nav-item {% if 'dre' in request.path %}active{% endif %}">
+      <span class="nav-icon">📉</span><span class="nav-label">DRE</span></a>
+
+    <span class="nav-section">RH</span>
+    <a href="/turnos" class="nav-item {% if 'turnos' in request.path %}active{% endif %}">
+      <span class="nav-icon">🕐</span><span class="nav-label">Turnos</span></a>
+    <a href="/jornada" class="nav-item {% if 'jornada' in request.path %}active{% endif %}">
+      <span class="nav-icon">📅</span><span class="nav-label">Jornada</span></a>
+    <a href="#" class="nav-item">
+      <span class="nav-icon">⏰</span><span class="nav-label">Ponto</span></a>
+    <a href="/ocorrencias" class="nav-item {% if 'ocorrencias' in request.path %}active{% endif %}">
+      <span class="nav-icon">🚫</span><span class="nav-label">Faltas</span></a>
+
+    {% if session.perfil == 'admin' %}
+    <span class="nav-section">Administração</span>
+    <a href="/usuarios" class="nav-item {% if 'usuarios' in request.path %}active{% endif %}">
+      <span class="nav-icon">👤</span><span class="nav-label">Usuários</span></a>
     {% endif %}
+  </div>
 
-    <div style="overflow-y:auto;flex:1">
-      <span class="nav-section">Principal</span>
-      <a href="/dashboard" class="nav-item {% if request.path=='/dashboard' %}active{% endif %}">
-        <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></a>
-
-      <span class="nav-section">Cadastros</span>
-      <a href="/funcionarios" class="nav-item {% if 'funcionarios' in request.path %}active{% endif %}">
-        <span class="nav-icon">👷</span><span class="nav-label">Funcionários</span></a>
-      <a href="/funcoes" class="nav-item {% if 'funcoes' in request.path %}active{% endif %}">
-        <span class="nav-icon">🏷️</span><span class="nav-label">Funções</span></a>
-      <a href="/equipamentos" class="nav-item {% if 'equipamentos' in request.path %}active{% endif %}">
-        <span class="nav-icon">🔧</span><span class="nav-label">Equipamentos</span></a>
-      <a href="/produtos" class="nav-item {% if 'produtos' in request.path %}active{% endif %}">
-        <span class="nav-icon">👕</span><span class="nav-label">Produtos</span></a>
-      <a href="/cadastro-op" class="nav-item {% if 'cadastro-op' in request.path %}active{% endif %}">
-        <span class="nav-icon">📝</span><span class="nav-label">Ordens de Produção</span></a>
-
-      <span class="nav-section">Produção</span>
-      <a href="/ref-op" class="nav-item"><span class="nav-icon">📋</span><span class="nav-label">Ref / OP</span></a>
-      <a  href="/sequencia-op" class="nav-item"><span class="nav-icon">⚙️</span><span class="nav-label">Sequência OP</span></a>
-      <a href="/balanceamento" class="nav-item"><span class="nav-icon">⚖️</span><span class="nav-label">Balanceamento</span></a>
-      <a href="/fila-producao" class="nav-item"><span class="nav-icon">📅</span><span class="nav-label">Fila de Produção</span></a>ss
-      <a href="/lancamento" class="nav-item"><span class="nav-icon">🏭</span><span class="nav-label">Lançamento</span></a>
-
-      <span class="nav-section">Financeiro</span>
-      <a href="/faturamento" class="nav-item"><span class="nav-icon">💰</span><span class="nav-label">Faturamento</span></a>
-      <a href="/despesas" class="nav-item"><span class="nav-icon">📊</span><span class="nav-label">Despesas</span></a>
-      <a href="/contas-pagar" class="nav-item"><span class="nav-icon">🧾</span><span class="nav-label">Contas a Pagar</span></a>
-      <a href="/dre" class="nav-item"><span class="nav-icon">📉</span><span class="nav-label">DRE</span></a>
-
-      <span class="nav-section">RH</span>
-      <a href="/turnos" class="nav-item {% if 'turnos' in request.path %}active{% endif %}"><span class="nav-icon">🕐</span><span class="nav-label">Turnos</span></a>
-      <a href="/jornada" class="nav-item {% if 'jornada' in request.path %}active{% endif %}"><span class="nav-icon">📅</span><span class="nav-label">Jornada</span></a>
-      <a href="#" class="nav-item"><span class="nav-icon">⏰</span><span class="nav-label">Ponto</span></a>
-      <a href="/ocorrencias" class="nav-item"><span class="nav-icon">🚫</span><span class="nav-label">Faltas</span></a>
-
-      {% if session.perfil == 'admin' %}
-      <span class="nav-section">Administração</span>
-      <a href="/usuarios" class="nav-item {% if 'usuarios' in request.path %}active{% endif %}">
-        <span class="nav-icon">👤</span><span class="nav-label">Usuários</span></a>
-      {% endif %}
-    </div>
-    <div class="sid-bottom">
-      <a href="/logout">
-        <span>⏻</span>
-        <div>
-          <div style="color:#fff;font-size:12px;font-weight:600">{{ session.nome }}</div>
-          <div style="font-size:10px">Sair do sistema</div>
-        </div>
-      </a>
-    </div>
-  </nav>
-
-  <!-- MAIN -->
-  <div class="main">
-    <div class="topbar">
-      <div class="topbar-title">{% block page_title %}Chrona{% endblock %}</div>
-      <div class="topbar-right">
-        <span class="badge {% if session.perfil=='admin' %}badge-admin{% else %}badge-op{% endif %}">
-          {{ session.perfil|upper }}</span>
-        <span class="user-info">{{ session.nome }}</span>
+  <div class="sid-bottom">
+    <a href="/logout">
+      <span class="sid-bottom-icon">⏻</span>
+      <div>
+        <div style="color:#fff;font-size:12px;font-weight:600">{{ session.nome }}</div>
+        <div style="font-size:10px">Sair do sistema</div>
       </div>
-    </div>
-    <div class="content">
-      {% with msgs=get_flashed_messages(with_categories=true) %}
-        {% for cat,msg in msgs %}
-        <div style="padding:10px 16px;border-radius:7px;margin-bottom:12px;font-size:13px;
-          background:{% if cat=='error' %}#FDEDEC{% else %}#EAFAF1{% endif %};
-          color:{% if cat=='error' %}#C0392B{% else %}#1E8449{% endif %}">{{ msg }}</div>
-        {% endfor %}
-      {% endwith %}
-      {% block content %}{% endblock %}
-    </div>
+    </a>
+  </div>
+</nav>
+
+<!-- TOPBAR FIXO -->
+<div class="topbar">
+  <button class="topbar-menu-btn" id="sidOpen" title="Abrir menu">☰</button>
+  <div class="topbar-logo">
+    <div class="topbar-logo-icon">⏱</div>
+    <span class="topbar-logo-text">GIASSI CONFECÇÕES</span>
+  </div>
+  <span class="topbar-page">{% block page_title %}{% endblock %}</span>
+  <div class="topbar-right">
+    <span class="badge {% if session.perfil=='admin' %}badge-admin{% else %}badge-op{% endif %}">
+      {{ session.perfil|upper }}</span>
+    <span class="user-info">{{ session.nome }}</span>
+  </div>
+</div>
+
+<!-- CONTEÚDO -->
+<div class="main">
+  <div class="content">
+    {% with msgs=get_flashed_messages(with_categories=true) %}
+      {% for cat,msg in msgs %}
+      <div style="padding:10px 16px;border-radius:7px;margin-bottom:12px;font-size:13px;
+        background:{% if cat=='error' %}#FDEDEC{% else %}#EAFAF1{% endif %};
+        color:{% if cat=='error' %}#C0392B{% else %}#1E8449{% endif %}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
   </div>
 </div>
 
@@ -358,10 +430,24 @@ function semTag(ef){
   if(ef<=100)return `<span class="sem sem-verd">🟢 ${ef.toFixed(1)}%</span>`;
   return `<span class="sem sem-azul">🔵 ${ef.toFixed(1)}%</span>`;
 }
-// Fechar modal clicando fora
 document.addEventListener('click', e=>{
   if(e.target.classList.contains('modal-bg')) e.target.classList.remove('open');
 });
+
+// Sidebar drawer
+(function(){
+  const sid     = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidOverlay');
+  const btnOpen = document.getElementById('sidOpen');
+  const btnClose= document.getElementById('sidClose');
+  function open(){sid.classList.add('open');overlay.classList.add('open')}
+  function close(){sid.classList.remove('open');overlay.classList.remove('open')}
+  btnOpen .addEventListener('click', open);
+  btnClose.addEventListener('click', close);
+  overlay .addEventListener('click', close);
+  // fechar ao navegar (clicar num item do menu)
+  sid.querySelectorAll('.nav-item').forEach(a=>a.addEventListener('click', close));
+})();
 </script>
 {% block extra_js %}{% endblock %}
 </body>
