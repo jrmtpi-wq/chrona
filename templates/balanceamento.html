@@ -593,28 +593,102 @@ function gerarTimes() {
   toast('Times gerados!');
 }
 
-// ── BALANCEAR AUTOMÁTICO ──────────────────────────
-function balancearAutomatico() {
-  if (!estado.operacoes.length) { toast('Selecione uma OP com sequência', 'error'); return; }
-  const n = parseInt(document.getElementById('bal-times').value) || 10;
-  const ciclo = estado.ciclo;
+// ── BALANCEAR AUTOMÁTICO INTELIGENTE ─────────────
+async function balancearAutomatico() {
+  const opId = document.getElementById('bal-op').value;
+  if (!opId) { toast('Selecione uma OP', 'error'); return; }
+  if (!estado.metaCiclo) { toast('Calcule as metas primeiro (selecione turno e ciclo)', 'error'); return; }
 
-  estado.times = Array.from({length: n}, (_, i) => ({num: i+1, operadoras: [], ops: []}));
+  const btn = document.querySelector('button[onclick="balancearAutomatico()"]');
+  const textoOriginal = btn ? btn.innerHTML : '';
+  if (btn) { btn.innerHTML = '⏳ Processando...'; btn.disabled = true; }
 
-  let timeIdx = 0;
-  let cargaAtual = 0;
+  try {
+    const r = await fetch('/api/balanceamento/automatico', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        op_id: parseInt(opId),
+        ciclo: estado.ciclo,
+        meta_ciclo: estado.metaCiclo,
+      })
+    }).then(r => r.json());
 
-  for (const op of estado.operacoes) {
-    const cargaOp = op.tempo_padrao * estado.metaCiclo;
-    if (cargaAtual + cargaOp > ciclo && cargaAtual > 0 && timeIdx < n-1) {
-      timeIdx++; cargaAtual = 0;
+    if (!r.ok) { toast(r.erro || 'Erro no balanceamento', 'error'); return; }
+
+    // Converter resultado da API para o formato interno do estado
+    estado.times = r.times.map(t => ({
+      num: t.num,
+      operadoras: t.operadoras.map(o => ({
+        id: o.id,
+        nome: o.nome,
+        atribuicoes: [],
+        apoio: o.apoio || false,
+        time_principal: o.time_principal,
+      })),
+      ops: t.ops.map(op => ({
+        idx: (op.idx || 1) - 1,
+        operacao_id: op.operacao_id,
+        descricao: op.descricao,
+        tempo_padrao: op.tempo_padrao,
+        qtd: op.qtd,
+        carga: op.carga,
+        operadora_id: op.operadora_id,
+        operadora_nome: op.operadora_nome,
+        alerta: op.alerta,
+        dividida: op.dividida,
+        apoio: op.apoio,
+        label: op.descricao + (op.dividida === 'parte1' ? ' (÷1)' : op.dividida === 'parte2' ? ' (÷2)' : ''),
+      })),
+    }));
+
+    // Atualiza nº de times no campo
+    document.getElementById('bal-times').value = estado.times.length;
+    estado.nTimes = estado.times.length;
+
+    renderTimes();
+    toast(`✅ ${estado.times.length} times gerados automaticamente!`, 'success');
+
+    // Exibir alertas se houver
+    if (r.alertas && r.alertas.length) {
+      exibirAlertasBalanceamento(r.alertas);
     }
-    estado.times[timeIdx].ops.push({...op, qtd: estado.metaCiclo || 1, carga: cargaOp});
-    cargaAtual += cargaOp;
+  } catch(e) {
+    toast('Erro ao conectar com o servidor', 'error');
+  } finally {
+    if (btn) { btn.innerHTML = textoOriginal; btn.disabled = false; }
   }
+}
 
-  renderTimes();
-  toast('Balanceamento automático concluído!');
+function exibirAlertasBalanceamento(alertas) {
+  // Remove modal anterior se existir
+  const old = document.getElementById('modal-alertas-bal');
+  if (old) old.remove();
+
+  const html = `
+  <div class="modal-overlay open" id="modal-alertas-bal" onclick="if(event.target===this)this.remove()">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-header">
+        <div class="modal-title">⚠️ Alertas do Balanceamento</div>
+        <button class="modal-close" onclick="document.getElementById('modal-alertas-bal').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px">
+          O balanceamento foi gerado, mas algumas operações precisam de atenção:
+        </p>
+        ${alertas.map(a => `
+          <div style="padding:8px 12px;border-radius:8px;margin-bottom:6px;font-size:12px;
+               background:${a.startsWith('⚠️') ? '#fee2e2' : '#fef9c3'};
+               border:1px solid ${a.startsWith('⚠️') ? '#fca5a5' : '#fde68a'}">
+            ${a}
+          </div>`).join('')}
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('modal-alertas-bal').remove()">Entendi</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
 }
 
 // ── RENDER TIMES ──────────────────────────────────
@@ -635,36 +709,37 @@ function renderTimes() {
     const cor = totalCarga > ciclo ? '#dc2626' : totalCarga > ciclo * 0.9 ? '#d97706' : '#15803d';
 
     const opsHtml = time.ops.map((op, oi) => {
-      // Calcula peças já atribuídas a alguma operadora neste time
-      const qtdAtrib = time.operadoras.reduce((s, oper) =>
-        s + (oper.atribuicoes||[]).filter(a => a.op_idx === op.idx).reduce((ss, a) => ss + a.qtd, 0), 0);
-      const cargaAtrib = op.tempo_padrao * qtdAtrib;
-      const qtdRest = (op.qtd||0) - qtdAtrib;
-      const cargaRest = op.tempo_padrao * qtdRest;
-      const tudo = qtdAtrib >= (op.qtd||0) && (op.qtd||0) > 0;
+      const alertaCor = op.alerta === 'sem_operadora' ? '#dc2626' : op.alerta === 'sem_treino' ? '#d97706' : null;
+      const alertaIcon = op.alerta === 'sem_operadora' ? '🚨' : op.alerta === 'sem_treino' ? '💡' : '';
+      const apoioBadge = op.apoio ? `<span style="background:#dbeafe;color:#1d4ed8;font-size:8px;padding:1px 4px;border-radius:4px;font-weight:700">↩apoio</span>` : '';
+      const divBadge = op.dividida ? `<span style="background:#f3e8ff;color:#7c3aed;font-size:8px;padding:1px 4px;border-radius:4px;font-weight:700">${op.dividida === 'parte1' ? '÷1' : '÷2'}</span>` : '';
+      const bgCor = alertaCor ? `background:${alertaCor}18;border-color:${alertaCor}66` : '';
       return `
       <div class="time-op-item" draggable="true"
+           style="${bgCor}"
            ondragstart="dragOpDoTime(event, ${ti}, ${oi})"
            ondblclick="abrirAjuste(${ti}, ${oi})">
-        <div class="op-num" style="width:16px;height:16px;font-size:8px">${(op.idx||oi)+1}</div>
+        <div class="op-num" style="width:16px;height:16px;font-size:8px;${alertaCor ? `background:${alertaCor}` : ''}">${(op.idx||oi)+1}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${op.label||op.descricao}</div>
-          <div style="font-size:9px;margin-top:1px;display:flex;gap:4px">
-            <span style="color:#6b7280">Total: ${(op.carga||0).toFixed(1)}m</span>
-            ${qtdAtrib > 0 ? `<span style="color:#15803d">✓ ${cargaAtrib.toFixed(1)}m</span>` : ''}
-            ${qtdRest > 0 ? `<span style="color:#d97706">⚠ ${cargaRest.toFixed(1)}m rest.</span>` : ''}
-            ${tudo ? `<span style="color:#15803d;font-weight:700">✓ Completa</span>` : ''}
+          <div style="font-size:10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:${alertaCor || '#1a1a2e'}">${alertaIcon} ${op.label||op.descricao}</div>
+          <div style="font-size:9px;margin-top:2px;display:flex;gap:3px;flex-wrap:wrap;align-items:center">
+            ${op.operadora_nome ? `<span style="background:#1a1a2e;color:#fff;padding:1px 5px;border-radius:4px;font-size:8px;font-weight:700">👤 ${op.operadora_nome.split(' ')[0]}</span>` : `<span style="background:#fee2e2;color:#dc2626;padding:1px 5px;border-radius:4px;font-size:8px;font-weight:700">⚠ Sem op.</span>`}
+            ${apoioBadge}${divBadge}
+            <span style="color:#6b7280">${(op.qtd||0)}pcs · ${(op.carga||0).toFixed(1)}m</span>
           </div>
         </div>
         <button onclick="removerOpDoTime(${ti},${oi})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:10px;padding:0 2px;flex-shrink:0">✕</button>
       </div>`;
     }).join('');
 
-    const opersHtml = time.operadoras.map((op, oi) => `
-      <span class="op-tag" onclick="removerOperadoraDoTime(${ti}, ${oi})" title="Remover">
-        ${op.nome.split(' ')[0]} ✕
-      </span>
-    `).join('');
+    const opersHtml = time.operadoras.map((op, oi) => {
+      const isApoio = op.apoio;
+      const bg = isApoio ? '#1d4ed8' : '#1a1a2e';
+      const label = isApoio ? `↩ ${op.nome.split(' ')[0]} (T${op.time_principal})` : op.nome.split(' ')[0];
+      return `<span class="op-tag" style="background:${bg}" onclick="removerOperadoraDoTime(${ti}, ${oi})" title="${isApoio ? 'Apoio do Time '+op.time_principal : 'Operadora principal'}">
+        ${label} ✕
+      </span>`;
+    }).join('');
 
     // Seção de distribuição por operadora
     const distribHtml = time.operadoras.length ? time.operadoras.map((op, oi) => {
