@@ -579,14 +579,18 @@ async function salvarOperacao() {
     modelo: document.getElementById('op-modelo').value,
     tipo: document.getElementById('op-tipo').value,
   };
-  const r = await fetch('/api/operacao/salvar', {
-    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d)
-  }).then(r => r.json());
-  if (r.ok) {
-    fecharModal('modal-nova-op');
-    await carregarBanco();
-    toast(id ? 'Operação atualizada!' : 'Operação cadastrada!');
-  } else toast(r.erro || 'Erro ao salvar', 'error');
+  try {
+    const r = await fetch('/api/operacao/salvar', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d)
+    }).then(res => res.json());
+    if (r.ok) {
+      fecharModal('modal-nova-op');
+      await carregarBanco();
+      toast(id ? 'Operação atualizada!' : 'Operação cadastrada!');
+    } else toast(r.erro || 'Erro ao salvar', 'error');
+  } catch(e) {
+    toast('Erro ao conectar: ' + e.message, 'error');
+  }
 }
 
 async function excluirOp(id) {
