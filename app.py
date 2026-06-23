@@ -966,7 +966,7 @@ def api_balanceamento_automatico():
                 JOIN funcionarios f ON ot.funcionario_id = f.id
                 JOIN operacoes o ON ot.operacao_id = o.id
                 WHERE o.equipamento_id IN ({ph2})
-                GROUP BY o.equipamento_id, ot.funcionario_id
+                GROUP BY o.equipamento_id, ot.funcionario_id, f.nome
                 ORDER BY o.equipamento_id, tempo
             """, equip_ids).fetchall()
             for r in eq_rows:
