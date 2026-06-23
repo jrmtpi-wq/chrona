@@ -66,7 +66,7 @@ def api_faturamentos_lista():
 @login_required
 def api_faturamento_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     try:
         if d.get('id'):
             c.execute("""UPDATE faturamento SET op_id=?,fabrica_id=?,data=?,
@@ -132,7 +132,7 @@ def api_nfs_lista():
 @login_required
 def api_nf_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     try:
         if d.get('id'):
             c.execute("""UPDATE notas_fiscais SET numero=?,data=?,cliente=?,

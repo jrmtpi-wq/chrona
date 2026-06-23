@@ -50,6 +50,19 @@ def fab_ids(user):
         c.close(); return ids
     return [user['fabrica_id']]
 
+def resolve_fab_id(d, user, c=None):
+    """Retorna fabrica_id a partir do payload ou do usuário; fallback para primeira fábrica ativa."""
+    fid = d.get('fabrica_id') if d else None
+    if not fid:
+        fid = user['fabrica_id'] if user else None
+    if not fid:
+        conn = c or m.conn()
+        row = conn.execute("SELECT id FROM fabricas WHERE ativa=1 ORDER BY id LIMIT 1").fetchone()
+        if c is None:
+            conn.close()
+        fid = row[0] if row else None
+    return int(fid) if fid else None
+
 # ── AUTH ──────────────────────────────────────────────────────
 @app.route('/')
 def index():
@@ -128,7 +141,7 @@ def funcionarios():
 def api_func_salvar():
     d = request.json; c = m.conn()
     user = get_user()
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     campos = ['fabrica_id','funcao_id','nome','cpf','rg','sexo','data_nascimento',
               'telefone','celular','email','endereco','numero','bairro','cidade',
               'estado','cep','data_admissao','salario','bonificacao','ifood','situacao','observacao']
@@ -232,7 +245,7 @@ def equipamentos():
 @login_required
 def api_equip_salvar():
     d = request.json; user = get_user(); c = m.conn()
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     try:
         if d.get('id'):
             c.execute("UPDATE equipamentos SET fabrica_id=?,nome=?,marca=?,modelo=?,numero_serie=?,"
@@ -322,7 +335,7 @@ def turnos():
 @login_required
 def api_turno_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     # Calcula minutos
     he = d.get('hora_entrada','07:30')
     hsa = d.get('hora_saida_almoco','')
@@ -413,7 +426,7 @@ def jornada():
 def api_jornada_gerar():
     """Gera dias do calendario para um mes/turno automaticamente"""
     user = get_user(); d = request.json
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     turno_id = int(d['turno_id'])
     mes = d['mes']  # formato YYYY-MM
     include_sab = d.get('include_sabado', False)
@@ -456,7 +469,7 @@ def api_jornada_gerar():
 @login_required
 def api_jornada_salvar():
     user = get_user(); d = request.json
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     c = m.conn()
     try:
         if d.get('id'):
@@ -686,7 +699,7 @@ def api_ref_sequencia_salvar():
 @login_required
 def api_op_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = d.get('fabrica_id') or user['fabrica_id'] or 1
+    fab_id = resolve_fab_id(d, user, c)
     try:
         ref_id = d.get('referencia_id')
         qtd = int(d.get('quantidade_total') or 0)
@@ -860,7 +873,7 @@ def balanceamento():
 @login_required
 def api_balanceamento_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = user['fabrica_id'] or 1
+    fab_id = resolve_fab_id(d, user, c)
     try:
         # Salva ou atualiza o balanceamento
         bal = c.execute("SELECT id FROM balanceamento WHERE op_id=?", (d['op_id'],)).fetchone()
@@ -1265,7 +1278,7 @@ def api_sequencia_excluir(sid):
 @login_required
 def api_lancamento_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = user['fabrica_id'] or 1
+    fab_id = resolve_fab_id(d, user, c)
     try:
         if d.get('id'):
             c.execute("""UPDATE producao SET hora=?,operadores=?,qtd_produzida=?,
@@ -1461,7 +1474,7 @@ def api_faturamentos_lista():
 @login_required
 def api_faturamento_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     try:
         if d.get('id'):
             c.execute("""UPDATE faturamento SET op_id=?,fabrica_id=?,data=?,
@@ -1527,7 +1540,7 @@ def api_nfs_lista():
 @login_required
 def api_nf_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     try:
         if d.get('id'):
             c.execute("""UPDATE notas_fiscais SET numero=?,data=?,cliente=?,
@@ -1631,7 +1644,7 @@ def api_despesas_lista():
 @login_required
 def api_despesa_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     mes = d['data'][:7] if d.get('data') else ''
     try:
         if d.get('id'):
@@ -1700,7 +1713,7 @@ def api_despesas_docs_lista():
 @login_required
 def api_despesa_doc_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     try:
         if d.get('id'):
             c.execute("""UPDATE despesas_docs SET numero=?,data=?,fornecedor=?,
@@ -1793,7 +1806,7 @@ def api_contas_pagar_lista():
 @login_required
 def api_conta_pagar_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     try:
         num_parcelas = max(1, int(d.get('num_parcelas', 1)))
         valor_total = float(d.get('valor_total', 0))
@@ -2139,7 +2152,7 @@ def api_ocorrencias_evolucao():
 @login_required
 def api_ocorrencia_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     try:
         if d.get('id'):
             c.execute("""UPDATE ocorrencias SET funcionario_id=?,fabrica_id=?,data=?,

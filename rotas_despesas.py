@@ -57,7 +57,7 @@ def api_despesas_lista():
 @login_required
 def api_despesa_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     mes = d['data'][:7] if d.get('data') else ''
     try:
         if d.get('id'):
@@ -124,7 +124,7 @@ def api_despesas_docs_lista():
 @login_required
 def api_despesa_doc_salvar():
     user = get_user(); d = request.json; c = m.conn()
-    fab_id = int(d.get('fabrica_id') or user['fabrica_id'] or 1)
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     try:
         if d.get('id'):
             c.execute("""UPDATE despesas_docs SET numero=?,data=?,fornecedor=?,
