@@ -398,7 +398,7 @@ function renderBanco() {
   const count = document.getElementById('banco-count');
 
   let items = banco.filter(op => {
-    const matchModelo = filtroAtual === 'TODOS' || op.modelo === filtroAtual;
+    const matchModelo = filtroAtual === 'TODOS' || op.modelo === filtroAtual || (filtroAtual !== 'TODOS' && op.modelo === 'UNIVERSAL');
     const matchBusca = !busca || op.descricao.toLowerCase().includes(busca) || (op.codigo||'').toLowerCase().includes(busca);
     return matchModelo && matchBusca;
   });
