@@ -923,196 +923,190 @@ def api_balanceamento_automatico():
     meta_ciclo = max(1, int(d.get('meta_ciclo') or 1))
 
     c = m.conn()
+    try:
+        # 1. Carregar sequência operacional na ordem correta
+        seq = c.execute("""
+            SELECT sq.operacao_id, sq.ordem, sq.tempo_padrao,
+                   o.descricao, o.equipamento_id op_equip_id, o.tipo
+            FROM sequencia_op sq
+            JOIN operacoes o ON sq.operacao_id = o.id
+            WHERE sq.op_id = ?
+            ORDER BY sq.ordem
+        """, (op_id,)).fetchall()
 
-    # 1. Carregar sequência operacional na ordem correta
-    seq = c.execute("""
-        SELECT sq.operacao_id, sq.ordem, sq.tempo_padrao,
-               o.descricao, o.equipamento_id op_equip_id, o.tipo
-        FROM sequencia_op sq
-        JOIN operacoes o ON sq.operacao_id = o.id
-        WHERE sq.op_id = ?
-        ORDER BY sq.ordem
-    """, (op_id,)).fetchall()
+        if not seq:
+            return jsonify({'ok': False, 'erro': 'OP sem sequência operacional cadastrada'})
 
-    if not seq:
-        c.close()
-        return jsonify({'ok': False, 'erro': 'OP sem sequência operacional cadastrada'})
+        seq = [dict(r) for r in seq]
 
-    seq = [dict(r) for r in seq]
-
-    # 2. Carregar habilidades (banco de tempos)
-    all_op_ids = list(set(r['operacao_id'] for r in seq))
-    ph = ','.join('?' * len(all_op_ids))
-    tempos_rows = c.execute(f"""
-        SELECT ot.operacao_id, ot.funcionario_id func_id, f.nome func_nome, ot.tempo
-        FROM operacao_tempos ot
-        JOIN funcionarios f ON ot.funcionario_id = f.id
-        WHERE ot.operacao_id IN ({ph})
-        ORDER BY ot.operacao_id, ot.tempo
-    """, all_op_ids).fetchall()
-
-    skills = {}
-    for t in tempos_rows:
-        td = dict(t)
-        skills.setdefault(td['operacao_id'], []).append(td)
-
-    # 3. Fallback: operadoras por equipamento
-    equip_ids = list(set(r['op_equip_id'] for r in seq if r.get('op_equip_id')))
-    equip_ops_map = {}
-    if equip_ids:
-        ph2 = ','.join('?' * len(equip_ids))
-        eq_rows = c.execute(f"""
-            SELECT o.equipamento_id, ot.funcionario_id func_id, f.nome func_nome, AVG(ot.tempo) tempo
+        # 2. Carregar habilidades (banco de tempos)
+        all_op_ids = list(set(r['operacao_id'] for r in seq))
+        ph = ','.join('?' * len(all_op_ids))
+        tempos_rows = c.execute(f"""
+            SELECT ot.operacao_id, ot.funcionario_id func_id, f.nome func_nome, ot.tempo
             FROM operacao_tempos ot
             JOIN funcionarios f ON ot.funcionario_id = f.id
-            JOIN operacoes o ON ot.operacao_id = o.id
-            WHERE o.equipamento_id IN ({ph2})
-            GROUP BY o.equipamento_id, ot.funcionario_id
-            ORDER BY o.equipamento_id, tempo
-        """, equip_ids).fetchall()
-        for r in eq_rows:
-            rd = dict(r)
-            equip_ops_map.setdefault(rd['equipamento_id'], []).append(rd)
+            WHERE ot.operacao_id IN ({ph})
+            ORDER BY ot.operacao_id, ot.tempo
+        """, all_op_ids).fetchall()
 
-    c.close()
+        skills = {}
+        for t in tempos_rows:
+            td = dict(t)
+            skills.setdefault(td['operacao_id'], []).append(td)
 
-    # ── ALGORITMO ──────────────────────────────────────────────────────
-    MAX_OPS_POR_TIME = 2
-    times = []
-    op_time_principal = {}  # func_id -> num do time principal
+        # 3. Fallback: operadoras por equipamento
+        equip_ids = list(set(r['op_equip_id'] for r in seq if r.get('op_equip_id')))
+        equip_ops_map = {}
+        if equip_ids:
+            ph2 = ','.join('?' * len(equip_ids))
+            eq_rows = c.execute(f"""
+                SELECT o.equipamento_id, ot.funcionario_id func_id, f.nome func_nome, AVG(ot.tempo) tempo
+                FROM operacao_tempos ot
+                JOIN funcionarios f ON ot.funcionario_id = f.id
+                JOIN operacoes o ON ot.operacao_id = o.id
+                WHERE o.equipamento_id IN ({ph2})
+                GROUP BY o.equipamento_id, ot.funcionario_id
+                ORDER BY o.equipamento_id, tempo
+            """, equip_ids).fetchall()
+            for r in eq_rows:
+                rd = dict(r)
+                equip_ops_map.setdefault(rd['equipamento_id'], []).append(rd)
 
-    def novo_time():
-        return {'num': len(times) + 1, 'ops': [], 'operadoras': []}
+        # ── ALGORITMO ──────────────────────────────────────────────────────
+        MAX_OPS_POR_TIME = 2
+        times = []
+        op_time_principal = {}
 
-    team = novo_time()
+        def novo_time():
+            return {'num': len(times) + 1, 'ops': [], 'operadoras': []}
 
-    def get_slot(t, func_id):
-        for s in t['operadoras']:
-            if s['id'] == func_id:
-                return s
-        return None
-
-    def fechar_time():
-        nonlocal team
-        if team['ops']:
-            team['carga_total'] = round(sum(o['carga'] for o in team['ops']), 3)
-            times.append(team)
         team = novo_time()
 
-    def add_op(t, op_data, operadora, qtd, carga, dividida=False):
-        func_id = operadora['func_id'] if operadora else None
-        slot = get_slot(t, func_id) if func_id else None
-        if func_id and not slot:
-            is_apoio = func_id in op_time_principal and op_time_principal[func_id] != t['num']
-            t['operadoras'].append({'id': func_id, 'nome': operadora['func_nome'],
-                                    'carga': 0.0, 'apoio': is_apoio,
-                                    'time_principal': op_time_principal.get(func_id, t['num'])})
-            slot = t['operadoras'][-1]
-        if slot:
-            slot['carga'] = round(slot['carga'] + carga, 3)
-        t['ops'].append({
-            'operacao_id': op_data['operacao_id'],
-            'idx': op_data['ordem'],
-            'descricao': op_data['descricao'],
-            'equipamento_id': op_data.get('op_equip_id'),
-            'tempo_padrao': operadora['tempo'] if operadora else float(op_data.get('tempo_padrao') or 0),
-            'qtd': qtd,
-            'carga': round(carga, 3),
-            'operadora_id': func_id,
-            'operadora_nome': operadora['func_nome'] if operadora else None,
-            'alerta': op_data.get('alerta'),
-            'dividida': dividida,
-            'apoio': func_id in op_time_principal and op_time_principal.get(func_id) != t['num'],
-        })
+        def get_slot(t, func_id):
+            for s in t['operadoras']:
+                if s['id'] == func_id:
+                    return s
+            return None
 
-    def choose_op(op_data):
-        oid = op_data['operacao_id']
-        eid = op_data.get('op_equip_id')
-        candidates = list(skills.get(oid, []))
-        alerta = None
-        if not candidates:
-            candidates = list(equip_ops_map.get(eid, []))
-            alerta = 'sem_treino' if candidates else 'sem_operadora'
+        def fechar_time():
+            nonlocal team
+            if team['ops']:
+                team['carga_total'] = round(sum(o['carga'] for o in team['ops']), 3)
+                times.append(team)
+            team = novo_time()
 
-        if not candidates:
-            return None, alerta
+        def add_op(t, op_data, operadora, qtd, carga, dividida=False):
+            func_id = operadora['func_id'] if operadora else None
+            slot = get_slot(t, func_id) if func_id else None
+            if func_id and not slot:
+                is_apoio = func_id in op_time_principal and op_time_principal[func_id] != t['num']
+                t['operadoras'].append({'id': func_id, 'nome': operadora['func_nome'],
+                                        'carga': 0.0, 'apoio': is_apoio,
+                                        'time_principal': op_time_principal.get(func_id, t['num'])})
+                slot = t['operadoras'][-1]
+            if slot:
+                slot['carga'] = round(slot['carga'] + carga, 3)
+            t['ops'].append({
+                'operacao_id': op_data['operacao_id'],
+                'idx': op_data['ordem'],
+                'descricao': op_data['descricao'],
+                'equipamento_id': op_data.get('op_equip_id'),
+                'tempo_padrao': operadora['tempo'] if operadora else float(op_data.get('tempo_padrao') or 0),
+                'qtd': qtd,
+                'carga': round(carga, 3),
+                'operadora_id': func_id,
+                'operadora_nome': operadora['func_nome'] if operadora else None,
+                'alerta': op_data.get('alerta'),
+                'dividida': dividida,
+                'apoio': func_id in op_time_principal and op_time_principal.get(func_id) != t['num'],
+            })
 
-        tnum = team['num']
+        def choose_op(op_data):
+            oid = op_data['operacao_id']
+            eid = op_data.get('op_equip_id')
+            candidates = list(skills.get(oid, []))
+            alerta = None
+            if not candidates:
+                candidates = list(equip_ops_map.get(eid, []))
+                alerta = 'sem_treino' if candidates else 'sem_operadora'
 
-        def dist_ok(c):
-            fid = c['func_id']
-            if fid not in op_time_principal:
-                return True
-            return abs(op_time_principal[fid] - tnum) <= 2
+            if not candidates:
+                return None, alerta
 
-        # Preferência 1: já está no time atual
-        in_team = [c for c in candidates if get_slot(team, c['func_id'])]
-        if in_team:
-            return in_team[0], alerta
+            tnum = team['num']
 
-        # Preferência 2: dentro da restrição de distância
-        valid = [c for c in candidates if dist_ok(c)]
-        if valid:
-            return valid[0], alerta
+            def dist_ok(cand):
+                fid = cand['func_id']
+                if fid not in op_time_principal:
+                    return True
+                return abs(op_time_principal[fid] - tnum) <= 2
 
-        # Preferência 3: qualquer (relaxa a restrição)
-        return candidates[0], alerta
+            in_team = [cand for cand in candidates if get_slot(team, cand['func_id'])]
+            if in_team:
+                return in_team[0], alerta
 
-    for op_data in seq:
-        op_data['alerta'] = None
-        best, alerta = choose_op(op_data)
-        op_data['alerta'] = alerta
+            valid = [cand for cand in candidates if dist_ok(cand)]
+            if valid:
+                return valid[0], alerta
 
-        tempo_op = best['tempo'] if best else float(op_data.get('tempo_padrao') or 0)
-        carga_op = tempo_op * meta_ciclo
-        func_id = best['func_id'] if best else None
+            return candidates[0], alerta
 
-        # Registrar time principal da operadora
-        if func_id and func_id not in op_time_principal:
-            op_time_principal[func_id] = team['num']
+        for op_data in seq:
+            op_data['alerta'] = None
+            best, alerta = choose_op(op_data)
+            op_data['alerta'] = alerta
 
-        slot = get_slot(team, func_id) if func_id else None
-        carga_op_atual = slot['carga'] if slot else 0.0
+            tempo_op = best['tempo'] if best else float(op_data.get('tempo_padrao') or 0)
+            carga_op = tempo_op * meta_ciclo
+            func_id = best['func_id'] if best else None
 
-        if carga_op_atual + carga_op <= ciclo:
-            # Verifica se precisa de novo slot no time
-            if not slot and func_id and len(team['operadoras']) >= MAX_OPS_POR_TIME:
-                # Time cheio: fechar e abrir novo
-                fechar_time()
-                if func_id not in op_time_principal:
-                    op_time_principal[func_id] = team['num']
-            add_op(team, op_data, best, meta_ciclo, carga_op)
-        else:
-            # Não cabe completo: dividir
-            restante = ciclo - carga_op_atual
-            pcs_aqui = int(restante / tempo_op) if tempo_op > 0 else 0
-            pcs_proximo = meta_ciclo - pcs_aqui
-
-            if pcs_aqui > 0:
-                add_op(team, op_data, best, pcs_aqui, tempo_op * pcs_aqui, dividida='parte1')
-
-            fechar_time()
-
-            # Registrar novo time principal se necessário
             if func_id and func_id not in op_time_principal:
                 op_time_principal[func_id] = team['num']
 
-            if pcs_proximo > 0:
-                add_op(team, op_data, best, pcs_proximo, tempo_op * pcs_proximo,
-                       dividida='parte2' if pcs_aqui > 0 else False)
+            slot = get_slot(team, func_id) if func_id else None
+            carga_op_atual = slot['carga'] if slot else 0.0
 
-    fechar_time()
+            if carga_op_atual + carga_op <= ciclo:
+                if not slot and func_id and len(team['operadoras']) >= MAX_OPS_POR_TIME:
+                    fechar_time()
+                    if func_id not in op_time_principal:
+                        op_time_principal[func_id] = team['num']
+                add_op(team, op_data, best, meta_ciclo, carga_op)
+            else:
+                restante = ciclo - carga_op_atual
+                pcs_aqui = int(restante / tempo_op) if tempo_op > 0 else 0
+                pcs_proximo = meta_ciclo - pcs_aqui
 
-    # Montar alertas
-    alertas = []
-    for t in times:
-        for op in t['ops']:
-            if op.get('alerta') == 'sem_operadora':
-                alertas.append(f"⚠️ Time {t['num']}: <b>{op['descricao']}</b> — sem operadora treinada nem equipamento compatível. Treine alguém para esta operação.")
-            elif op.get('alerta') == 'sem_treino':
-                alertas.append(f"💡 Time {t['num']}: <b>{op['descricao']}</b> — atribuída por equipamento compatível (sem treino direto)")
+                if pcs_aqui > 0:
+                    add_op(team, op_data, best, pcs_aqui, tempo_op * pcs_aqui, dividida='parte1')
 
-    return jsonify({'ok': True, 'times': times, 'alertas': alertas})
+                fechar_time()
+
+                if func_id and func_id not in op_time_principal:
+                    op_time_principal[func_id] = team['num']
+
+                if pcs_proximo > 0:
+                    add_op(team, op_data, best, pcs_proximo, tempo_op * pcs_proximo,
+                           dividida='parte2' if pcs_aqui > 0 else False)
+
+        fechar_time()
+
+        alertas = []
+        for t in times:
+            for op in t['ops']:
+                if op.get('alerta') == 'sem_operadora':
+                    alertas.append(f"⚠️ Time {t['num']}: <b>{op['descricao']}</b> — sem operadora treinada nem equipamento compatível. Treine alguém para esta operação.")
+                elif op.get('alerta') == 'sem_treino':
+                    alertas.append(f"💡 Time {t['num']}: <b>{op['descricao']}</b> — atribuída por equipamento compatível (sem treino direto)")
+
+        return jsonify({'ok': True, 'times': times, 'alertas': alertas})
+
+    except Exception as e:
+        import traceback
+        return jsonify({'ok': False, 'erro': f'Erro interno: {str(e)}', 'detalhe': traceback.format_exc()})
+    finally:
+        c.close()
 # ── SEQUÊNCIA OP ───────────────────────────────────────────────
 @app.route('/sequencia-op')
 @login_required
