@@ -44,7 +44,7 @@ def get_user():
     c.close(); return u
 
 def fab_ids(user):
-    if user['perfil'] in ('admin','gestor'):
+    if user['perfil'] == 'admin':
         c = m.conn()
         ids = [r[0] for r in c.execute("SELECT id FROM fabricas WHERE ativa=1").fetchall()]
         c.close(); return ids
