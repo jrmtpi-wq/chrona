@@ -783,8 +783,23 @@ def api_op_atualizar_saida():
     d = request.json; c = m.conn()
     try:
         for item in d.get('items', []):
-            c.execute("UPDATE ordens_producao SET data_entrega_costura=? WHERE id=?",
-                      (item['data_saida'], item['op_id']))
+            cor = item.get('status_cor', 'verde')
+            c.execute("UPDATE ordens_producao SET data_entrega_costura=?, data_entrega_status=? WHERE id=?",
+                      (item['data_saida'], cor, item['op_id']))
+        c.commit(); c.close(); return jsonify({'ok': True})
+    except Exception as e:
+        c.close(); return jsonify({'ok': False, 'erro': str(e)})
+
+@app.route('/api/fila/lancar-producao', methods=['POST'])
+@login_required
+def api_fila_lancar_producao():
+    user = get_user(); d = request.json; c = m.conn()
+    try:
+        c.execute("""INSERT INTO lancamentos_fila (op_id, user_id, fabrica_id, data_hora, quantidade, meta_ciclo)
+                     VALUES (?,?,?,?,?,?)""",
+                  (d['op_id'], user['id'], user['fabrica_id'],
+                   datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                   d.get('quantidade', 0), d.get('meta_ciclo', 0)))
         c.commit(); c.close(); return jsonify({'ok': True})
     except Exception as e:
         c.close(); return jsonify({'ok': False, 'erro': str(e)})

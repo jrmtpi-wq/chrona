@@ -894,6 +894,24 @@ def init():
         except Exception:
             pass
         try:
+            c.execute("ALTER TABLE ordens_producao ADD COLUMN IF NOT EXISTS data_entrega_status TEXT DEFAULT 'verde'")
+        except Exception:
+            pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS lancamentos_fila (
+                id SERIAL PRIMARY KEY,
+                op_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                fabrica_id INTEGER NOT NULL,
+                data_hora TEXT NOT NULL,
+                quantidade INTEGER DEFAULT 0,
+                meta_ciclo INTEGER DEFAULT 0,
+                FOREIGN KEY(op_id) REFERENCES ordens_producao(id),
+                FOREIGN KEY(user_id) REFERENCES usuarios(id)
+            )""")
+        except Exception:
+            pass
+        try:
             c.execute("""CREATE TABLE IF NOT EXISTS contas_pagar (
                 id SERIAL PRIMARY KEY,
                 fabrica_id INTEGER,
@@ -1066,6 +1084,24 @@ def init():
             pass
         try:
             c.execute("ALTER TABLE ordens_producao ADD COLUMN data_entrega_costura TEXT")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE ordens_producao ADD COLUMN data_entrega_status TEXT DEFAULT 'verde'")
+        except Exception:
+            pass
+        try:
+            c.execute("""CREATE TABLE IF NOT EXISTS lancamentos_fila (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                op_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                fabrica_id INTEGER NOT NULL,
+                data_hora TEXT NOT NULL,
+                quantidade INTEGER DEFAULT 0,
+                meta_ciclo INTEGER DEFAULT 0,
+                FOREIGN KEY(op_id) REFERENCES ordens_producao(id),
+                FOREIGN KEY(user_id) REFERENCES usuarios(id)
+            )""")
         except Exception:
             pass
         try:

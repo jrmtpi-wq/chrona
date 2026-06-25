@@ -96,6 +96,25 @@
 }
 
 .empty-fila{text-align:center;padding:60px;color:#9ca3af}
+
+/* DATA ENTREGA COR */
+.dt-verde .dt-hora{color:#15803d!important}
+.dt-vermelho .dt-hora{color:#dc2626!important;font-weight:900!important}
+.dt-vermelho .dt-data{color:#dc2626!important}
+.dt-azul .dt-hora{color:#1d4ed8!important}
+.dt-azul .dt-data{color:#1d4ed8!important}
+
+/* PROGRESSO OP */
+.prog-bar-wrap{width:80px;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden;margin-top:2px}
+.prog-bar{height:100%;background:#15803d;border-radius:3px;transition:width .3s}
+
+/* BOTAO INICIAR / LANCAR */
+.btn-iniciar{background:#1d4ed8;color:#fff;padding:3px 8px;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer}
+.btn-iniciar:hover{background:#1e40af}
+.btn-lancar{background:#d97706;color:#fff;padding:3px 8px;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer}
+.btn-lancar:hover{background:#b45309}
+.btn-concluir{background:#15803d;color:#fff;padding:3px 8px;border:none;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer}
+.btn-concluir:hover{background:#166534}
 </style>
 
 <!-- HEADER -->
@@ -270,6 +289,41 @@
   </div>
 </div>
 
+<!-- MODAL LANÇAR PRODUÇÃO -->
+<div class="modal-overlay" id="modal-lancar">
+  <div class="modal" style="width:460px">
+    <div class="modal-header">
+      <div class="modal-title">📊 Lançar Produção</div>
+      <button class="modal-close" onclick="fecharModal('modal-lancar')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="lanc-op-info" style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:12px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;text-align:center">
+        <div style="background:#f0f4ff;border-radius:8px;padding:10px">
+          <div style="font-size:9px;color:#6b7280;text-transform:uppercase;font-weight:700">Meta/Ciclo</div>
+          <div style="font-size:20px;font-weight:800;color:#1d4ed8" id="lanc-meta-ciclo">—</div>
+        </div>
+        <div style="background:#f0fdf4;border-radius:8px;padding:10px">
+          <div style="font-size:9px;color:#6b7280;text-transform:uppercase;font-weight:700">Já Produzido</div>
+          <div style="font-size:20px;font-weight:800;color:#15803d" id="lanc-produzido">—</div>
+        </div>
+        <div style="background:#fef9c3;border-radius:8px;padding:10px">
+          <div style="font-size:9px;color:#6b7280;text-transform:uppercase;font-weight:700">Restante</div>
+          <div style="font-size:20px;font-weight:800;color:#d97706" id="lanc-restante">—</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Quantidade produzida neste ciclo *</label>
+        <input type="number" id="lanc-qtd" min="0" style="font-size:20px;font-weight:800;text-align:center;padding:10px">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-lancar')">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarLancamento()">✅ Confirmar Lançamento</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script>
@@ -287,7 +341,9 @@ async function salvarEstado(){
       hora_saida: config.horaSaida,
       fila: fila.map(i=>({opId:i.opId,opNum:i.opNum,opRef:i.opRef,opDesc:i.opDesc,
         valorUnit:i.valorUnit,qtd:i.qtd,operadores:i.operadores,nTimes:i.nTimes,
-        ciclo:i.ciclo,tempoPeca:i.tempoPeca,horasExtra:i.horasExtra||0,obsExtra:i.obsExtra||''}))
+        ciclo:i.ciclo,tempoPeca:i.tempoPeca,horasExtra:i.horasExtra||0,obsExtra:i.obsExtra||'',
+        status:i.status||'aguardando',produzido:i.produzido||0,
+        dtSaidaOriginal:i.dtSaidaOriginal||null,saidaCor:i.saidaCor||'verde'}))
     };
     await fetch('/api/fila/estado/salvar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   }catch(e){}
@@ -325,6 +381,10 @@ async function carregarEstado(){
           }
         }catch(e){}
       }
+      item.status = item.status || 'aguardando';
+      item.produzido = item.produzido || 0;
+      item.dtSaidaOriginal = item.dtSaidaOriginal || null;
+      item.saidaCor = item.saidaCor || 'verde';
       fila.push(item);
     }
     recalcularTudo();
@@ -456,7 +516,7 @@ function adicionarOP(){
   const qtd=parseInt(document.getElementById('add-qtd').value)||0;
   if(!qtd){toast('Informe a quantidade','error');return}
   if(tempo<=0){toast('OP sem sequência cadastrada','error');return}
-  fila.push({opId:opt.value,opNum:opt.dataset.num,opRef:opt.dataset.ref,opDesc:opt.dataset.desc,valorUnit:parseFloat(opt.dataset.unit)||0,qtd,operadores:parseInt(document.getElementById('add-operadores').value)||1,nTimes:parseInt(document.getElementById('add-times').value)||1,ciclo:parseInt(document.getElementById('add-ciclo').value)||15,tempoPeca:tempo,horasExtra:0,obsExtra:''});
+  fila.push({opId:opt.value,opNum:opt.dataset.num,opRef:opt.dataset.ref,opDesc:opt.dataset.desc,valorUnit:parseFloat(opt.dataset.unit)||0,qtd,operadores:parseInt(document.getElementById('add-operadores').value)||1,nTimes:parseInt(document.getElementById('add-times').value)||1,ciclo:parseInt(document.getElementById('add-ciclo').value)||15,tempoPeca:tempo,horasExtra:0,obsExtra:'',status:'aguardando',produzido:0,dtSaidaOriginal:null,saidaCor:'verde'});
   fecharModal('modal-add-op');
   recalcularTudo();
   salvarEstado();
@@ -473,7 +533,9 @@ function recalcularTudo(){
     const ciclosDia=Math.floor(mins/item.ciclo);
     const metaCiclo=ciclosDia>0?Math.round(metaDia/ciclosDia):0;
     const atrav=item.nTimes*item.ciclo;
-    const totalCiclos=metaCiclo>0?Math.ceil(item.qtd/metaCiclo):0;
+    // Usa quantidade restante (total - já produzido) para calcular tempo restante
+    const qtdRestante=Math.max(0,item.qtd-(item.produzido||0));
+    const totalCiclos=metaCiclo>0?Math.ceil(qtdRestante/metaCiclo):0;
     const minsTotais=totalCiclos*item.ciclo+(item.horasExtra*60);
     item.metaDia=metaDia;item.ciclosDia=ciclosDia;item.metaCiclo=metaCiclo;
     item.atravessamento=atrav;item.totalCiclos=totalCiclos;
@@ -481,6 +543,17 @@ function recalcularTudo(){
     item.dtPrimeiraPeca=avancarTempo(cur,atrav);
     item.dtSaida=avancarTempo(cur,minsTotais);
     cur=new Date(item.dtSaida);
+    // Define cor da data de saída
+    if(!item.dtSaidaOriginal){
+      item.dtSaidaOriginal=item.dtSaida.toISOString();
+      item.saidaCor='verde';
+    } else {
+      const orig=new Date(item.dtSaidaOriginal);
+      const diff=item.dtSaida-orig;
+      if(Math.abs(diff)<3600000) item.saidaCor='verde';
+      else if(diff>0) item.saidaCor='vermelho';
+      else item.saidaCor='azul';
+    }
   });
   renderFila();
   atualizarResumo();
@@ -495,7 +568,9 @@ function fmtDatetimeLocal(dt){
 
 async function salvarSaidasNaOP(){
   if(!fila.length)return;
-  const items=fila.filter(i=>i.opId&&i.dtSaida).map(i=>({op_id:parseInt(i.opId),data_saida:fmtDatetimeLocal(i.dtSaida)}));
+  const items=fila.filter(i=>i.opId&&i.dtSaida).map(i=>({
+    op_id:parseInt(i.opId),data_saida:fmtDatetimeLocal(i.dtSaida),status_cor:i.saidaCor||'verde'
+  }));
   if(!items.length)return;
   try{ await api('/api/op/atualizar-saida','POST',{items}); }catch(e){}
 }
@@ -509,20 +584,26 @@ function renderFila(){
     return;
   }
   document.getElementById('resumo-bar').style.display='grid';
-  const agora=new Date();
   const rows=fila.map((item,i)=>{
-    let status='aguardando';
-    if(item.dtSaida&&agora>item.dtSaida)status='concluida';
-    else if(item.dtEntrada&&agora>=item.dtEntrada)status='producao';
-    else if(i===0||(fila[i-1]&&fila[i-1].dtSaida))status='proxima';
-    const statusTxt={aguardando:'Aguardando',producao:'Em Produção',concluida:'Concluída',proxima:'Próxima'}[status];
+    const status=item.status||'aguardando';
+    const statusTxt={aguardando:'Aguardando',producao:'Em Produção',concluida:'Concluída'}[status]||'Aguardando';
+    const produzido=item.produzido||0;
+    const pct=item.qtd>0?Math.min(100,Math.round(produzido/item.qtd*100)):0;
+    const corClass='dt-'+(item.saidaCor||'verde');
+    let acaoBtns='';
+    if(status==='aguardando') acaoBtns=`<button class="btn-iniciar" onclick="iniciarOP(${i})">▶ Iniciar</button>`;
+    else if(status==='producao') acaoBtns=`<button class="btn-lancar" onclick="abrirModalLancar(${i})">📊 Lançar</button>`;
     return `
     <tr>
       <td><div class="pos-num pos-${status}">${i+1}</div></td>
-      <td><span class="status-badge s-${status}">${statusTxt}</span></td>
+      <td><span class="status-badge s-${status}">${statusTxt}</span><div style="margin-top:3px">${acaoBtns}</div></td>
       <td><div style="font-weight:700;color:#1a1a2e;font-size:12px">OP ${item.opNum}</div><div style="font-size:10px;color:#6b7280">${item.opRef}</div></td>
       <td><div style="font-size:11px;color:#374151;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${item.opDesc||'—'}</div></td>
-      <td style="text-align:right;font-weight:700">${fmtN(item.qtd)}</td>
+      <td style="text-align:right">
+        <div style="font-weight:700">${fmtN(item.qtd)}</div>
+        <div style="font-size:10px;color:#6b7280">${fmtN(produzido)} prod.</div>
+        <div class="prog-bar-wrap"><div class="prog-bar" style="width:${pct}%"></div></div>
+      </td>
       <td style="text-align:center">${item.operadores}</td>
       <td style="text-align:center">${item.nTimes}×${item.ciclo}min</td>
       <td style="text-align:right">${item.tempoPeca.toFixed(2)}</td>
@@ -542,7 +623,7 @@ function renderFila(){
         </div>
       </td>
       <td>
-        <div class="dt-cell">
+        <div class="dt-cell ${corClass}">
           <div class="dt-data">${fmtData(item.dtSaida)}</div>
           <div class="dt-hora saida">${fmtHora(item.dtSaida)}</div>
         </div>
@@ -614,6 +695,49 @@ function removerOP(idx){
 }
 function setHorasExtra(idx,val){fila[idx].horasExtra=parseFloat(val)||0;recalcularTudo();salvarEstado()}
 function setObsExtra(idx,val){fila[idx].obsExtra=val}
+
+function iniciarOP(idx){
+  fila[idx].status='producao';
+  recalcularTudo();
+  salvarEstado();
+  toast('OP iniciada — agora lance a produção a cada ciclo');
+}
+
+let idxLancando=null;
+function abrirModalLancar(idx){
+  idxLancando=idx;
+  const item=fila[idx];
+  document.getElementById('lanc-op-info').textContent=`OP ${item.opNum} — ${item.opRef} | ${item.opDesc||''}`;
+  document.getElementById('lanc-meta-ciclo').textContent=fmtN(item.metaCiclo);
+  document.getElementById('lanc-produzido').textContent=fmtN(item.produzido||0);
+  document.getElementById('lanc-restante').textContent=fmtN(Math.max(0,item.qtd-(item.produzido||0)));
+  document.getElementById('lanc-qtd').value=item.metaCiclo||0;
+  abrirModal('modal-lancar');
+}
+
+async function confirmarLancamento(){
+  if(idxLancando===null)return;
+  const item=fila[idxLancando];
+  const lancado=parseInt(document.getElementById('lanc-qtd').value)||0;
+  if(lancado<0){toast('Quantidade inválida','error');return}
+  try{
+    await api('/api/fila/lancar-producao','POST',{
+      op_id:parseInt(item.opId),quantidade:lancado,meta_ciclo:item.metaCiclo||0
+    });
+  }catch(e){}
+  fila[idxLancando].produzido=(fila[idxLancando].produzido||0)+lancado;
+  if(fila[idxLancando].produzido>=fila[idxLancando].qtd){
+    fila[idxLancando].status='concluida';
+  }
+  fecharModal('modal-lancar');
+  recalcularTudo();
+  salvarEstado();
+  const deficit=(item.metaCiclo||0)-lancado;
+  if(lancado===0) toast('Lançamento registrado: 0 peças — datas atualizadas','error');
+  else if(deficit>0) toast(`Lançamento: ${fmtN(lancado)} peças — déficit de ${fmtN(deficit)}, datas ajustadas`,'error');
+  else if(deficit<0) toast(`Lançamento: ${fmtN(lancado)} peças — ${fmtN(-deficit)} a mais! Datas antecipadas`);
+  else toast(`Lançamento: ${fmtN(lancado)} peças — no prazo!`);
+}
 
 // IMPRIMIR
 function imprimirFila(){
