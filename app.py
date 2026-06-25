@@ -201,7 +201,7 @@ def api_funcs_lista():
 @login_required
 def funcoes():
     user = get_user(); c = m.conn()
-    fcs = c.execute("SELECT * FROM funcoes ORDER BY nome").fetchall()
+    fcs = c.execute("SELECT * FROM funcoes WHERE ativa=1 ORDER BY nome").fetchall()
     c.close()
     return render_template('funcoes.html', user=user, funcoes=[dict(r) for r in fcs])
 
