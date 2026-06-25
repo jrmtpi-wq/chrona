@@ -2279,7 +2279,7 @@ def api_usuarios_reset_senha():
     return jsonify({'ok': True})
 
 # ── ADMIN: diagnóstico e transferência de dados entre fábricas ──
-@app.route('/admin/diagnostico-fabricas')
+@app.route('/api/diag-fabricas')
 @login_required
 def admin_diagnostico_fabricas():
     user = get_user()
@@ -2308,7 +2308,7 @@ def admin_diagnostico_fabricas():
     c.close()
     return jsonify({'fabricas': resultado, 'sem_fabrica': sem_fab})
 
-@app.route('/admin/transferir-fabrica', methods=['POST'])
+@app.route('/api/transferir-fabrica', methods=['POST'])
 @login_required
 def admin_transferir_fabrica():
     user = get_user()
