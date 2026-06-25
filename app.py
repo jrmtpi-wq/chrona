@@ -2335,5 +2335,37 @@ def admin_transferir_fabrica():
         return jsonify({'ok': False, 'erro': str(e)})
 
 
+@app.route('/api/diag-usuarios')
+@login_required
+def diag_usuarios():
+    user = get_user()
+    if user['perfil'] != 'admin':
+        return jsonify({'erro': 'Acesso negado'}), 403
+    c = m.conn()
+    rows = c.execute("""
+        SELECT u.id, u.nome, u.login, u.perfil, u.fabrica_id, f.nome fab_nome
+        FROM usuarios u
+        LEFT JOIN fabricas f ON u.fabrica_id = f.id
+        ORDER BY u.fabrica_id, u.login
+    """).fetchall()
+    c.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/corrigir-usuario', methods=['POST'])
+@login_required
+def corrigir_usuario():
+    user = get_user()
+    if user['perfil'] != 'admin':
+        return jsonify({'erro': 'Acesso negado'}), 403
+    d = request.json
+    c = m.conn()
+    try:
+        c.execute("UPDATE usuarios SET fabrica_id=? WHERE id=?", (d['fabrica_id'], d['usuario_id']))
+        c.commit(); c.close()
+        return jsonify({'ok': True})
+    except Exception as e:
+        c.close(); return jsonify({'ok': False, 'erro': str(e)})
+
+
 if __name__ == '__main__':
     app.run(debug=False, use_reloader=False, host='0.0.0.0', port=5050)
