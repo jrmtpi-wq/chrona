@@ -2278,5 +2278,62 @@ def api_usuarios_reset_senha():
     c.commit(); c.close()
     return jsonify({'ok': True})
 
+# ── ADMIN: diagnóstico e transferência de dados entre fábricas ──
+@app.route('/admin/diagnostico-fabricas')
+@login_required
+def admin_diagnostico_fabricas():
+    user = get_user()
+    if user['perfil'] != 'admin':
+        return jsonify({'erro': 'Acesso negado'}), 403
+    c = m.conn()
+    fabricas = [dict(r) for r in c.execute("SELECT id, nome FROM fabricas ORDER BY id").fetchall()]
+    tabelas = ['funcionarios','equipamentos','turnos','ordens_producao','balanceamento','faturamento','despesas']
+    resultado = {}
+    for fab in fabricas:
+        resultado[fab['id']] = {'nome': fab['nome'], 'contagens': {}}
+        for tab in tabelas:
+            try:
+                n = c.execute(f"SELECT COUNT(*) FROM {tab} WHERE fabrica_id=?", (fab['id'],)).fetchone()[0]
+                resultado[fab['id']]['contagens'][tab] = n
+            except Exception:
+                resultado[fab['id']]['contagens'][tab] = '?'
+    # também verifica registros sem fabrica_id
+    sem_fab = {}
+    for tab in tabelas:
+        try:
+            n = c.execute(f"SELECT COUNT(*) FROM {tab} WHERE fabrica_id IS NULL").fetchone()[0]
+            sem_fab[tab] = n
+        except Exception:
+            sem_fab[tab] = 0
+    c.close()
+    return jsonify({'fabricas': resultado, 'sem_fabrica': sem_fab})
+
+@app.route('/admin/transferir-fabrica', methods=['POST'])
+@login_required
+def admin_transferir_fabrica():
+    user = get_user()
+    if user['perfil'] != 'admin':
+        return jsonify({'erro': 'Acesso negado'}), 403
+    d = request.json
+    origem = d.get('fabrica_origem')  # int ou None para registros sem fabrica_id
+    destino = int(d.get('fabrica_destino'))
+    tabelas = ['funcionarios','equipamentos','turnos','ordens_producao','balanceamento','faturamento','despesas']
+    c = m.conn()
+    try:
+        totais = {}
+        for tab in tabelas:
+            if origem is None:
+                n = c.execute(f"UPDATE {tab} SET fabrica_id=? WHERE fabrica_id IS NULL", (destino,))
+            else:
+                n = c.execute(f"UPDATE {tab} SET fabrica_id=? WHERE fabrica_id=?", (destino, int(origem)))
+            totais[tab] = 'ok'
+        c.commit()
+        c.close()
+        return jsonify({'ok': True, 'tabelas': totais})
+    except Exception as e:
+        c.close()
+        return jsonify({'ok': False, 'erro': str(e)})
+
+
 if __name__ == '__main__':
     app.run(debug=False, use_reloader=False, host='0.0.0.0', port=5050)
