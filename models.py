@@ -841,6 +841,10 @@ def init():
         except Exception:
             pass
         try:
+            c.execute("ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS matricula INTEGER")
+        except Exception:
+            pass
+        try:
             c.execute("ALTER TABLE operacoes ADD COLUMN IF NOT EXISTS modelo TEXT DEFAULT ''")
         except Exception:
             pass
@@ -1009,6 +1013,10 @@ def init():
             pass
         try:
             c.execute("ALTER TABLE funcionarios ADD COLUMN ifood REAL DEFAULT 0")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE funcionarios ADD COLUMN matricula INTEGER")
         except Exception:
             pass
         try:

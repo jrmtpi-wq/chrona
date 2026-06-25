@@ -144,7 +144,7 @@ def api_func_salvar():
     fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     campos = ['fabrica_id','funcao_id','nome','cpf','rg','sexo','data_nascimento',
               'telefone','celular','email','endereco','numero','bairro','cidade',
-              'estado','cep','data_admissao','salario','bonificacao','ifood','situacao','observacao']
+              'estado','cep','data_admissao','salario','bonificacao','ifood','situacao','observacao','matricula']
     vals = [fab_id, d.get('funcao_id') or None, d.get('nome','').strip(),
             d.get('cpf',''), d.get('rg',''), d.get('sexo',''),
             d.get('data_nascimento',''), d.get('telefone',''), d.get('celular',''),
@@ -152,7 +152,8 @@ def api_func_salvar():
             d.get('bairro',''), d.get('cidade',''), d.get('estado',''),
             d.get('cep',''), d.get('data_admissao',''),
             float(d.get('salario') or 0), float(d.get('bonificacao') or 0),
-            float(d.get('ifood') or 0), d.get('situacao','ATIVO'), d.get('observacao','')]
+            float(d.get('ifood') or 0), d.get('situacao','ATIVO'), d.get('observacao',''),
+            int(d['matricula']) if d.get('matricula') else None]
     try:
         if d.get('id'):
             sets = ','.join(f"{c2}=?" for c2 in campos)
@@ -162,6 +163,25 @@ def api_func_salvar():
         c.commit(); c.close(); return jsonify({'ok':True})
     except Exception as e:
         c.close(); return jsonify({'ok':False,'erro':str(e)})
+
+@app.route('/api/funcionario/proxima-matricula')
+@login_required
+def api_proxima_matricula():
+    user = get_user()
+    fids_list = fab_ids(user)
+    ph = ','.join('?'*len(fids_list))
+    c = m.conn()
+    row = c.execute(f"SELECT COALESCE(MAX(matricula), 0) + 1 FROM funcionarios WHERE fabrica_id IN ({ph})", fids_list).fetchone()
+    c.close()
+    return jsonify({'proxima': row[0]})
+
+@app.route('/api/operacao/proximo-codigo')
+@login_required
+def api_proximo_codigo_operacao():
+    c = m.conn()
+    row = c.execute("SELECT COALESCE(MAX(codigo), 0) + 1 FROM operacoes WHERE ativo=1").fetchone()
+    c.close()
+    return jsonify({'proximo': row[0]})
 
 @app.route('/api/funcionario/<int:fid>')
 @login_required

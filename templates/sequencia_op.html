@@ -540,15 +540,17 @@ function limparSequencia() {
 }
 
 // ── NOVA / EDITAR OPERAÇÃO ────────────────────────
-function abrirModalNovaOp() {
+async function abrirModalNovaOp() {
   document.getElementById('op-edit-id').value = '';
   document.getElementById('modal-op-title').textContent = '➕ Nova Operação';
-  document.getElementById('op-codigo').value = '';
   document.getElementById('op-descricao').value = '';
   document.getElementById('op-tempo').value = '';
   document.getElementById('op-equipamento').value = '';
   document.getElementById('op-modelo').value = 'UNIVERSAL';
   document.getElementById('op-tipo').value = 'C';
+  document.getElementById('op-codigo').value = '';
+  const pc = await api('/api/operacao/proximo-codigo');
+  if(pc && pc.proximo) document.getElementById('op-codigo').value = pc.proximo;
   abrirModal('modal-nova-op');
 }
 

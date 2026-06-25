@@ -39,6 +39,7 @@
   <div class="table-wrap" style="border:none">
     <table>
       <thead><tr>
+        <th>Mat.</th>
         <th>Funcionário</th>
         <th>CPF</th>
         <th>Função</th>
@@ -52,6 +53,7 @@
         <th>Situação</th>
         <th style="width:100px">Ações</th>
       </tr></thead>
+      <!-- colspan atualizado para 13 -->
       <tbody id="tbody-funcs">
         <tr><td colspan="12" class="empty">
           <span class="empty-icon">👷</span>
@@ -72,7 +74,11 @@
       <input type="hidden" id="fn-id">
 
       <div class="form-section">📋 Dados Pessoais</div>
-      <div class="form-row form-row-2">
+      <div class="form-row form-row-3">
+        <div class="form-group">
+          <label class="form-label">Matrícula</label>
+          <input type="number" class="form-control" id="fn-matricula" placeholder="Automático">
+        </div>
         <div class="form-group">
           <label class="form-label">Nome Completo *</label>
           <input type="text" class="form-control" id="fn-nome" placeholder="Nome completo">
@@ -262,7 +268,11 @@ async function novoFunc(){
   document.getElementById('fn-adm').value=new Date().toISOString().slice(0,10);
   document.getElementById('fn-dem').value='';
   document.getElementById('fn-uf').value='SC';
+  document.getElementById('fn-matricula').value='';
   await carregarFuncoes();
+  // Auto-preencher próxima matrícula
+  const m = await api('/api/funcionario/proxima-matricula');
+  if(m && m.proxima) document.getElementById('fn-matricula').value = m.proxima;
   abrirModal('modal-func');
 }
 
@@ -293,6 +303,7 @@ async function editarFunc(id){
   document.getElementById('fn-bonificacao').value=f.bonificacao||0;
   document.getElementById('fn-ifood').value=f.ifood||0;
   document.getElementById('fn-obs').value=f.observacao||'';
+  document.getElementById('fn-matricula').value=f.matricula||'';
   abrirModal('modal-func');
 }
 
@@ -323,6 +334,7 @@ async function salvar(){
     ifood:document.getElementById('fn-ifood').value,
     situacao:document.getElementById('fn-sit').value,
     observacao:document.getElementById('fn-obs').value,
+    matricula:document.getElementById('fn-matricula').value||null,
   };
   const r=await api('/api/funcionario/salvar','POST',dados);
   if(r.ok){toast('Funcionário salvo!');fecharModal('modal-func');carregarLista()}
@@ -381,10 +393,11 @@ async function carregarLista(){
     <span>Total Geral: <strong style="color:var(--azul)">${fmtR(totGeral)}</strong></span>
   ` : '';
   if(!rows.length){
-    tb.innerHTML='<tr><td colspan="12" class="empty"><span class="empty-icon">👷</span>Nenhum funcionário encontrado</td></tr>';return;
+    tb.innerHTML='<tr><td colspan="13" class="empty"><span class="empty-icon">👷</span>Nenhum funcionário encontrado</td></tr>';return;
   }
   tb.innerHTML=rows.map(f=>`
     <tr>
+      <td style="font-weight:600;color:var(--cinza);font-size:12px">${f.matricula||'—'}</td>
       <td>
         <div style="display:flex;align-items:center;gap:10px">
           <div class="avatar">${f.nome.charAt(0).toUpperCase()}</div>
