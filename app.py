@@ -2367,5 +2367,35 @@ def corrigir_usuario():
         c.close(); return jsonify({'ok': False, 'erro': str(e)})
 
 
+@app.route('/api/fix-icara')
+@login_required
+def fix_icara():
+    user = get_user()
+    if user['perfil'] != 'admin':
+        return jsonify({'erro': 'Acesso negado'}), 403
+    c = m.conn()
+    try:
+        # 1. Corrigir icara.gestor (id=16): fabrica_id 37 -> 38
+        c.execute("UPDATE usuarios SET fabrica_id=38 WHERE id=16 AND login='icara.gestor'")
+
+        # 2. Transferir todos os dados de fabrica_id=37 para fabrica_id=38
+        tabelas = ['funcionarios','equipamentos','turnos','ordens_producao',
+                   'balanceamento','faturamento','despesas']
+        contagens = {}
+        for tab in tabelas:
+            cur = c.execute(f"SELECT COUNT(*) FROM {tab} WHERE fabrica_id=37")
+            n = cur.fetchone()[0]
+            if n > 0:
+                c.execute(f"UPDATE {tab} SET fabrica_id=38 WHERE fabrica_id=37")
+            contagens[tab] = n
+
+        c.commit(); c.close()
+        return jsonify({'ok': True, 'corrigido': 'icara.gestor fabrica_id 37->38',
+                        'dados_transferidos': contagens})
+    except Exception as e:
+        c.close()
+        return jsonify({'ok': False, 'erro': str(e)})
+
+
 if __name__ == '__main__':
     app.run(debug=False, use_reloader=False, host='0.0.0.0', port=5050)
