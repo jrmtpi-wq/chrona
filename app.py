@@ -84,7 +84,7 @@ def index():
 def login():
     if request.method == 'POST':
         c = m.conn()
-        u = c.execute("SELECT * FROM usuarios WHERE login=? AND senha_hash=? AND ativo=1",
+        u = c.execute("SELECT * FROM usuarios WHERE LOWER(login)=LOWER(?) AND senha_hash=? AND ativo=1",
                       (request.form['login'], m.hash_senha(request.form['senha']))).fetchone()
         c.close()
         if u:
