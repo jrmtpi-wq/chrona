@@ -312,8 +312,10 @@ tbody td{padding:7px 12px;font-size:12px;vertical-align:middle}
       <span class="nav-icon">📊</span><span class="nav-label">Dashboard</span></a>
 
     <span class="nav-section">Cadastros</span>
+    {% if session.perfil != 'operador' %}
     <a href="/funcionarios" class="nav-item {% if 'funcionarios' in request.path %}active{% endif %}">
       <span class="nav-icon">👷</span><span class="nav-label">Funcionários</span></a>
+    {% endif %}
     <a href="/funcoes" class="nav-item {% if 'funcoes' in request.path %}active{% endif %}">
       <span class="nav-icon">🏷️</span><span class="nav-label">Funções</span></a>
     <a href="/equipamentos" class="nav-item {% if 'equipamentos' in request.path %}active{% endif %}">
@@ -335,6 +337,7 @@ tbody td{padding:7px 12px;font-size:12px;vertical-align:middle}
     <a href="/lancamento" class="nav-item {% if 'lancamento' in request.path %}active{% endif %}">
       <span class="nav-icon">🏭</span><span class="nav-label">Lançamento</span></a>
 
+    {% if session.perfil != 'operador' %}
     <span class="nav-section">Financeiro</span>
     <a href="/faturamento" class="nav-item {% if 'faturamento' in request.path %}active{% endif %}">
       <span class="nav-icon">💰</span><span class="nav-label">Faturamento</span></a>
@@ -344,6 +347,7 @@ tbody td{padding:7px 12px;font-size:12px;vertical-align:middle}
       <span class="nav-icon">🧾</span><span class="nav-label">Contas a Pagar</span></a>
     <a href="/dre" class="nav-item {% if 'dre' in request.path %}active{% endif %}">
       <span class="nav-icon">📉</span><span class="nav-label">DRE</span></a>
+    {% endif %}
 
     <span class="nav-section">RH</span>
     <a href="/turnos" class="nav-item {% if 'turnos' in request.path %}active{% endif %}">

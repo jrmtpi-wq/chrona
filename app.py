@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+﻿from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 from functools import wraps
 from datetime import datetime, date
 from werkzeug.utils import secure_filename
@@ -33,6 +33,18 @@ def login_required(f):
         if 'uid' not in session:
             session['next'] = request.url
             return redirect(url_for('login'))
+        return f(*a, **kw)
+    return dec
+
+def gestor_required(f):
+    @wraps(f)
+    def dec(*a, **kw):
+        if 'uid' not in session:
+            session['next'] = request.url
+            return redirect(url_for('login'))
+        if session.get('perfil') == 'operador':
+            flash('Acesso restrito a gestores.', 'error')
+            return redirect(url_for('dashboard'))
         return f(*a, **kw)
     return dec
 
@@ -116,7 +128,7 @@ def dashboard():
 
 # ── FUNCIONARIOS ──────────────────────────────────────────────
 @app.route('/funcionarios')
-@login_required
+@gestor_required
 def funcionarios():
     user = get_user()
     c = m.conn()
@@ -137,7 +149,7 @@ def funcionarios():
                            fabricas=[dict(r) for r in fabricas], funcoes=[dict(r) for r in funcoes])
 
 @app.route('/api/funcionario/salvar', methods=['POST'])
-@login_required
+@gestor_required
 def api_func_salvar():
     d = request.json; c = m.conn()
     user = get_user()
@@ -165,7 +177,7 @@ def api_func_salvar():
         c.close(); return jsonify({'ok':False,'erro':str(e)})
 
 @app.route('/api/funcionario/proxima-matricula')
-@login_required
+@gestor_required
 def api_proxima_matricula():
     user = get_user()
     fids_list = fab_ids(user)
@@ -184,7 +196,7 @@ def api_proximo_codigo_operacao():
     return jsonify({'proximo': row[0]})
 
 @app.route('/api/funcionario/<int:fid>')
-@login_required
+@gestor_required
 def api_func_get(fid):
     c = m.conn()
     f = c.execute("SELECT * FROM funcionarios WHERE id=?", (fid,)).fetchone()
@@ -192,14 +204,14 @@ def api_func_get(fid):
     return jsonify(dict(f) if f else {})
 
 @app.route('/api/funcionario/excluir/<int:fid>', methods=['DELETE'])
-@login_required
+@gestor_required
 def api_func_excluir(fid):
     c = m.conn()
     c.execute("UPDATE funcionarios SET situacao='INATIVO' WHERE id=?", (fid,))
     c.commit(); c.close(); return jsonify({'ok':True})
 
 @app.route('/api/funcionarios/lista')
-@login_required
+@gestor_required
 def api_funcs_lista():
     user = get_user(); fids_list = fab_ids(user)
     ph = ','.join('?'*len(fids_list))
@@ -1437,7 +1449,7 @@ def fila_producao():
         turnos=[dict(r) for r in turnos])
 # ── FATURAMENTO ────────────────────────────────────────────────
 @app.route('/faturamento')
-@login_required
+@gestor_required
 def faturamento():
     user = get_user()
     fids_list = fab_ids(user)
@@ -1474,7 +1486,7 @@ def faturamento():
 
 
 @app.route('/api/faturamentos')
-@login_required
+@gestor_required
 def api_faturamentos_lista():
     user = get_user(); fids_list = fab_ids(user)
     ph = ','.join('?'*len(fids_list))
@@ -1500,7 +1512,7 @@ def api_faturamentos_lista():
 
 
 @app.route('/api/faturamento/salvar', methods=['POST'])
-@login_required
+@gestor_required
 def api_faturamento_salvar():
     user = get_user(); d = request.json; c = m.conn()
     fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
@@ -1528,7 +1540,7 @@ def api_faturamento_salvar():
 
 
 @app.route('/api/faturamento/<int:fid>')
-@login_required
+@gestor_required
 def api_faturamento_get(fid):
     c = m.conn()
     r = c.execute("SELECT * FROM faturamento WHERE id=?", (fid,)).fetchone()
@@ -1536,7 +1548,7 @@ def api_faturamento_get(fid):
 
 
 @app.route('/api/faturamento/excluir/<int:fid>', methods=['DELETE'])
-@login_required
+@gestor_required
 def api_faturamento_excluir(fid):
     c = m.conn()
     c.execute("DELETE FROM faturamento WHERE id=?", (fid,))
@@ -1616,7 +1628,7 @@ def api_upload_foto():
 
 # ── DESPESAS ───────────────────────────────────────────────────
 @app.route('/despesas')
-@login_required
+@gestor_required
 def despesas():
     user = get_user()
     fids_list = fab_ids(user)
@@ -1645,7 +1657,7 @@ def despesas():
 
 
 @app.route('/api/despesas')
-@login_required
+@gestor_required
 def api_despesas_lista():
     user = get_user(); fids_list = fab_ids(user)
     ph = ','.join('?'*len(fids_list))
@@ -1670,7 +1682,7 @@ def api_despesas_lista():
 
 
 @app.route('/api/despesa/salvar', methods=['POST'])
-@login_required
+@gestor_required
 def api_despesa_salvar():
     user = get_user(); d = request.json; c = m.conn()
     fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
@@ -1699,7 +1711,7 @@ def api_despesa_salvar():
 
 
 @app.route('/api/despesa/<int:did>')
-@login_required
+@gestor_required
 def api_despesa_get(did):
     c = m.conn()
     r = c.execute("SELECT * FROM despesas WHERE id=?", (did,)).fetchone()
@@ -1707,7 +1719,7 @@ def api_despesa_get(did):
 
 
 @app.route('/api/despesa/excluir/<int:did>', methods=['DELETE'])
-@login_required
+@gestor_required
 def api_despesa_excluir(did):
     c = m.conn()
     c.execute("DELETE FROM despesas WHERE id=?", (did,))
@@ -1716,7 +1728,7 @@ def api_despesa_excluir(did):
 
 # ── DOCUMENTOS DE DESPESA ──────────────────────────────────────
 @app.route('/api/despesas/docs')
-@login_required
+@gestor_required
 def api_despesas_docs_lista():
     user = get_user(); fids_list = fab_ids(user)
     ph = ','.join('?'*len(fids_list))
@@ -1739,7 +1751,7 @@ def api_despesas_docs_lista():
 
 
 @app.route('/api/despesa/doc/salvar', methods=['POST'])
-@login_required
+@gestor_required
 def api_despesa_doc_salvar():
     user = get_user(); d = request.json; c = m.conn()
     fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
@@ -1764,7 +1776,7 @@ def api_despesa_doc_salvar():
 
 
 @app.route('/api/despesa/doc/<int:did>')
-@login_required
+@gestor_required
 def api_despesa_doc_get(did):
     c = m.conn()
     r = c.execute("SELECT * FROM despesas_docs WHERE id=?", (did,)).fetchone()
@@ -1772,7 +1784,7 @@ def api_despesa_doc_get(did):
 
 
 @app.route('/api/despesa/doc/excluir/<int:did>', methods=['DELETE'])
-@login_required
+@gestor_required
 def api_despesa_doc_excluir(did):
     c = m.conn()
     c.execute("DELETE FROM despesas_docs WHERE id=?", (did,))
@@ -1791,7 +1803,7 @@ def add_months(data_str, n):
 
 
 @app.route('/contas-pagar')
-@login_required
+@gestor_required
 def contas_pagar():
     user = get_user()
     fids_list = fab_ids(user)
@@ -1807,7 +1819,7 @@ def contas_pagar():
 
 
 @app.route('/api/contas-pagar')
-@login_required
+@gestor_required
 def api_contas_pagar_lista():
     user = get_user(); fids_list = fab_ids(user)
     ph = ','.join('?'*len(fids_list))
@@ -1921,7 +1933,7 @@ def api_parcela_foto():
 
 # ── DRE ────────────────────────────────────────────────────────
 @app.route('/dre')
-@login_required
+@gestor_required
 def dre():
     user = get_user()
     from datetime import date, datetime
@@ -1941,7 +1953,7 @@ def dre():
  
  
 @app.route('/api/dre')
-@login_required
+@gestor_required
 def api_dre():
     user = get_user()
     fids_list = fab_ids(user)
@@ -2016,7 +2028,7 @@ def api_dre():
  
  
 @app.route('/api/dre/evolucao')
-@login_required
+@gestor_required
 def api_dre_evolucao():
     user = get_user()
     fids_list = fab_ids(user)
