@@ -898,6 +898,10 @@ def init():
         except Exception:
             pass
         try:
+            c.execute("ALTER TABLE referencias ADD COLUMN IF NOT EXISTS fabrica_id INTEGER")
+        except Exception:
+            pass
+        try:
             c.execute("""CREATE TABLE IF NOT EXISTS lancamentos_fila (
                 id SERIAL PRIMARY KEY,
                 op_id INTEGER NOT NULL,
@@ -1088,6 +1092,10 @@ def init():
             pass
         try:
             c.execute("ALTER TABLE ordens_producao ADD COLUMN data_entrega_status TEXT DEFAULT 'verde'")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE referencias ADD COLUMN fabrica_id INTEGER")
         except Exception:
             pass
         try:

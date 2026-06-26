@@ -565,7 +565,7 @@ def ref_op():
     ph = ','.join('?'*len(fids_list))
     c = m.conn()
  
-    referencias = c.execute("""
+    referencias = c.execute(f"""
         SELECT r.*,g.nome gen_nome,t.nome tipo_nome,
                (SELECT COUNT(*) FROM ordens_producao op WHERE op.referencia_id=r.id) total_ops,
                (SELECT COUNT(*) FROM sequencia_op sq
@@ -574,8 +574,9 @@ def ref_op():
         FROM referencias r
         LEFT JOIN generos_produto g ON r.genero_id=g.id
         LEFT JOIN tipos_produto t ON r.tipo_produto_id=t.id
-        WHERE r.ativo=1 ORDER BY r.codigo
-    """).fetchall()
+        WHERE r.ativo=1 AND (r.fabrica_id IN ({ph}) OR r.fabrica_id IS NULL)
+        ORDER BY r.codigo
+    """, fids_list).fetchall()
  
     ops = c.execute(f"""
         SELECT op.*,r.codigo ref_codigo,r.descricao ref_desc
@@ -617,13 +618,14 @@ def cadastro_op():
     ph = ','.join('?'*len(fids_list))
     c = m.conn()
     fabricas = c.execute(f"SELECT * FROM fabricas WHERE id IN ({ph})", fids_list).fetchall()
-    referencias = c.execute("""
+    referencias = c.execute(f"""
         SELECT r.*, t.nome tipo_nome, g.nome gen_nome
         FROM referencias r
         LEFT JOIN tipos_produto t ON r.tipo_produto_id=t.id
         LEFT JOIN generos_produto g ON r.genero_id=g.id
-        WHERE r.ativo=1 ORDER BY r.codigo
-    """).fetchall()
+        WHERE r.ativo=1 AND (r.fabrica_id IN ({ph}) OR r.fabrica_id IS NULL)
+        ORDER BY r.codigo
+    """, fids_list).fetchall()
     c.close()
     return render_template('cadastro_op.html', user=user,
         fabricas=[dict(r) for r in fabricas],
@@ -660,14 +662,15 @@ def api_ops_cadastro_lista():
 @app.route('/api/referencia/salvar', methods=['POST'])
 @login_required
 def api_ref_salvar():
-    d = request.json; c = m.conn()
+    d = request.json; user = get_user(); c = m.conn()
+    fab_id = resolve_fab_id(d, user)
     try:
         if d.get('id'):
             c.execute("UPDATE referencias SET codigo=?,descricao=?,genero_id=?,tipo_produto_id=? WHERE id=?",
                       (d['codigo'], d.get('descricao',''), d.get('genero_id'), d.get('tipo_produto_id'), d['id']))
         else:
-            c.execute("INSERT INTO referencias (codigo,descricao,genero_id,tipo_produto_id) VALUES (?,?,?,?)",
-                      (d['codigo'], d.get('descricao',''), d.get('genero_id'), d.get('tipo_produto_id')))
+            c.execute("INSERT INTO referencias (codigo,descricao,genero_id,tipo_produto_id,fabrica_id) VALUES (?,?,?,?,?)",
+                      (d['codigo'], d.get('descricao',''), d.get('genero_id'), d.get('tipo_produto_id'), fab_id))
         c.commit(); c.close(); return jsonify({'ok': True})
     except Exception as e:
         c.close(); return jsonify({'ok': False, 'erro': str(e)})
