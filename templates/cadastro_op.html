@@ -73,17 +73,13 @@
           <input type="text" class="form-control" id="op-numero" placeholder="Ex: OP-2026-001">
         </div>
         <div class="form-group">
-          <label class="form-label">Referência *</label>
-          <select class="form-control" id="op-referencia" onchange="preencherTipoRef()">
-            <option value="">Selecione...</option>
-            {% for r in referencias %}
-            <option value="{{ r.id }}"
-              data-tipo="{{ r.tipo_nome or '' }}"
-              data-genero="{{ r.gen_nome or '' }}">{{ r.codigo }} — {{ r.descricao or '' }}</option>
-            {% endfor %}
-          </select>
-          <div id="op-tipo-produto-badge" style="margin-top:4px;font-size:11px;color:#6b7280"></div>
+          <label class="form-label">Código da Referência *</label>
+          <input type="text" class="form-control" id="op-ref-codigo" placeholder="Ex: REF-001" style="text-transform:uppercase">
         </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Descrição da Referência</label>
+        <input type="text" class="form-control" id="op-ref-descricao" placeholder="Ex: Camiseta Masculina Gola V">
       </div>
       <div class="form-group">
         <label class="form-label">Descrição / Cliente</label>
@@ -162,15 +158,6 @@
 <script>
 let delOpId = null;
 
-function preencherTipoRef(){
-  const sel = document.getElementById('op-referencia');
-  const opt = sel.options[sel.selectedIndex];
-  const tipo = opt ? (opt.dataset.tipo || '') : '';
-  const genero = opt ? (opt.dataset.genero || '') : '';
-  const badge = document.getElementById('op-tipo-produto-badge');
-  badge.innerHTML = tipo ? `🏷️ <strong>${tipo}</strong>${genero ? ' · '+genero : ''}` : '';
-}
-
 function calcularTotalOP(){
   const qtd = parseFloat(document.getElementById('op-quantidade').value) || 0;
   const unit = parseFloat(document.getElementById('op-valor-unit').value) || 0;
@@ -181,9 +168,9 @@ function novaOP(){
   document.getElementById('op-id').value = '';
   document.getElementById('modal-op-title').textContent = 'Nova OP';
   document.getElementById('op-numero').value = '';
-  document.getElementById('op-referencia').value = '';
+  document.getElementById('op-ref-codigo').value = '';
+  document.getElementById('op-ref-descricao').value = '';
   document.getElementById('op-descricao').value = '';
-  document.getElementById('op-tipo-produto-badge').innerHTML = '';
   document.getElementById('op-quantidade').value = '';
   document.getElementById('op-valor-unit').value = '';
   document.getElementById('op-valor-total').value = '';
@@ -199,8 +186,8 @@ async function editarOPCad(id){
   document.getElementById('op-id').value = r.id;
   document.getElementById('modal-op-title').textContent = 'Editar OP '+r.numero;
   document.getElementById('op-numero').value = r.numero || '';
-  document.getElementById('op-referencia').value = r.referencia_id || '';
-  preencherTipoRef();
+  document.getElementById('op-ref-codigo').value = r.ref_codigo || '';
+  document.getElementById('op-ref-descricao').value = r.ref_descricao || '';
   document.getElementById('op-descricao').value = r.descricao || '';
   document.getElementById('op-quantidade').value = r.quantidade_total || '';
   document.getElementById('op-valor-unit').value = r.valor_unitario || '';
@@ -214,13 +201,13 @@ async function editarOPCad(id){
 
 async function salvarOPCad(){
   const numero = document.getElementById('op-numero').value.trim();
-  const referencia_id = document.getElementById('op-referencia').value;
+  const ref_codigo = document.getElementById('op-ref-codigo').value.trim().toUpperCase();
   const quantidade_total = parseInt(document.getElementById('op-quantidade').value) || 0;
   const valor_unitario = parseFloat(document.getElementById('op-valor-unit').value) || 0;
   const data_entrega = document.getElementById('op-data-entrega').value;
   const faltando = [];
   if(!numero) faltando.push('Número da OP');
-  if(!referencia_id) faltando.push('Referência');
+  if(!ref_codigo) faltando.push('Código da Referência');
   if(!quantidade_total) faltando.push('Quantidade');
   if(!valor_unitario) faltando.push('Preço por Peça');
   if(!data_entrega) faltando.push('Data de Entrega ao Cliente');
@@ -229,7 +216,8 @@ async function salvarOPCad(){
   const d = {
     id: id || null,
     numero,
-    referencia_id,
+    ref_codigo,
+    ref_descricao: document.getElementById('op-ref-descricao').value.trim(),
     descricao: document.getElementById('op-descricao').value.trim(),
     quantidade_total,
     valor_unitario,

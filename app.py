@@ -618,18 +618,9 @@ def cadastro_op():
     ph = ','.join('?'*len(fids_list))
     c = m.conn()
     fabricas = c.execute(f"SELECT * FROM fabricas WHERE id IN ({ph})", fids_list).fetchall()
-    referencias = c.execute(f"""
-        SELECT r.*, t.nome tipo_nome, g.nome gen_nome
-        FROM referencias r
-        LEFT JOIN tipos_produto t ON r.tipo_produto_id=t.id
-        LEFT JOIN generos_produto g ON r.genero_id=g.id
-        WHERE r.ativo=1 AND (r.fabrica_id IN ({ph}) OR r.fabrica_id IS NULL)
-        ORDER BY r.codigo
-    """, fids_list).fetchall()
     c.close()
     return render_template('cadastro_op.html', user=user,
-        fabricas=[dict(r) for r in fabricas],
-        referencias=[dict(r) for r in referencias])
+        fabricas=[dict(r) for r in fabricas])
 
 
 @app.route('/api/ops/cadastro-lista')
@@ -736,11 +727,26 @@ def api_op_salvar():
     user = get_user(); d = request.json; c = m.conn()
     fab_id = resolve_fab_id(d, user, c)
     try:
-        ref_id = d.get('referencia_id')
         qtd = int(d.get('quantidade_total') or 0)
         unit = float(d.get('valor_unitario') or 0)
         total = qtd * unit
- 
+
+        # Resolver referencia_id a partir do código digitado
+        ref_codigo = (d.get('ref_codigo') or '').strip().upper()
+        ref_descricao = (d.get('ref_descricao') or '').strip()
+        ref_id = d.get('referencia_id')  # compatibilidade legada
+        if ref_codigo:
+            row = c.execute("SELECT id FROM referencias WHERE UPPER(codigo)=? AND (fabrica_id=? OR fabrica_id IS NULL)",
+                            (ref_codigo, fab_id)).fetchone()
+            if row:
+                ref_id = row['id']
+                if ref_descricao:
+                    c.execute("UPDATE referencias SET descricao=? WHERE id=?", (ref_descricao, ref_id))
+            else:
+                ref_id = c.insert_id(
+                    "INSERT INTO referencias (codigo, descricao, fabrica_id, ativo) VALUES (?,?,?,1)",
+                    (ref_codigo, ref_descricao, fab_id))
+
         if d.get('id'):
             c.execute("""UPDATE ordens_producao SET numero=?,fabrica_id=?,referencia_id=?,
                          descricao=?,quantidade_total=?,valor_unitario=?,valor_total=?,
@@ -782,7 +788,12 @@ def api_op_salvar():
 @login_required
 def api_op_get(oid):
     c = m.conn()
-    r = c.execute("SELECT * FROM ordens_producao WHERE id=?", (oid,)).fetchone()
+    r = c.execute("""
+        SELECT op.*, ref.codigo ref_codigo, ref.descricao ref_descricao
+        FROM ordens_producao op
+        LEFT JOIN referencias ref ON op.referencia_id=ref.id
+        WHERE op.id=?
+    """, (oid,)).fetchone()
     c.close(); return jsonify(dict(r) if r else {})
  
 @app.route('/api/op/situacao', methods=['POST'])
@@ -837,6 +848,7 @@ def api_op_sequencia_get(oid):
         'tempo_padrao': r['tempo_padrao'],
         'equipamento_id': r['equipamento_id'],
         'ordem': r['ordem'],
+        'time_numero': r['time_numero'],
     } for r in rows])
  
 @app.route('/api/op/sequencia/salvar', methods=['POST'])
@@ -941,6 +953,9 @@ def api_balanceamento_salvar():
                       (d['op_id'], fab_id, d['ciclo_minutos'], d['total_operadores'],
                        d['minutos_disponiveis'], d['meta_dia'], d['meta_ciclo'], d['total_times']))
  
+        # Limpa atribuições anteriores para não sobrar operações de times antigos
+        c.execute("UPDATE sequencia_op SET time_numero=NULL WHERE op_id=?", (d['op_id'],))
+
         # Atualiza time_numero na sequencia_op
         for time in d.get('times', []):
             for op in time.get('ops', []):
