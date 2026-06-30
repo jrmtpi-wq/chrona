@@ -199,16 +199,18 @@ def api_proximo_codigo_operacao():
 @app.route('/api/funcionario/<int:fid>')
 @gestor_required
 def api_func_get(fid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    f = c.execute("SELECT * FROM funcionarios WHERE id=?", (fid,)).fetchone()
+    f = c.execute(f"SELECT * FROM funcionarios WHERE id=? AND fabrica_id IN ({ph})", (fid,)+tuple(fids_list)).fetchone()
     c.close()
     return jsonify(dict(f) if f else {})
 
 @app.route('/api/funcionario/excluir/<int:fid>', methods=['DELETE'])
 @gestor_required
 def api_func_excluir(fid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    c.execute("UPDATE funcionarios SET situacao='INATIVO' WHERE id=?", (fid,))
+    c.execute(f"UPDATE funcionarios SET situacao='INATIVO' WHERE id=? AND fabrica_id IN ({ph})", (fid,)+tuple(fids_list))
     c.commit(); c.close(); return jsonify({'ok':True})
 
 @app.route('/api/funcionarios/lista')
@@ -423,8 +425,9 @@ def api_turno_excluir(tid):
 @app.route('/api/turno/<int:tid>')
 @login_required
 def api_turno_get(tid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    t = c.execute("SELECT * FROM turnos WHERE id=?", (tid,)).fetchone()
+    t = c.execute(f"SELECT * FROM turnos WHERE id=? AND fabrica_id IN ({ph})", (tid,)+tuple(fids_list)).fetchone()
     c.close(); return jsonify(dict(t) if t else {})
 
 # ── JORNADA CALENDARIO ────────────────────────────────────────
@@ -670,8 +673,9 @@ def api_ref_salvar():
 @app.route('/api/referencia/<int:rid>')
 @login_required
 def api_ref_get(rid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    r = c.execute("SELECT * FROM referencias WHERE id=?", (rid,)).fetchone()
+    r = c.execute(f"SELECT * FROM referencias WHERE id=? AND (fabrica_id IN ({ph}) OR fabrica_id IS NULL)", (rid,)+tuple(fids_list)).fetchone()
     c.close(); return jsonify(dict(r) if r else {})
  
 @app.route('/api/referencia/sequencia/<int:rid>')
@@ -788,31 +792,34 @@ def api_op_salvar():
 @app.route('/api/op/<int:oid>')
 @login_required
 def api_op_get(oid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    r = c.execute("""
+    r = c.execute(f"""
         SELECT op.*, ref.codigo ref_codigo, ref.descricao ref_descricao
         FROM ordens_producao op
         LEFT JOIN referencias ref ON op.referencia_id=ref.id
-        WHERE op.id=?
-    """, (oid,)).fetchone()
+        WHERE op.id=? AND op.fabrica_id IN ({ph})
+    """, (oid,)+tuple(fids_list)).fetchone()
     c.close(); return jsonify(dict(r) if r else {})
- 
+
 @app.route('/api/op/situacao', methods=['POST'])
 @login_required
 def api_op_situacao():
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     d = request.json; c = m.conn()
-    c.execute("UPDATE ordens_producao SET situacao=? WHERE id=?", (d['situacao'], d['id']))
+    c.execute(f"UPDATE ordens_producao SET situacao=? WHERE id=? AND fabrica_id IN ({ph})", (d['situacao'], d['id'])+tuple(fids_list))
     c.commit(); c.close(); return jsonify({'ok': True})
 
 @app.route('/api/op/atualizar-saida', methods=['POST'])
 @login_required
 def api_op_atualizar_saida():
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     d = request.json; c = m.conn()
     try:
         for item in d.get('items', []):
             cor = item.get('status_cor', 'verde')
-            c.execute("UPDATE ordens_producao SET data_entrega_costura=?, data_entrega_status=? WHERE id=?",
-                      (item['data_saida'], cor, item['op_id']))
+            c.execute(f"UPDATE ordens_producao SET data_entrega_costura=?, data_entrega_status=? WHERE id=? AND fabrica_id IN ({ph})",
+                      (item['data_saida'], cor, item['op_id'])+tuple(fids_list))
         c.commit(); c.close(); return jsonify({'ok': True})
     except Exception as e:
         c.close(); return jsonify({'ok': False, 'erro': str(e)})
@@ -892,15 +899,17 @@ def api_operacao_salvar():
 @app.route('/api/operacao/<int:oid>')
 @login_required
 def api_operacao_get(oid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    r = c.execute("SELECT * FROM operacoes WHERE id=?", (oid,)).fetchone()
+    r = c.execute(f"SELECT * FROM operacoes WHERE id=? AND fabrica_id IN ({ph})", (oid,)+tuple(fids_list)).fetchone()
     c.close(); return jsonify(dict(r) if r else {})
- 
+
 @app.route('/api/operacao/excluir/<int:oid>', methods=['DELETE'])
 @login_required
 def api_operacao_excluir(oid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    c.execute("UPDATE operacoes SET ativo=0 WHERE id=?", (oid,))
+    c.execute(f"UPDATE operacoes SET ativo=0 WHERE id=? AND fabrica_id IN ({ph})", (oid,)+tuple(fids_list))
     c.commit(); c.close(); return jsonify({'ok': True})
 @app.route('/balanceamento')
 @login_required
@@ -975,8 +984,9 @@ def api_balanceamento_salvar():
 @app.route('/api/balanceamento/<int:op_id>')
 @login_required
 def api_balanceamento_get(op_id):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    bal = c.execute("SELECT * FROM balanceamento WHERE op_id=?", (op_id,)).fetchone()
+    bal = c.execute(f"SELECT * FROM balanceamento WHERE op_id=? AND fabrica_id IN ({ph})", (op_id,)+tuple(fids_list)).fetchone()
     c.close()
     return jsonify(dict(bal) if bal else {})
 
@@ -1234,14 +1244,16 @@ def api_operacoes_banco():
 @app.route('/api/operacao/tempos/<int:oid>')
 @login_required
 def api_operacao_tempos_get(oid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    rows = c.execute("""
+    rows = c.execute(f"""
         SELECT ot.*, f.nome func_nome
         FROM operacao_tempos ot
         JOIN funcionarios f ON ot.funcionario_id=f.id
-        WHERE ot.operacao_id=?
+        JOIN operacoes o ON ot.operacao_id=o.id
+        WHERE ot.operacao_id=? AND o.fabrica_id IN ({ph})
         ORDER BY ot.tempo
-    """, (oid,)).fetchall()
+    """, (oid,)+tuple(fids_list)).fetchall()
     c.close()
     return jsonify([dict(r) for r in rows])
 
@@ -1282,9 +1294,9 @@ def api_sequencia_salvar():
             seq_id = d['id']
             c.execute("DELETE FROM sequencia_banco_ops WHERE sequencia_id=?", (seq_id,))
         else:
-            seq_id = c.insert_id("""INSERT INTO sequencias_banco (nome,modelo,tempo_total,total_ops,criado_por)
-                         VALUES (?,?,?,?,?)""",
-                      (d['nome'], d['modelo'], tempo_total, total_ops, user['id']))
+            seq_id = c.insert_id("""INSERT INTO sequencias_banco (nome,modelo,tempo_total,total_ops,criado_por,fabrica_id)
+                         VALUES (?,?,?,?,?,?)""",
+                      (d['nome'], d['modelo'], tempo_total, total_ops, user['id'], resolve_fab_id(d, user, c)))
 
         for op in d.get('operacoes', []):
             c.execute("""INSERT INTO sequencia_banco_ops
@@ -1302,10 +1314,11 @@ def api_sequencia_salvar():
 @app.route('/api/sequencias')
 @login_required
 def api_sequencias_lista():
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     modelo = request.args.get('modelo','')
     c = m.conn()
-    sql = "SELECT * FROM sequencias_banco WHERE 1=1"
-    params = []
+    sql = f"SELECT * FROM sequencias_banco WHERE fabrica_id IN ({ph})"
+    params = list(fids_list)
     if modelo and modelo != 'TODOS':
         sql += " AND modelo=?"
         params.append(modelo)
@@ -1404,11 +1417,12 @@ def lancamento():
 @app.route('/api/lancamentos')
 @login_required
 def api_lancamentos_lista():
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     op_id = request.args.get('op_id')
     data = request.args.get('data')
     c = m.conn()
-    sql = "SELECT * FROM producao WHERE 1=1"
-    params = []
+    sql = f"SELECT * FROM producao WHERE fabrica_id IN ({ph})"
+    params = list(fids_list)
     if op_id: sql += " AND op_id=?"; params.append(op_id)
     if data: sql += " AND data=?"; params.append(data)
     sql += " ORDER BY hora"
@@ -1566,16 +1580,18 @@ def api_faturamento_salvar():
 @app.route('/api/faturamento/<int:fid>')
 @gestor_required
 def api_faturamento_get(fid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    r = c.execute("SELECT * FROM faturamento WHERE id=?", (fid,)).fetchone()
+    r = c.execute(f"SELECT * FROM faturamento WHERE id=? AND fabrica_id IN ({ph})", (fid,)+tuple(fids_list)).fetchone()
     c.close(); return jsonify(dict(r) if r else {})
 
 
 @app.route('/api/faturamento/excluir/<int:fid>', methods=['DELETE'])
 @gestor_required
 def api_faturamento_excluir(fid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    c.execute("DELETE FROM faturamento WHERE id=?", (fid,))
+    c.execute(f"DELETE FROM faturamento WHERE id=? AND fabrica_id IN ({ph})", (fid,)+tuple(fids_list))
     c.commit(); c.close(); return jsonify({'ok': True})
 
 
@@ -1627,16 +1643,18 @@ def api_nf_salvar():
 @app.route('/api/nota-fiscal/<int:nid>')
 @login_required
 def api_nf_get(nid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    r = c.execute("SELECT * FROM notas_fiscais WHERE id=?", (nid,)).fetchone()
+    r = c.execute(f"SELECT * FROM notas_fiscais WHERE id=? AND fabrica_id IN ({ph})", (nid,)+tuple(fids_list)).fetchone()
     c.close(); return jsonify(dict(r) if r else {})
 
 
 @app.route('/api/nota-fiscal/excluir/<int:nid>', methods=['DELETE'])
 @login_required
 def api_nf_excluir(nid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    c.execute("DELETE FROM notas_fiscais WHERE id=?", (nid,))
+    c.execute(f"DELETE FROM notas_fiscais WHERE id=? AND fabrica_id IN ({ph})", (nid,)+tuple(fids_list))
     c.commit(); c.close(); return jsonify({'ok': True})
 
 
@@ -1737,16 +1755,18 @@ def api_despesa_salvar():
 @app.route('/api/despesa/<int:did>')
 @gestor_required
 def api_despesa_get(did):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    r = c.execute("SELECT * FROM despesas WHERE id=?", (did,)).fetchone()
+    r = c.execute(f"SELECT * FROM despesas WHERE id=? AND fabrica_id IN ({ph})", (did,)+tuple(fids_list)).fetchone()
     c.close(); return jsonify(dict(r) if r else {})
 
 
 @app.route('/api/despesa/excluir/<int:did>', methods=['DELETE'])
 @gestor_required
 def api_despesa_excluir(did):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    c.execute("DELETE FROM despesas WHERE id=?", (did,))
+    c.execute(f"DELETE FROM despesas WHERE id=? AND fabrica_id IN ({ph})", (did,)+tuple(fids_list))
     c.commit(); c.close(); return jsonify({'ok': True})
 
 
@@ -1802,16 +1822,18 @@ def api_despesa_doc_salvar():
 @app.route('/api/despesa/doc/<int:did>')
 @gestor_required
 def api_despesa_doc_get(did):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    r = c.execute("SELECT * FROM despesas_docs WHERE id=?", (did,)).fetchone()
+    r = c.execute(f"SELECT * FROM despesas_docs WHERE id=? AND fabrica_id IN ({ph})", (did,)+tuple(fids_list)).fetchone()
     c.close(); return jsonify(dict(r) if r else {})
 
 
 @app.route('/api/despesa/doc/excluir/<int:did>', methods=['DELETE'])
 @gestor_required
 def api_despesa_doc_excluir(did):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    c.execute("DELETE FROM despesas_docs WHERE id=?", (did,))
+    c.execute(f"DELETE FROM despesas_docs WHERE id=? AND fabrica_id IN ({ph})", (did,)+tuple(fids_list))
     c.commit(); c.close(); return jsonify({'ok': True})
 
 
@@ -1897,8 +1919,9 @@ def api_conta_pagar_salvar():
 @app.route('/api/conta-pagar/<int:cid>')
 @login_required
 def api_conta_pagar_get(cid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    conta = c.execute("SELECT * FROM contas_pagar WHERE id=?", (cid,)).fetchone()
+    conta = c.execute(f"SELECT * FROM contas_pagar WHERE id=? AND fabrica_id IN ({ph})", (cid,)+tuple(fids_list)).fetchone()
     parcelas = c.execute("SELECT * FROM contas_pagar_parcelas WHERE conta_id=? ORDER BY numero", (cid,)).fetchall()
     c.close()
     if not conta: return jsonify({})
@@ -1910,30 +1933,35 @@ def api_conta_pagar_get(cid):
 @app.route('/api/conta-pagar/excluir/<int:cid>', methods=['DELETE'])
 @login_required
 def api_conta_pagar_excluir(cid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
     c.execute("DELETE FROM contas_pagar_parcelas WHERE conta_id=?", (cid,))
-    c.execute("DELETE FROM contas_pagar WHERE id=?", (cid,))
+    c.execute(f"DELETE FROM contas_pagar WHERE id=? AND fabrica_id IN ({ph})", (cid,)+tuple(fids_list))
     c.commit(); c.close(); return jsonify({'ok': True})
 
 
 @app.route('/api/parcela/<int:pid>')
 @login_required
 def api_parcela_get(pid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    r = c.execute("""SELECT p.*, cp.fornecedor, cp.descricao FROM contas_pagar_parcelas p
-                      JOIN contas_pagar cp ON p.conta_id=cp.id WHERE p.id=?""", (pid,)).fetchone()
+    r = c.execute(f"""SELECT p.*, cp.fornecedor, cp.descricao FROM contas_pagar_parcelas p
+                      JOIN contas_pagar cp ON p.conta_id=cp.id
+                      WHERE p.id=? AND cp.fabrica_id IN ({ph})""", (pid,)+tuple(fids_list)).fetchone()
     c.close(); return jsonify(dict(r) if r else {})
 
 
 @app.route('/api/parcela/pagar', methods=['POST'])
 @login_required
 def api_parcela_pagar():
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     d = request.json; c = m.conn()
     try:
-        c.execute("""UPDATE contas_pagar_parcelas SET status='PAGO',data_pagamento=?,
-                     foto=COALESCE(?,foto) WHERE id=?""",
+        c.execute(f"""UPDATE contas_pagar_parcelas SET status='PAGO',data_pagamento=?,
+                     foto=COALESCE(?,foto) WHERE id=?
+                     AND conta_id IN (SELECT id FROM contas_pagar WHERE fabrica_id IN ({ph}))""",
                   (d.get('data_pagamento') or date.today().strftime('%Y-%m-%d'),
-                   d.get('foto'), d['id']))
+                   d.get('foto'), d['id'])+tuple(fids_list))
         c.commit(); c.close(); return jsonify({'ok': True})
     except Exception as e:
         c.close(); return jsonify({'ok': False, 'erro': str(e)})
@@ -1942,16 +1970,21 @@ def api_parcela_pagar():
 @app.route('/api/parcela/reabrir/<int:pid>', methods=['POST'])
 @login_required
 def api_parcela_reabrir(pid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    c.execute("UPDATE contas_pagar_parcelas SET status='PENDENTE',data_pagamento=NULL WHERE id=?", (pid,))
+    c.execute(f"""UPDATE contas_pagar_parcelas SET status='PENDENTE',data_pagamento=NULL WHERE id=?
+                  AND conta_id IN (SELECT id FROM contas_pagar WHERE fabrica_id IN ({ph}))""", (pid,)+tuple(fids_list))
     c.commit(); c.close(); return jsonify({'ok': True})
 
 
 @app.route('/api/parcela/foto', methods=['POST'])
 @login_required
 def api_parcela_foto():
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     d = request.json; c = m.conn()
-    c.execute("UPDATE contas_pagar_parcelas SET foto=? WHERE id=?", (d.get('foto'), d['id']))
+    c.execute(f"""UPDATE contas_pagar_parcelas SET foto=? WHERE id=?
+                  AND conta_id IN (SELECT id FROM contas_pagar WHERE fabrica_id IN ({ph}))""",
+              (d.get('foto'), d['id'])+tuple(fids_list))
     c.commit(); c.close(); return jsonify({'ok': True})
 
 
@@ -2237,16 +2270,18 @@ def api_ocorrencia_salvar():
 @app.route('/api/ocorrencia/<int:oid>')
 @login_required
 def api_ocorrencia_get(oid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    r = c.execute("SELECT * FROM ocorrencias WHERE id=?", (oid,)).fetchone()
+    r = c.execute(f"SELECT * FROM ocorrencias WHERE id=? AND fabrica_id IN ({ph})", (oid,)+tuple(fids_list)).fetchone()
     c.close(); return jsonify(dict(r) if r else {})
 
 
 @app.route('/api/ocorrencia/excluir/<int:oid>', methods=['DELETE'])
 @login_required
 def api_ocorrencia_excluir(oid):
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
-    c.execute("DELETE FROM ocorrencias WHERE id=?", (oid,))
+    c.execute(f"DELETE FROM ocorrencias WHERE id=? AND fabrica_id IN ({ph})", (oid,)+tuple(fids_list))
     c.commit(); c.close(); return jsonify({'ok': True})
 # ── USUÁRIOS ───────────────────────────────────────────────────
 def admin_required(f):

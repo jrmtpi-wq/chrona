@@ -854,6 +854,10 @@ def init():
         except Exception:
             pass
         try:
+            c.execute("ALTER TABLE sequencias_banco ADD COLUMN IF NOT EXISTS fabrica_id INTEGER")
+        except Exception:
+            pass
+        try:
             c.execute("ALTER TABLE funcoes ADD COLUMN IF NOT EXISTS ativa INTEGER DEFAULT 1")
             c.execute("UPDATE funcoes SET ativa=1 WHERE ativa IS NULL")
         except Exception:
@@ -1053,6 +1057,10 @@ def init():
         try:
             c.execute("ALTER TABLE operacoes ADD COLUMN fabrica_id INTEGER")
             c.execute("""UPDATE operacoes SET fabrica_id=(SELECT e.fabrica_id FROM equipamentos e WHERE e.id=operacoes.equipamento_id) WHERE fabrica_id IS NULL AND equipamento_id IS NOT NULL""")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE sequencias_banco ADD COLUMN fabrica_id INTEGER")
         except Exception:
             pass
         try:
