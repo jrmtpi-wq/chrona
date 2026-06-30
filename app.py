@@ -190,8 +190,9 @@ def api_proxima_matricula():
 @app.route('/api/operacao/proximo-codigo')
 @login_required
 def api_proximo_codigo_operacao():
-    c = m.conn()
-    row = c.execute("SELECT COALESCE(MAX(codigo), 0) + 1 FROM operacoes WHERE ativo=1").fetchone()
+    user = get_user(); c = m.conn()
+    fid = fab_ids(user)[0]
+    row = c.execute("SELECT COALESCE(MAX(codigo), 0) + 1 FROM operacoes WHERE ativo=1 AND fabrica_id=?", (fid,)).fetchone()
     c.close()
     return jsonify({'proximo': row[0]})
 
@@ -586,11 +587,11 @@ def ref_op():
         ORDER BY op.id DESC
     """, fids_list).fetchall()
  
-    operacoes = c.execute("""
+    operacoes = c.execute(f"""
         SELECT o.*,e.nome equip_nome FROM operacoes o
         LEFT JOIN equipamentos e ON o.equipamento_id=e.id
-        WHERE o.ativo=1 ORDER BY o.codigo, o.descricao
-    """).fetchall()
+        WHERE o.ativo=1 AND o.fabrica_id IN ({ph}) ORDER BY o.codigo, o.descricao
+    """, fids_list).fetchall()
  
     equipamentos = c.execute(f"""
         SELECT * FROM equipamentos WHERE fabrica_id IN ({ph}) AND situacao='ATIVO' ORDER BY nome
@@ -873,16 +874,17 @@ def api_op_sequencia_salvar():
 @app.route('/api/operacao/salvar', methods=['POST'])
 @login_required
 def api_operacao_salvar():
-    d = request.json; c = m.conn()
+    user = get_user(); d = request.json; c = m.conn()
     try:
         if d.get('id'):
             c.execute("UPDATE operacoes SET codigo=?,descricao=?,equipamento_id=?,tempo_padrao=?,tipo=?,modelo=? WHERE id=?",
                       (d.get('codigo'), d['descricao'], d.get('equipamento_id'),
                        float(d.get('tempo_padrao') or 0), d.get('tipo','C'), d.get('modelo',''), d['id']))
         else:
-            c.execute("INSERT INTO operacoes (codigo,descricao,equipamento_id,tempo_padrao,tipo,modelo) VALUES (?,?,?,?,?,?)",
+            c.execute("INSERT INTO operacoes (codigo,descricao,equipamento_id,tempo_padrao,tipo,modelo,fabrica_id) VALUES (?,?,?,?,?,?,?)",
                       (d.get('codigo'), d['descricao'], d.get('equipamento_id'),
-                       float(d.get('tempo_padrao') or 0), d.get('tipo','C'), d.get('modelo','')))
+                       float(d.get('tempo_padrao') or 0), d.get('tipo','C'), d.get('modelo',''),
+                       resolve_fab_id(d, user, c)))
         c.commit(); c.close(); return jsonify({'ok': True})
     except Exception as e:
         c.close(); return jsonify({'ok': False, 'erro': str(e)})
@@ -1195,21 +1197,25 @@ def sequencia_op():
 @app.route('/api/operacoes/banco')
 @login_required
 def api_operacoes_banco():
-    c = m.conn()
+    user = get_user(); c = m.conn()
+    fids_list = fab_ids(user)
+    ph = ','.join('?'*len(fids_list))
     TIPOS = {'C':'Costura','A':'Acabamento','P':'Preparação','Q':'Qualidade','O':'Outro'}
-    rows = c.execute("""
+    rows = c.execute(f"""
         SELECT o.*, e.nome equip_nome
         FROM operacoes o
         LEFT JOIN equipamentos e ON o.equipamento_id=e.id
-        WHERE o.ativo=1
+        WHERE o.ativo=1 AND o.fabrica_id IN ({ph})
         ORDER BY o.modelo, o.descricao
-    """).fetchall()
-    tempos_rows = c.execute("""
+    """, fids_list).fetchall()
+    tempos_rows = c.execute(f"""
         SELECT ot.*, f.nome func_nome
         FROM operacao_tempos ot
         JOIN funcionarios f ON ot.funcionario_id=f.id
+        JOIN operacoes o ON ot.operacao_id=o.id
+        WHERE o.fabrica_id IN ({ph})
         ORDER BY ot.operacao_id, ot.tempo
-    """).fetchall()
+    """, fids_list).fetchall()
     c.close()
     tempos_map = {}
     for t in tempos_rows:
