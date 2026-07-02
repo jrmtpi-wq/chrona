@@ -449,8 +449,69 @@ document.addEventListener('click', e=>{
   btnOpen .addEventListener('click', open);
   btnClose.addEventListener('click', close);
   overlay .addEventListener('click', close);
-  // fechar ao navegar (clicar num item do menu)
-  sid.querySelectorAll('.nav-item').forEach(a=>a.addEventListener('click', close));
+  // Links do menu abrem em nova aba, para não fechar a tela atual
+  sid.querySelectorAll('.nav-item[href]').forEach(a=>{
+    if(a.getAttribute('href') && a.getAttribute('href') !== '#'){
+      a.target = '_blank';
+      a.rel = 'noopener';
+    }
+    a.addEventListener('click', close);
+  });
+})();
+
+// ===== CHRONA MULTI-ABA: sincronização automática entre telas abertas =====
+// Quando uma alteração é salva em qualquer tela (chamada à API), avisa
+// automaticamente as outras abas/telas abertas do sistema para que elas
+// atualizem os dados sozinhas, sem precisar fechar ou recarregar manualmente.
+(function(){
+  let channel = null;
+  try { channel = new BroadcastChannel('chrona_sync'); } catch(e) { channel = null; }
+  if(!channel) return; // navegador sem suporte: sistema segue funcionando normalmente, só sem o auto-refresh
+
+  // Intercepta toda chamada fetch() da página (usada por api() e pelas telas)
+  // para detectar quando algo foi salvo/editado/excluído com sucesso.
+  const origFetch = window.fetch.bind(window);
+  window.fetch = async function(input, init){
+    const resp = await origFetch(input, init);
+    try{
+      const method = ((init && init.method) || 'GET').toUpperCase();
+      const url = (typeof input === 'string') ? input : (input && input.url) || '';
+      const isMutacao = ['POST','PUT','PATCH','DELETE'].includes(method);
+      const isApi = url.indexOf('/api/') !== -1;
+      if(isMutacao && isApi && resp.ok){
+        channel.postMessage({tipo:'dados-alterados', url, method, ts: Date.now()});
+      }
+    }catch(e){ /* nunca deixa isso quebrar a requisição original */ }
+    return resp;
+  };
+
+  let pendente = false;
+  function atualizarAgora(){
+    pendente = false;
+    // Se a tela atual já sabe como se atualizar sozinha (sem perder o que
+    // está na tela), usa essa função. Caso contrário, recarrega a página.
+    if(typeof window.chronaRefresh === 'function'){
+      try{ window.chronaRefresh(); return; }catch(e){ /* cai para reload abaixo */ }
+    }
+    location.reload();
+  }
+
+  channel.onmessage = (ev)=>{
+    const d = ev.data || {};
+    if(d.tipo !== 'dados-alterados') return;
+    const ae = document.activeElement;
+    const digitando = ae && (ae.tagName==='INPUT' || ae.tagName==='TEXTAREA' || ae.isContentEditable);
+    const modalAberto = document.querySelector('.modal-bg.open');
+    if(document.hidden || digitando || modalAberto){
+      // Evita interromper o usuário no meio de uma digitação/edição.
+      // Atualiza assim que ele voltar pra aba ou sair do campo/modal.
+      pendente = true;
+    } else {
+      atualizarAgora();
+    }
+  };
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && pendente) atualizarAgora(); });
+  window.addEventListener('focus', ()=>{ if(pendente) atualizarAgora(); });
 })();
 </script>
 {% block extra_js %}{% endblock %}

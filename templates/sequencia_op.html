@@ -763,5 +763,9 @@ async function excluirTempo(tid) {
 // Inicializar
 carregarBanco();
 renderSequencia();
+
+// Permite que outras abas do sistema avisem esta tela quando o banco de
+// operações mudar em outro lugar, sem perder a sequência que está sendo montada aqui.
+window.chronaRefresh = carregarBanco;
 </script>
 {% endblock %}

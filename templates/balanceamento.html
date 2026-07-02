@@ -1405,5 +1405,11 @@ function limparBalanceamento() {
 }
 
 calcularMetas();
+
+// Esta tela guarda um balanceamento em construção (arrastar operadoras/times).
+// Por segurança, não recarrega sozinha para não perder esse trabalho — só avisa.
+window.chronaRefresh = function(){
+  toast('Dados atualizados em outra tela. Se precisar dos dados mais recentes, atualize a página.', 'success');
+};
 </script>
 {% endblock %}

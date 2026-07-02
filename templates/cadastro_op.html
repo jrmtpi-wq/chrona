@@ -293,5 +293,8 @@ async function carregarLista(){
 }
 
 document.addEventListener('DOMContentLoaded', carregarLista);
+
+// Permite que outras abas do sistema avisem esta tela quando uma OP mudar em outro lugar.
+window.chronaRefresh = carregarLista;
 </script>
 {% endblock %}
