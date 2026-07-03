@@ -2394,6 +2394,33 @@ def admin_diagnostico_fabricas():
     c.close()
     return jsonify({'fabricas': resultado, 'sem_fabrica': sem_fab})
 
+@app.route('/api/admin-renomear-fabricas')
+@login_required
+def admin_renomear_fabricas():
+    """Renomeia as fábricas existentes: Giassi->Fabrica Matriz, DP->Fabrica 1, Luiza->Fabrica 2, Icara->Fabrica 3.
+    Usa LIKE (case-insensitive) para casar com o nome atual, sem depender do id."""
+    user = get_user()
+    if user['perfil'] != 'admin':
+        return jsonify({'erro': 'Acesso negado'}), 403
+    c = m.conn()
+    antes = [dict(r) for r in c.execute("SELECT id, nome FROM fabricas ORDER BY id").fetchall()]
+    mapa = [
+        ('%giassi%', 'Fabrica Matriz'),
+        ('%dp%',     'Fabrica 1'),
+        ('%luiza%',  'Fabrica 2'),
+        ('%icara%',  'Fabrica 3'),
+    ]
+    atualizados = []
+    for padrao, novo_nome in mapa:
+        rows = c.execute("SELECT id, nome FROM fabricas WHERE LOWER(nome) LIKE ?", (padrao,)).fetchall()
+        for r in rows:
+            c.execute("UPDATE fabricas SET nome=? WHERE id=?", (novo_nome, r['id']))
+            atualizados.append({'id': r['id'], 'nome_antigo': r['nome'], 'nome_novo': novo_nome})
+    c.commit()
+    depois = [dict(r) for r in c.execute("SELECT id, nome FROM fabricas ORDER BY id").fetchall()]
+    c.close()
+    return jsonify({'ok': True, 'antes': antes, 'atualizados': atualizados, 'depois': depois})
+
 @app.route('/api/transferir-fabrica', methods=['POST'])
 @login_required
 def admin_transferir_fabrica():

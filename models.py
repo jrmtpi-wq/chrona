@@ -1235,10 +1235,10 @@ def seed():
     c = conn()
     if c.execute("SELECT COUNT(*) FROM fabricas").fetchone()[0] == 0:
         fabricas_nomes = [
-            ('Giassi Confeccoes', 'Icara'),
-            ('Icara Confeccoes',  'Icara'),
-            ('Luiza Confeccoes',  'Icara'),
-            ('DP Confeccoes',     'Icara'),
+            ('Fabrica Matriz', 'Icara'),
+            ('Fabrica 3',      'Icara'),
+            ('Fabrica 2',      'Icara'),
+            ('Fabrica 1',      'Icara'),
         ]
         for nome, cidade in fabricas_nomes:
             c.execute("INSERT INTO fabricas (nome,cidade) VALUES (?,?)", (nome, cidade))
@@ -1247,10 +1247,10 @@ def seed():
         # Busca os IDs reais das fábricas após commit
         fab_rows = c.execute("SELECT id, nome FROM fabricas ORDER BY id").fetchall()
         prefixos_map = {
-            'Giassi Confeccoes': 'giassi',
-            'Icara Confeccoes':  'icara',
-            'Luiza Confeccoes':  'luiza',
-            'DP Confeccoes':     'dp',
+            'Fabrica Matriz': 'giassi',
+            'Fabrica 3':      'icara',
+            'Fabrica 2':      'luiza',
+            'Fabrica 1':      'dp',
         }
 
         c.execute(_ins("INSERT INTO usuarios (nome,login,senha_hash,perfil) VALUES (?,?,?,?)", True),

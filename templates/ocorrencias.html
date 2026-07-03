@@ -546,7 +546,7 @@ function imprimirRelatorio(){
     </tr>`).join('');
 
   const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
-<title>Absenteísmo ${mesLabel} — Giassi Confecções</title>
+<title>Absenteísmo ${mesLabel} — JRMTPI Confecções</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter',Arial,sans-serif;background:#fff;color:#1a1a2e;font-size:12px}
 .page{padding:20px;max-width:960px;margin:0 auto}
@@ -567,7 +567,7 @@ table{width:100%;border-collapse:collapse}thead{background:#1a1a2e}thead th{padd
 <div class="page">
 <div class="no-print"><button class="btn-imp" onclick="window.print()">🖨️ Imprimir / PDF</button><button class="btn-fec" onclick="window.close()">✕ Fechar</button></div>
 <div class="header">
-  <div class="logo"><div class="logo-icon">⏱</div><div><h1>GIASSI CONFECÇÕES</h1><small>Relatório de Absenteísmo</small></div></div>
+  <div class="logo"><div class="logo-icon">⏱</div><div><h1>JRMTPI CONFECÇÕES</h1><small>Relatório de Absenteísmo</small></div></div>
   <div class="info"><strong>${mesLabel}</strong>${dataStr} às ${horaStr}<br>Reunião Gerencial</div>
 </div>
 <div class="metricas">
@@ -583,7 +583,7 @@ ${fabRows?`<div class="sec">🏭 Por Fábrica</div>
 <div class="sec" style="margin-top:16px">📊 Por Tipo de Ocorrência</div>
 <table><thead><tr><th>Tipo</th><th>Qtd</th><th>Horas</th><th>% do Total</th></tr></thead>
 <tbody>${tipoRows}</tbody></table>
-<div class="footer"><span>Giassi Confecções — Uso Interno</span><span>Absenteísmo ${mesLabel} — ${dataStr}</span></div>
+<div class="footer"><span>JRMTPI Confecções — Uso Interno</span><span>Absenteísmo ${mesLabel} — ${dataStr}</span></div>
 </div></body></html>`;
 
   const j=window.open('','_blank','width=1000,height=800');
