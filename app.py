@@ -2421,6 +2421,38 @@ def admin_renomear_fabricas():
     c.close()
     return jsonify({'ok': True, 'antes': antes, 'atualizados': atualizados, 'depois': depois})
 
+@app.route('/api/admin-renomear-logins')
+@login_required
+def admin_renomear_logins():
+    """Renomeia os prefixos de login dos usuarios seguindo a mesma regra das fabricas:
+    giassi.* -> matriz.*, dp.* -> fabrica1.*, luiza.* -> fabrica2.*, icara.* -> fabrica3.*
+    A senha de cada usuario NAO muda, apenas o nome de usuario (login) usado para entrar."""
+    user = get_user()
+    if user['perfil'] != 'admin':
+        return jsonify({'erro': 'Acesso negado'}), 403
+    c = m.conn()
+    prefix_map = {
+        'giassi.': 'matriz.',
+        'dp.':     'fabrica1.',
+        'luiza.':  'fabrica2.',
+        'icara.':  'fabrica3.',
+    }
+    todos = [dict(r) for r in c.execute("SELECT id, login FROM usuarios ORDER BY id").fetchall()]
+    atualizados = []
+    for u in todos:
+        login_atual = u['login'] or ''
+        login_lower = login_atual.lower()
+        for prefixo_antigo, prefixo_novo in prefix_map.items():
+            if login_lower.startswith(prefixo_antigo):
+                novo_login = prefixo_novo + login_atual[len(prefixo_antigo):]
+                c.execute("UPDATE usuarios SET login=? WHERE id=?", (novo_login, u['id']))
+                atualizados.append({'id': u['id'], 'login_antigo': login_atual, 'login_novo': novo_login})
+                break
+    c.commit()
+    depois = [dict(r) for r in c.execute("SELECT id, login FROM usuarios ORDER BY id").fetchall()]
+    c.close()
+    return jsonify({'ok': True, 'atualizados': atualizados, 'todos_os_logins_agora': depois})
+
 @app.route('/api/transferir-fabrica', methods=['POST'])
 @login_required
 def admin_transferir_fabrica():

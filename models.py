@@ -1247,10 +1247,10 @@ def seed():
         # Busca os IDs reais das fábricas após commit
         fab_rows = c.execute("SELECT id, nome FROM fabricas ORDER BY id").fetchall()
         prefixos_map = {
-            'Fabrica Matriz': 'giassi',
-            'Fabrica 3':      'icara',
-            'Fabrica 2':      'luiza',
-            'Fabrica 1':      'dp',
+            'Fabrica Matriz': 'matriz',
+            'Fabrica 3':      'fabrica3',
+            'Fabrica 2':      'fabrica2',
+            'Fabrica 1':      'fabrica1',
         }
 
         c.execute(_ins("INSERT INTO usuarios (nome,login,senha_hash,perfil) VALUES (?,?,?,?)", True),
