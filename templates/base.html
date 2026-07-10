@@ -449,14 +449,8 @@ document.addEventListener('click', e=>{
   btnOpen .addEventListener('click', open);
   btnClose.addEventListener('click', close);
   overlay .addEventListener('click', close);
-  // Links do menu abrem em nova aba, para não fechar a tela atual
-  sid.querySelectorAll('.nav-item[href]').forEach(a=>{
-    if(a.getAttribute('href') && a.getAttribute('href') !== '#'){
-      a.target = '_blank';
-      a.rel = 'noopener';
-    }
-    a.addEventListener('click', close);
-  });
+  // fechar ao navegar (clicar num item do menu)
+  sid.querySelectorAll('.nav-item').forEach(a=>a.addEventListener('click', close));
 })();
 
 // ===== CHRONA MULTI-ABA: sincronização automática entre telas abertas =====
