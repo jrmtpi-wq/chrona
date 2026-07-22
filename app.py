@@ -304,6 +304,96 @@ def api_equip_excluir(eid):
     c.execute("UPDATE equipamentos SET situacao='INATIVO' WHERE id=?", (eid,))
     c.commit(); c.close(); return jsonify({'ok':True})
 
+# ── MANUTENÇÃO DE EQUIPAMENTOS ────────────────────────────────
+@app.route('/manutencao')
+@login_required
+def manutencao():
+    user = get_user(); c = m.conn()
+    fids = fab_ids(user); ph = ','.join('?'*len(fids))
+    equips = c.execute(f"""SELECT * FROM equipamentos WHERE fabrica_id IN ({ph})
+                           AND situacao!='INATIVO' ORDER BY nome""", fids).fetchall()
+    c.close()
+    return render_template('manutencao.html', user=user, equipamentos=[dict(e) for e in equips])
+
+@app.route('/api/manutencoes')
+@login_required
+def api_manutencoes_lista():
+    user = get_user(); fids = fab_ids(user); ph = ','.join('?'*len(fids))
+    c = m.conn()
+    rows = c.execute(f"""
+        SELECT mn.*, e.nome equip_nome, f.nome fab_nome
+        FROM manutencoes mn
+        JOIN equipamentos e ON mn.equipamento_id=e.id
+        LEFT JOIN fabricas f ON mn.fabrica_id=f.id
+        WHERE mn.fabrica_id IN ({ph}) AND mn.ativo=1
+        ORDER BY mn.data_proxima IS NULL, mn.data_proxima
+    """, fids).fetchall()
+    c.close()
+    return jsonify([dict(r) for r in rows])
+
+@app.route('/api/manutencao/salvar', methods=['POST'])
+@login_required
+def api_manutencao_salvar():
+    d = request.json; user = get_user(); fids = fab_ids(user); c = m.conn()
+    equip = c.execute("SELECT fabrica_id FROM equipamentos WHERE id=?", (d.get('equipamento_id'),)).fetchone()
+    if not equip or equip['fabrica_id'] not in fids:
+        c.close(); return jsonify({'ok': False, 'erro': 'Equipamento inválido'}), 400
+    fab_id = equip['fabrica_id']
+    periodicidade = int(d.get('periodicidade_dias') or 30)
+    try:
+        if d.get('id'):
+            atual = c.execute("SELECT fabrica_id FROM manutencoes WHERE id=?", (d['id'],)).fetchone()
+            if not atual or atual['fabrica_id'] not in fids:
+                c.close(); return jsonify({'ok': False, 'erro': 'Plano inválido'}), 400
+            c.execute("""UPDATE manutencoes SET fabrica_id=?,equipamento_id=?,tipo=?,descricao=?,
+                         periodicidade_dias=?,responsavel=?,observacao=? WHERE id=?""",
+                      (fab_id, d['equipamento_id'], d.get('tipo','PREVENTIVA'), d['descricao'],
+                       periodicidade, d.get('responsavel',''), d.get('observacao',''), d['id']))
+        else:
+            c.execute("""INSERT INTO manutencoes (fabrica_id,equipamento_id,tipo,descricao,
+                         periodicidade_dias,responsavel,observacao) VALUES (?,?,?,?,?,?,?)""",
+                      (fab_id, d['equipamento_id'], d.get('tipo','PREVENTIVA'), d['descricao'],
+                       periodicidade, d.get('responsavel',''), d.get('observacao','')))
+        c.commit(); c.close(); return jsonify({'ok': True})
+    except Exception as e:
+        c.close(); return jsonify({'ok': False, 'erro': str(e)})
+
+@app.route('/api/manutencao/excluir/<int:mid>', methods=['DELETE'])
+@login_required
+def api_manutencao_excluir(mid):
+    user = get_user(); fids = fab_ids(user); c = m.conn()
+    row = c.execute("SELECT fabrica_id FROM manutencoes WHERE id=?", (mid,)).fetchone()
+    if not row or row['fabrica_id'] not in fids:
+        c.close(); return jsonify({'ok': False, 'erro': 'Plano inválido'}), 404
+    c.execute("UPDATE manutencoes SET ativo=0 WHERE id=?", (mid,))
+    c.commit(); c.close(); return jsonify({'ok': True})
+
+@app.route('/api/manutencao/<int:mid>/executar', methods=['POST'])
+@login_required
+def api_manutencao_executar(mid):
+    d = request.json or {}; user = get_user(); fids = fab_ids(user); c = m.conn()
+    plano = c.execute("SELECT * FROM manutencoes WHERE id=?", (mid,)).fetchone()
+    if not plano or plano['fabrica_id'] not in fids:
+        c.close(); return jsonify({'ok': False, 'erro': 'Plano inválido'}), 404
+    data_exec = d.get('data_execucao') or date.today().strftime('%Y-%m-%d')
+    c.execute("""INSERT INTO manutencoes_execucoes (manutencao_id,data_execucao,responsavel,custo,observacao)
+                 VALUES (?,?,?,?,?)""",
+              (mid, data_exec, d.get('responsavel') or user['nome'], float(d.get('custo',0) or 0), d.get('observacao','')))
+    from datetime import timedelta
+    prox = (datetime.strptime(data_exec,'%Y-%m-%d') + timedelta(days=plano['periodicidade_dias'])).strftime('%Y-%m-%d')
+    c.execute("UPDATE manutencoes SET data_ultima=?,data_proxima=? WHERE id=?", (data_exec, prox, mid))
+    c.commit(); c.close(); return jsonify({'ok': True, 'data_proxima': prox})
+
+@app.route('/api/manutencao/<int:mid>/historico')
+@login_required
+def api_manutencao_historico(mid):
+    user = get_user(); fids = fab_ids(user); c = m.conn()
+    plano = c.execute("SELECT fabrica_id FROM manutencoes WHERE id=?", (mid,)).fetchone()
+    if not plano or plano['fabrica_id'] not in fids:
+        c.close(); return jsonify([])
+    rows = c.execute("SELECT * FROM manutencoes_execucoes WHERE manutencao_id=? ORDER BY data_execucao DESC", (mid,)).fetchall()
+    c.close(); return jsonify([dict(r) for r in rows])
+
 # ── PRODUTOS ──────────────────────────────────────────────────
 @app.route('/produtos')
 @login_required

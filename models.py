@@ -163,6 +163,31 @@ CREATE TABLE IF NOT EXISTS equipamentos (
     observacao TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id)
 );
+CREATE TABLE IF NOT EXISTS manutencoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fabrica_id INTEGER,
+    equipamento_id INTEGER NOT NULL,
+    tipo TEXT DEFAULT 'PREVENTIVA',
+    descricao TEXT NOT NULL,
+    periodicidade_dias INTEGER DEFAULT 30,
+    data_ultima TEXT,
+    data_proxima TEXT,
+    responsavel TEXT,
+    observacao TEXT,
+    ativo INTEGER DEFAULT 1,
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
+    FOREIGN KEY(equipamento_id) REFERENCES equipamentos(id)
+);
+CREATE TABLE IF NOT EXISTS manutencoes_execucoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    manutencao_id INTEGER NOT NULL,
+    data_execucao TEXT NOT NULL,
+    responsavel TEXT,
+    custo REAL DEFAULT 0,
+    observacao TEXT,
+    criado_em TEXT DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY(manutencao_id) REFERENCES manutencoes(id)
+);
 CREATE TABLE IF NOT EXISTS generos_produto (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL UNIQUE
@@ -527,6 +552,31 @@ CREATE TABLE IF NOT EXISTS equipamentos (
     situacao TEXT DEFAULT 'ATIVO',
     observacao TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id)
+);
+CREATE TABLE IF NOT EXISTS manutencoes (
+    id SERIAL PRIMARY KEY,
+    fabrica_id INTEGER,
+    equipamento_id INTEGER NOT NULL,
+    tipo TEXT DEFAULT 'PREVENTIVA',
+    descricao TEXT NOT NULL,
+    periodicidade_dias INTEGER DEFAULT 30,
+    data_ultima TEXT,
+    data_proxima TEXT,
+    responsavel TEXT,
+    observacao TEXT,
+    ativo INTEGER DEFAULT 1,
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
+    FOREIGN KEY(equipamento_id) REFERENCES equipamentos(id)
+);
+CREATE TABLE IF NOT EXISTS manutencoes_execucoes (
+    id SERIAL PRIMARY KEY,
+    manutencao_id INTEGER NOT NULL,
+    data_execucao TEXT NOT NULL,
+    responsavel TEXT,
+    custo REAL DEFAULT 0,
+    observacao TEXT,
+    criado_em TEXT DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS'),
+    FOREIGN KEY(manutencao_id) REFERENCES manutencoes(id)
 );
 CREATE TABLE IF NOT EXISTS generos_produto (
     id SERIAL PRIMARY KEY,

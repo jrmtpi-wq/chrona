@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+{% block title %}Manutenção{% endblock %}
+{% block page_title %}🛠️ Manutenção de Equipamentos{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Manutenção de Equipamentos</h1>
+    <p>Planos de manutenção preventiva e periódica</p>
+  </div>
+  <button class="btn btn-primary" onclick="novoPlano()">＋ Novo Plano</button>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:14px">
+  <div class="stat-card azul">
+    <div class="stat-icon azul">🛠️</div>
+    <div class="stat-val" id="st-total">0</div>
+    <div class="stat-label">Planos Ativos</div>
+  </div>
+  <div class="stat-card verm">
+    <div class="stat-icon verm">⚠️</div>
+    <div class="stat-val" id="st-vencidas">0</div>
+    <div class="stat-label">Vencidas</div>
+  </div>
+  <div class="stat-card amar">
+    <div class="stat-icon amar">⏳</div>
+    <div class="stat-val" id="st-proximas">0</div>
+    <div class="stat-label">Próximas 7 dias</div>
+  </div>
+  <div class="stat-card verde">
+    <div class="stat-icon verde">✅</div>
+    <div class="stat-val" id="st-emdia">0</div>
+    <div class="stat-label">Em Dia</div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:14px;padding:12px 20px">
+  <div class="search-bar">
+    <input type="text" class="search-input" id="busca" placeholder="🔍  Buscar por equipamento ou descrição..." oninput="renderTabela()">
+    <select class="form-control" id="filt-situacao" style="width:180px" onchange="renderTabela()">
+      <option value="">Todas as Situações</option>
+      <option value="VENCIDA">Vencidas</option>
+      <option value="PROXIMA">Próximas 7 dias</option>
+      <option value="EMDIA">Em Dia</option>
+    </select>
+    <div id="count-mn" style="color:var(--cinza);font-size:13px;margin-left:auto"></div>
+  </div>
+</div>
+
+<div class="card" style="padding:0">
+  <div class="table-wrap" style="border:none">
+    <table>
+      <thead><tr>
+        <th>Equipamento</th><th>Fábrica</th><th>Tipo</th><th>Descrição</th>
+        <th>Periodicidade</th><th>Última Execução</th><th>Próxima</th><th>Ações</th>
+      </tr></thead>
+      <tbody id="tbody-mn">
+        <tr><td colspan="8" class="empty"><span class="empty-icon">🛠️</span>Carregando...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL: NOVO/EDITAR PLANO -->
+<div class="modal-bg" id="modal-plano">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div class="modal-title" id="mn-title">Novo Plano de Manutenção</div>
+      <button class="modal-close" onclick="fecharModal('modal-plano')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="mn-id">
+      <div class="form-row form-row-2">
+        <div class="form-group"><label class="form-label">Equipamento *</label>
+          <select class="form-control" id="mn-equip">
+            <option value="">Selecione...</option>
+            {% for e in equipamentos %}<option value="{{ e.id }}">{{ e.nome }}</option>{% endfor %}
+          </select></div>
+        <div class="form-group"><label class="form-label">Tipo</label>
+          <select class="form-control" id="mn-tipo">
+            <option value="PREVENTIVA">Preventiva</option>
+            <option value="PERIODICA">Periódica</option>
+          </select></div>
+      </div>
+      <div class="form-group"><label class="form-label">Descrição *</label>
+        <input type="text" class="form-control" id="mn-descricao" placeholder="Ex: Troca de óleo, lubrificação, revisão geral..."></div>
+      <div class="form-row form-row-2">
+        <div class="form-group"><label class="form-label">Periodicidade (dias)</label>
+          <input type="number" class="form-control" id="mn-periodicidade" value="30" min="1"></div>
+        <div class="form-group"><label class="form-label">Responsável</label>
+          <input type="text" class="form-control" id="mn-responsavel"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Observações</label>
+        <textarea class="form-control" id="mn-obs" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-plano')">Cancelar</button>
+      <button class="btn btn-success" onclick="salvarPlano()">✓ Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REGISTRAR EXECUÇÃO -->
+<div class="modal-bg" id="modal-executar">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <div class="modal-title">Registrar Execução</div>
+      <button class="modal-close" onclick="fecharModal('modal-executar')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ex-id">
+      <div class="form-group"><label class="form-label">Data da Execução</label>
+        <input type="date" class="form-control" id="ex-data"></div>
+      <div class="form-group"><label class="form-label">Responsável</label>
+        <input type="text" class="form-control" id="ex-responsavel"></div>
+      <div class="form-group"><label class="form-label">Custo R$</label>
+        <input type="number" class="form-control" id="ex-custo" step="0.01" value="0"></div>
+      <div class="form-group"><label class="form-label">Observações</label>
+        <textarea class="form-control" id="ex-obs" rows="2"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-executar')">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarExecucao()">✓ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: HISTÓRICO -->
+<div class="modal-bg" id="modal-historico">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <div class="modal-title">Histórico de Execuções</div>
+      <button class="modal-close" onclick="fecharModal('modal-historico')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data</th><th>Responsável</th><th>Custo</th><th>Observações</th></tr></thead>
+          <tbody id="tbody-hist"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="fecharModal('modal-historico')">Fechar</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+let PLANOS = [];
+
+function hoje(){ return new Date().toISOString().slice(0,10) }
+
+function situacaoPlano(p){
+  if(!p.data_proxima) return 'SEMDATA';
+  const dias = (new Date(p.data_proxima) - new Date(hoje())) / 86400000;
+  if(dias < 0) return 'VENCIDA';
+  if(dias <= 7) return 'PROXIMA';
+  return 'EMDIA';
+}
+
+function semaforoProxima(p){
+  const sit = situacaoPlano(p);
+  if(sit === 'SEMDATA') return '<span class="sem sem-neutro">— sem execução</span>';
+  if(sit === 'VENCIDA') return `<span class="sem sem-verm">🔴 Vencida (${p.data_proxima})</span>`;
+  if(sit === 'PROXIMA') return `<span class="sem sem-amar">🟡 ${p.data_proxima}</span>`;
+  return `<span class="sem sem-verd">🟢 ${p.data_proxima}</span>`;
+}
+
+async function loadManutencoes(){
+  PLANOS = await api('/api/manutencoes');
+  renderTabela();
+}
+window.chronaRefresh = loadManutencoes;
+
+function renderTabela(){
+  const busca = (document.getElementById('busca').value||'').toLowerCase();
+  const filtro = document.getElementById('filt-situacao').value;
+  let lista = PLANOS.filter(p=>{
+    if(busca && !(p.equip_nome.toLowerCase().includes(busca) || p.descricao.toLowerCase().includes(busca))) return false;
+    if(filtro && situacaoPlano(p) !== filtro) return false;
+    return true;
+  });
+
+  document.getElementById('st-total').textContent = PLANOS.length;
+  document.getElementById('st-vencidas').textContent = PLANOS.filter(p=>situacaoPlano(p)==='VENCIDA').length;
+  document.getElementById('st-proximas').textContent = PLANOS.filter(p=>situacaoPlano(p)==='PROXIMA').length;
+  document.getElementById('st-emdia').textContent = PLANOS.filter(p=>situacaoPlano(p)==='EMDIA').length;
+  document.getElementById('count-mn').textContent = lista.length + ' plano(s)';
+
+  document.getElementById('tbody-mn').innerHTML = lista.length ? lista.map(p=>`
+    <tr>
+      <td><strong>${p.equip_nome}</strong></td>
+      <td>${p.fab_nome||'—'}</td>
+      <td><span class="tag tag-m">${p.tipo==='PERIODICA'?'Periódica':'Preventiva'}</span></td>
+      <td>${p.descricao}</td>
+      <td>${p.periodicidade_dias} dias</td>
+      <td>${p.data_ultima||'—'}</td>
+      <td>${semaforoProxima(p)}</td>
+      <td><div class="btn-group">
+        <button class="btn btn-sm btn-success" title="Registrar execução" onclick='abrirExecutar(${p.id})'>✓</button>
+        <button class="btn btn-sm btn-secondary" title="Histórico" onclick="abrirHistorico(${p.id})">🕘</button>
+        <button class="btn btn-sm btn-primary" title="Editar" onclick='editarPlano(${JSON.stringify(p)})'>✏️</button>
+        <button class="btn btn-sm btn-danger" title="Excluir" onclick="excluirPlano(${p.id})">🗑</button>
+      </div></td>
+    </tr>`).join('') : '<tr><td colspan="8" class="empty"><span class="empty-icon">🛠️</span>Nenhum plano de manutenção cadastrado</td></tr>';
+}
+
+function novoPlano(){
+  document.getElementById('mn-title').textContent='Novo Plano de Manutenção';
+  document.getElementById('mn-id').value='';
+  document.getElementById('mn-equip').value='';
+  document.getElementById('mn-tipo').value='PREVENTIVA';
+  document.getElementById('mn-descricao').value='';
+  document.getElementById('mn-periodicidade').value=30;
+  document.getElementById('mn-responsavel').value='';
+  document.getElementById('mn-obs').value='';
+  abrirModal('modal-plano');
+}
+
+function editarPlano(p){
+  document.getElementById('mn-title').textContent='Editar Plano de Manutenção';
+  document.getElementById('mn-id').value=p.id;
+  document.getElementById('mn-equip').value=p.equipamento_id;
+  document.getElementById('mn-tipo').value=p.tipo||'PREVENTIVA';
+  document.getElementById('mn-descricao').value=p.descricao||'';
+  document.getElementById('mn-periodicidade').value=p.periodicidade_dias||30;
+  document.getElementById('mn-responsavel').value=p.responsavel||'';
+  document.getElementById('mn-obs').value=p.observacao||'';
+  abrirModal('modal-plano');
+}
+
+async function salvarPlano(){
+  const equipamento_id = document.getElementById('mn-equip').value;
+  const descricao = document.getElementById('mn-descricao').value.trim();
+  if(!equipamento_id){ toast('Selecione o equipamento!','err'); return }
+  if(!descricao){ toast('Descrição obrigatória!','err'); return }
+  const r = await api('/api/manutencao/salvar','POST',{
+    id: document.getElementById('mn-id').value || null,
+    equipamento_id,
+    tipo: document.getElementById('mn-tipo').value,
+    descricao,
+    periodicidade_dias: document.getElementById('mn-periodicidade').value,
+    responsavel: document.getElementById('mn-responsavel').value,
+    observacao: document.getElementById('mn-obs').value
+  });
+  if(r.ok){ toast('Plano salvo!'); fecharModal('modal-plano'); loadManutencoes() }
+  else toast('Erro: '+r.erro,'err');
+}
+
+async function excluirPlano(id){
+  if(!confirm('Excluir este plano de manutenção?')) return;
+  await api('/api/manutencao/excluir/'+id,'DELETE');
+  toast('Plano excluído','warn'); loadManutencoes();
+}
+
+function abrirExecutar(id){
+  document.getElementById('ex-id').value=id;
+  document.getElementById('ex-data').value=hoje();
+  document.getElementById('ex-responsavel').value='{{ user.nome }}';
+  document.getElementById('ex-custo').value=0;
+  document.getElementById('ex-obs').value='';
+  abrirModal('modal-executar');
+}
+
+async function confirmarExecucao(){
+  const id = document.getElementById('ex-id').value;
+  const r = await api(`/api/manutencao/${id}/executar`,'POST',{
+    data_execucao: document.getElementById('ex-data').value,
+    responsavel: document.getElementById('ex-responsavel').value,
+    custo: document.getElementById('ex-custo').value,
+    observacao: document.getElementById('ex-obs').value
+  });
+  if(r.ok){ toast('Execução registrada! Próxima: '+r.data_proxima); fecharModal('modal-executar'); loadManutencoes() }
+  else toast('Erro: '+r.erro,'err');
+}
+
+async function abrirHistorico(id){
+  const rows = await api(`/api/manutencao/${id}/historico`);
+  document.getElementById('tbody-hist').innerHTML = rows.length ? rows.map(h=>`
+    <tr><td>${h.data_execucao}</td><td>${h.responsavel||'—'}</td>
+      <td>${h.custo?fmtR(h.custo):'—'}</td><td>${h.observacao||'—'}</td></tr>`).join('')
+    : '<tr><td colspan="4" class="empty">Nenhuma execução registrada ainda</td></tr>';
+  abrirModal('modal-historico');
+}
+
+loadManutencoes();
+</script>
+{% endblock %}
