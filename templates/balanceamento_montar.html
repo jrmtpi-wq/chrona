@@ -1,0 +1,1108 @@
+{% extends 'base.html' %}
+{% block title %}Montar Balanceamento{% endblock %}
+{% block page_title %}Balanceamento{% endblock %}
+{% block extra_css %}
+<style>
+.main > .content { padding:8px 12px; overflow:hidden; }
+</style>
+{% endblock %}
+{% block content %}
+<style>
+.bal-title{font-size:15px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:6px}
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1a1a2e;color:#fff}.btn-primary:hover{background:#2d3a6e}
+.btn-success{background:#15803d;color:#fff}.btn-success:hover{background:#166534}
+.btn-warning{background:#d97706;color:#fff}
+.btn-danger{background:#dc2626;color:#fff}
+.btn-light{background:#f0f2f5;color:#374151}.btn-light:hover{background:#e5e7eb}
+.btn-print{background:#7c3aed;color:#fff}.btn-print:hover{background:#6d28d9}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-xs{padding:3px 7px;font-size:10px;border-radius:4px}
+.form-group input,.form-group select{width:100%;padding:5px 8px;border:1px solid #e0e6f0;border-radius:6px;font-size:12px;outline:none}
+
+.bal-page{display:flex;flex-direction:column;height:calc(100vh - 68px)}
+.bal-fixo{flex:0 0 auto}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px}
+.topbar-l{display:flex;align-items:center;gap:12px}
+.opinfo{font-size:14px;font-weight:800;color:#1a1a2e}
+.opinfo small{display:block;font-size:11px;font-weight:600;color:#9ca3af;margin-top:1px}
+.chipbar{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:20px;background:#f0f2f5;color:#374151}
+.chip.dark{background:#1a1a2e;color:#fff}
+
+.metricas-mini{display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.metrica-mini{background:#f8f9fb;border:1px solid #e0e6f0;border-radius:8px;padding:6px 12px;text-align:center}
+.metrica-mini b{display:block;font-size:15px;color:#1a1a2e}
+.metrica-mini span{font-size:9px;color:#9ca3af;text-transform:uppercase}
+
+.team-tabs{display:flex;gap:4px;overflow-x:auto;padding-bottom:0;margin-bottom:0;border-bottom:2px solid #e0e6f0;flex:0 0 auto}
+.team-tab{flex-shrink:0;font-size:12px;font-weight:700;padding:8px 14px;border-radius:8px 8px 0 0;background:#f0f2f5;color:#6b7280;border:1px solid #e0e6f0;border-bottom:none;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.team-tab.on{background:#fff;color:#1a1a2e;border-color:#c7cfdd;position:relative;top:2px;padding-top:10px}
+.team-tab .dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.team-tab .hide-btn{background:none;border:none;color:inherit;opacity:.5;cursor:pointer;font-size:10px;padding:0 0 0 2px}
+.team-tab .hide-btn:hover{opacity:1;color:#dc2626}
+.hidden-strip{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0}
+.hidden-chip{font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:20px;background:#f8f9fb;border:1px dashed #c7cfdd;color:#6b7280;cursor:pointer}
+.hidden-list{display:flex;flex-wrap:wrap;gap:6px;width:100%;margin-top:2px}
+.hidden-item{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:700;padding:5px 8px 5px 10px;border-radius:7px;background:#dcfce7;color:#15803d;border:1px solid #86efac}
+.hidden-item button{border:1px solid #e0e6f0;background:#fff;color:#1a1a2e;font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:5px;cursor:pointer}
+
+.bal-layout{display:grid;grid-template-columns:220px 1fr 240px;gap:12px;flex:1 1 auto;min-height:0;overflow:hidden;align-items:stretch;margin-top:8px}
+
+.operadoras-panel{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:12px;display:flex;flex-direction:column;height:100%;min-height:0}
+.operadoras-title{font-size:11px;font-weight:700;text-transform:uppercase;color:#6b7280;margin-bottom:8px;letter-spacing:.5px;flex:0 0 auto}
+.operadoras-list{flex:1 1 auto;min-height:0;overflow-y:auto}
+.operadora-chip{background:#f0f2f5;border:1px solid #e0e6f0;border-radius:8px;padding:8px 10px;margin-bottom:6px;cursor:grab;display:flex;align-items:center;gap:8px;transition:all .15s;font-size:12px;font-weight:600}
+.operadora-chip:hover{border-color:#1a1a2e;background:#e8eaf0}
+.operadora-chip.dragging{opacity:.4}
+.operadora-chip .drag-icon{color:#d1d5db;font-size:14px}
+.operadora-avatar{width:28px;height:28px;border-radius:50%;background:#1a1a2e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.grp-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;flex:0 0 auto}
+.grp-chip{font-size:9.5px;font-weight:700;padding:4px 8px;border-radius:6px;background:#f0f2f5;color:#6b7280;border:1px solid #e0e6f0;cursor:pointer}
+.grp-chip.on{background:#f5a623;color:#4a2e02;border-color:#f5a623}
+
+.operacoes-panel{background:#fff;border-radius:12px;border:1px solid #e0e6f0;padding:12px;display:flex;flex-direction:column;height:100%;min-height:0}
+#operacoes-disponiveis{flex:1 1 auto;min-height:0;overflow-y:auto}
+.op-seq-chip{background:#f8f9fb;border:1px solid #e0e6f0;border-radius:6px;padding:6px 8px;margin-bottom:4px;cursor:grab;display:flex;align-items:center;gap:6px;font-size:11px;transition:all .15s}
+.op-seq-chip:hover{border-color:#1d4ed8;background:#eff6ff}
+.op-num{background:#1a1a2e;color:#fff;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+.op-status{font-size:8.5px;font-weight:700;padding:2px 6px;border-radius:5px;white-space:nowrap;flex-shrink:0}
+.op-status.ok{background:#dcfce7;color:#15803d}
+.op-status.falta{background:#fef3c7;color:#b45309}
+
+.time-card{background:#fff;border-radius:0 0 12px 12px;border:1px solid #c7cfdd;border-top:none;width:100%;height:100%;display:flex;flex-direction:column;min-height:0}
+.time-card.drag-over{border-color:#1d4ed8;background:#eff6ff}
+.time-header{padding:12px 14px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between;flex:0 0 auto}
+.time-num{font-size:14px;font-weight:800;color:#1a1a2e}
+.time-ciclo{font-size:11px;padding:3px 8px;border-radius:10px;font-weight:700}
+.ciclo-ok{background:#dcfce7;color:#15803d}
+.ciclo-warn{background:#fef9c3;color:#854d0e}
+.ciclo-over{background:#fee2e2;color:#dc2626}
+.time-body{flex:1 1 auto;min-height:0;overflow-y:auto}
+.time-operadoras{padding:10px 14px;border-bottom:1px solid #f0f2f5}
+.time-op-drop{min-height:34px;border:1px dashed #d1d5db;border-radius:6px;padding:6px;display:flex;flex-wrap:wrap;gap:5px}
+.time-op-drop.drag-over{border-color:#1d4ed8;background:#eff6ff}
+.op-tag{background:#1a1a2e;color:#fff;border-radius:4px;padding:3px 5px 3px 8px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px}
+.op-tag-rem{background:none;border:none;color:#fff;cursor:pointer;font-size:11px;font-weight:700;padding:0 2px;line-height:1;opacity:.7;border-radius:3px;flex-shrink:0}
+.op-tag-rem:hover{opacity:1;background:rgba(220,38,38,.8)}
+.time-ops{padding:10px 14px;border-bottom:1px solid #f0f2f5}
+.time-ops-drop{min-height:44px;border:1px dashed #d1d5db;border-radius:6px;padding:6px}
+.time-ops-drop.drag-over{border-color:#1d4ed8;background:#eff6ff}
+.time-op-item{background:#f0f2f5;border-radius:5px;padding:6px 8px;margin-bottom:4px;font-size:11px;display:flex;align-items:center;gap:6px;cursor:grab}
+.time-op-item:hover{background:#fee2e2}
+.time-footer{padding:10px 14px;border-top:1px solid #f0f2f5;flex:0 0 auto}
+.time-total{display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.time-total-val{font-weight:800;font-size:14px}
+.time-progress{height:5px;background:#e0e6f0;border-radius:3px;margin-top:5px}
+.time-progress-fill{height:100%;border-radius:3px;transition:width .3s}
+
+.time-distrib{padding:10px 14px;background:#fafbfc}
+.distrib-title{font-size:9.5px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.5px;margin-bottom:8px}
+.distrib-op{background:#fff;border:1px solid #e0e6f0;border-radius:8px;margin-bottom:8px;overflow:hidden}
+.distrib-op-header{display:flex;align-items:center;justify-content:space-between;padding:6px 9px;background:#f0f2f5;transition:all .15s}
+.distrib-op-header.drag-over-op{background:#dbeafe;outline:2px dashed #1d4ed8}
+.distrib-op-nome{font-size:12px;font-weight:700;color:#1a1a2e;flex:1}
+.distrib-op-total{font-size:10.5px;font-weight:700;margin-right:8px}
+.distrib-add-btn{background:#1a1a2e;color:#fff;border:none;border-radius:4px;width:19px;height:19px;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.distrib-row{display:grid;grid-template-columns:1fr 56px 46px 36px 16px;gap:4px;align-items:center;padding:5px 8px;border-top:1px solid #f0f2f5}
+.distrib-sel{width:100%;font-size:10px;padding:3px 4px;border:1px solid #e0e6f0;border-radius:4px;outline:none;background:#fff}
+.distrib-tempo{font-size:9.5px;color:#6b7280;text-align:center}
+.distrib-qtd{width:100%;font-size:10px;padding:3px 4px;border:1px solid #e0e6f0;border-radius:4px;outline:none;text-align:center}
+.distrib-carga{font-size:10px;font-weight:700;color:#1d4ed8;text-align:right}
+.distrib-rem-btn{background:none;border:none;color:#dc2626;cursor:pointer;font-size:10px;padding:0;text-align:center}
+.distrib-restante{padding:4px 8px;font-size:9.5px;text-align:right;color:#6b7280}
+.distrib-op-vazia{font-size:10.5px;color:#9ca3af;padding:6px 9px;font-style:italic}
+
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.error{background:#dc2626}
+
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.modal-header{padding:16px 20px;border-bottom:1px solid #f0f2f5;display:flex;align-items:center;justify-content:space-between}
+.modal-title{font-size:15px;font-weight:700}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#6b7280}
+.modal-body{padding:20px}
+.modal-footer{padding:14px 20px;border-top:1px solid #f0f2f5;display:flex;justify-content:flex-end;gap:8px}
+.form-group label{display:block;font-size:10px;font-weight:700;color:#374151;margin-bottom:2px;text-transform:uppercase;letter-spacing:.4px}
+.form-row{display:grid;gap:8px;margin-bottom:6px}
+.form-row.cols-2{grid-template-columns:1fr 1fr}
+
+@media print {
+  body * { visibility: hidden; }
+  #area-impressao, #area-impressao * { visibility: visible; }
+  #area-impressao { position: fixed; inset: 0; background: #fff; z-index: 99999; padding: 16px; }
+}
+#area-impressao { display: none; }
+</style>
+
+<div class="bal-page">
+  <div class="bal-fixo">
+    <div class="topbar">
+      <div class="topbar-l">
+        <a href="/balanceamento" class="btn btn-light btn-sm">‹ Configuração</a>
+        <div class="opinfo" id="tb-opinfo">—<small id="tb-opsub">—</small></div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-print btn-sm" onclick="imprimirBalanceamento()">🖨️ Imprimir</button>
+        <button class="btn btn-light btn-sm" onclick="limparBalanceamento()">🗑️ Limpar</button>
+        <button class="btn btn-secondary btn-sm" onclick="abrirSalvarEmOutraOP()">📋 Salvar em outra OP</button>
+        <button class="btn btn-warning btn-sm" onclick="balancearAutomatico()">⚡ Auto</button>
+        <button class="btn btn-light btn-sm" onclick="gerarTimes()">📋 Gerar Times</button>
+        <button class="btn btn-success btn-sm" onclick="salvarBalanceamento()">💾 Salvar</button>
+      </div>
+    </div>
+    <div class="metricas-mini" id="metricas-mini"></div>
+    <div class="team-tabs" id="team-tabs"></div>
+    <div class="hidden-strip" id="hidden-strip"></div>
+  </div>
+
+  <div class="bal-layout">
+    <div class="operacoes-panel">
+      <div class="operadoras-title">⚙️ Operações da OP</div>
+      <div id="operacoes-disponiveis"><div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Carregando...</div></div>
+    </div>
+
+    <div id="team-active"></div>
+
+    <div class="operadoras-panel">
+      <div class="operadoras-title">👩 Operadoras</div>
+      <div class="grp-chips" id="grp-chips"></div>
+      <div class="operadoras-list" id="operadoras-disponiveis"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CONFIRMAR ATRIBUIÇÃO -->
+<div class="modal-overlay" id="modal-confirmar-atrib">
+  <div class="modal" style="width:380px">
+    <div class="modal-header">
+      <div class="modal-title">📋 Atribuir Operação</div>
+      <button class="modal-close" onclick="cancelarAtribModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:12px">
+        <div style="font-size:13px;font-weight:700;color:#1a1a2e" id="ca-op">—</div>
+        <div style="font-size:12px;color:#6b7280;margin-top:2px">Operadora: <strong id="ca-nome">—</strong> &nbsp;|&nbsp; Tempo padrão: <strong id="ca-tempo">—</strong> min</div>
+      </div>
+      <div style="background:#f8f9fb;border-radius:8px;padding:10px;margin-bottom:14px;font-size:12px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="color:#6b7280">Tempo livre no ciclo:</span>
+          <strong id="ca-restante-ciclo">—</strong> min
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="color:#6b7280">Situação da operação:</span>
+          <span id="ca-qtd-rest-op" style="color:#d97706;font-weight:600">—</span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Quantas peças esta operadora vai fazer?</label>
+        <input type="number" id="ca-qtd" min="1" oninput="recalcConfirm()" style="font-size:18px;font-weight:700;text-align:center">
+      </div>
+      <div style="background:#eff6ff;border-radius:8px;padding:12px;margin-top:10px;text-align:center">
+        <div style="font-size:11px;color:#6b7280">Carga desta operadora</div>
+        <div style="font-size:22px;font-weight:800;color:#1d4ed8" id="ca-carga">0.00 min</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="cancelarAtribModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarAtrib()">✅ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DIVISÃO DE OPERAÇÃO -->
+<div class="modal-overlay" id="modal-divisao">
+  <div class="modal" style="width:420px">
+    <div class="modal-header">
+      <div class="modal-title">✂️ Dividir Operação</div>
+      <button class="modal-close" onclick="cancelarDivisao()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="div-time-idx">
+      <div style="margin-bottom:14px">
+        <div style="font-size:14px;font-weight:700" id="div-op-nome">—</div>
+        <div style="font-size:12px;color:#6b7280">Tempo padrão: <span id="div-op-tempo">—</span> min &nbsp;|&nbsp; Meta/ciclo: <span id="div-meta">—</span> pcs</div>
+      </div>
+      <div style="background:#f8f9fb;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:#374151">
+        Você pode adicionar a operação inteira <strong>ou dividir</strong> a quantidade de peças do ciclo entre duas operadoras.
+      </div>
+      <div id="div-campos-divisao" style="display:none">
+        <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase">Divisão de peças por operadora</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div class="form-group">
+            <label>Operadora 1 (pcs)</label>
+            <input type="number" id="div-qtd1" min="1" value="1" oninput="atualizarResumo()">
+          </div>
+          <div class="form-group">
+            <label>Operadora 2 (pcs)</label>
+            <input type="number" id="div-qtd2" min="1" value="1" oninput="atualizarResumo()">
+          </div>
+        </div>
+        <div style="background:#eff6ff;border-radius:8px;padding:10px;margin-top:8px;font-size:12px">
+          <div style="display:flex;justify-content:space-between">
+            <span>Carga Op.1:</span><strong id="div-carga1">—</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px">
+            <span>Carga Op.2:</span><strong id="div-carga2">—</strong>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;border-top:1px solid #dbeafe;padding-top:4px">
+            <span>Total peças:</span><strong id="div-total-pcs" style="color:#1d4ed8">—</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <button class="btn btn-light" onclick="confirmarDivisao(false)">➕ Adicionar Inteira</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-warning" id="btn-toggle-divisao" onclick="toggleDivisao()">✂️ Dividir</button>
+        <button class="btn btn-primary" id="btn-confirmar-divisao" style="display:none" onclick="confirmarDivisao(true)">✅ Confirmar Divisão</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL AJUSTE OPERAÇÃO -->
+<div class="modal-overlay" id="modal-ajuste">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Ajustar Operação</div>
+      <button class="modal-close" onclick="fecharModal('modal-ajuste')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ajuste-time-idx">
+      <input type="hidden" id="ajuste-op-idx">
+      <div style="margin-bottom:16px">
+        <div style="font-size:14px;font-weight:700" id="ajuste-op-nome">—</div>
+        <div style="font-size:12px;color:#6b7280" id="ajuste-op-info">—</div>
+      </div>
+      <div class="form-row cols-2">
+        <div class="form-group">
+          <label>Tempo Padrão (min)</label>
+          <input type="number" id="ajuste-tempo" step="0.01" min="0">
+        </div>
+        <div class="form-group">
+          <label>Qtd Peças no Ciclo</label>
+          <input type="number" id="ajuste-qtd" min="1" value="1" oninput="calcularCargaAjuste()">
+        </div>
+      </div>
+      <div style="background:#f8f9fb;border-radius:8px;padding:12px;margin-top:8px">
+        <div style="font-size:12px;color:#6b7280">Carga no ciclo</div>
+        <div style="font-size:20px;font-weight:800;color:#1a1a2e" id="ajuste-carga">0.00 min</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-ajuste')">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmarAjuste()">✅ Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SALVAR EM OUTRA OP -->
+<div class="modal-overlay" id="modal-salvar-outra-op">
+  <div class="modal" style="width:420px">
+    <div class="modal-header">
+      <div class="modal-title">📋 Salvar balanceamento em outra OP</div>
+      <button class="modal-close" onclick="fecharModal('modal-salvar-outra-op')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:#6b7280;margin-bottom:16px">
+        O balanceamento atual (times e operações) será copiado para a OP selecionada abaixo.
+        As operadoras precisarão ser adicionadas novamente.
+      </p>
+      <div class="form-group">
+        <label>OP de destino *</label>
+        <select class="form-control" id="outra-op-sel" onchange="verificarBalExistente()">
+          <option value="">Selecione...</option>
+          {% for op in ops %}
+          <option value="{{ op.id }}">OP {{ op.numero }} — {{ op.ref_codigo or '' }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div id="outra-op-aviso" style="display:none;background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px;font-size:12px;color:#854d0e;margin-top:12px">
+        ⚠️ Esta OP já possui um balanceamento salvo. Ele será substituído.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-light" onclick="fecharModal('modal-salvar-outra-op')">Cancelar</button>
+      <button class="btn btn-success" onclick="confirmarSalvarEmOutraOP()">💾 Salvar nesta OP</button>
+    </div>
+  </div>
+</div>
+
+<div id="area-impressao"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+const FUNCIONARIOS = {{ funcionarios | tojson }};
+const GRUPOS = {{ grupos | tojson }};
+const CFG = {{ cfg | tojson }};
+
+let estado = {
+  op: null, opNumero: '', opRef: '', opDesc: '', turnoNome: '',
+  operacoes: [], times: [], minutos: 540, ciclo: 15, nOperadoras: 20, nTimes: 10,
+  metaDia: 0, metaCiclo: 0, tempoPeca: 0,
+};
+let dragItem = null, dragType = null;
+let activeTeamIdx = 0;
+let hiddenTeams = new Set();
+let hiddenListOpen = false;
+let grupoAtivo = CFG.grupo_id || '';
+
+function toast(msg, tipo='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast '+tipo+' show';
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+function fecharModal(id) { document.getElementById(id).classList.remove('open') }
+function abrirModal(id) { document.getElementById(id).classList.add('open') }
+function iniciais(nome) { return (nome||'').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+
+// ── CARREGAR OP (na abertura da página) ───────────────────────
+async function init() {
+  if (!CFG.op_id) { toast('Nenhuma OP selecionada. Volte à configuração.', 'error'); return; }
+  estado.nOperadoras = parseInt(CFG.operadoras) || 20;
+  estado.ciclo = parseInt(CFG.ciclo) || 15;
+  estado.nTimes = parseInt(CFG.times) || 10;
+
+  const turnoObj = window.__turnos && window.__turnos.find(t => String(t.id) === String(CFG.turno_id));
+
+  const opRow = window.__ops.find(o => String(o.id) === String(CFG.op_id));
+  if (opRow) { estado.opNumero = opRow.numero; estado.opRef = opRow.ref_codigo || ''; estado.opDesc = opRow.descricao || ''; }
+  if (turnoObj) { estado.minutos = turnoObj.minutos_normal; estado.turnoNome = turnoObj.nome; }
+
+  const [seq, bal] = await Promise.all([
+    fetch('/api/op/sequencia/' + CFG.op_id).then(r => r.json()),
+    fetch('/api/balanceamento/' + CFG.op_id).then(r => r.json()),
+  ]);
+
+  estado.operacoes = seq.map((s, i) => ({
+    idx: i, operacao_id: s.operacao_id, descricao: s.descricao,
+    tempo_padrao: parseFloat(s.tempo_padrao) || 0, equipamento_id: s.equipamento_id,
+  }));
+  estado.tempoPeca = estado.operacoes.reduce((s, o) => s + o.tempo_padrao, 0);
+
+  let restaurouTimes = false;
+  if (bal && bal.id) {
+    if (bal.ciclo_minutos) estado.ciclo = bal.ciclo_minutos;
+    if (bal.total_operadores) estado.nOperadoras = bal.total_operadores;
+    if (bal.total_times) estado.nTimes = bal.total_times;
+
+    const opComTime = seq.filter(s => s.time_numero != null && s.time_numero > 0);
+    if (opComTime.length) {
+      const timesMap = {};
+      seq.forEach((s, i) => {
+        if (!s.time_numero || s.time_numero <= 0) return;
+        const tn = s.time_numero;
+        if (!timesMap[tn]) timesMap[tn] = {num: tn, operadoras: [], ops: []};
+        timesMap[tn].ops.push({
+          idx: i, operacao_id: s.operacao_id, descricao: s.descricao,
+          tempo_padrao: parseFloat(s.tempo_padrao) || 0,
+          qtd: bal.meta_ciclo || 1,
+          carga: (parseFloat(s.tempo_padrao) || 0) * (bal.meta_ciclo || 1),
+          label: s.descricao,
+        });
+      });
+      estado.times = Object.values(timesMap).sort((a, b) => a.num - b.num);
+      restaurouTimes = true;
+      toast('Balanceamento anterior carregado. Adicione as operadoras aos times.', 'success');
+    }
+  }
+
+  calcularMetas();
+  if (!restaurouTimes) gerarTimes();
+  renderAll();
+}
+
+function calcularMetas() {
+  estado.tempoPeca = estado.operacoes.reduce((s, o) => s + o.tempo_padrao, 0);
+  const mins = estado.minutos, tp = estado.tempoPeca, ops = estado.nOperadoras, ciclo = estado.ciclo;
+  const metaDia = tp > 0 ? Math.floor((mins / tp) * ops) : 0;
+  const numCiclos = Math.floor(mins / ciclo);
+  const metaCiclo = numCiclos > 0 ? Math.round(metaDia / numCiclos) : 0;
+  estado.metaDia = metaDia; estado.metaCiclo = metaCiclo;
+
+  document.getElementById('metricas-mini').innerHTML = `
+    <div class="metrica-mini"><b>${mins}</b><span>Min. Disp.</span></div>
+    <div class="metrica-mini"><b>${tp.toFixed(2)}</b><span>Tempo Peça</span></div>
+    <div class="metrica-mini"><b>${metaDia.toLocaleString()}</b><span>Meta Dia</span></div>
+    <div class="metrica-mini"><b>${numCiclos}</b><span>Ciclos/Dia</span></div>
+    <div class="metrica-mini"><b>${metaCiclo}</b><span>Meta/Ciclo</span></div>
+    <div class="metrica-mini"><b>${estado.times.length}</b><span>Times</span></div>
+  `;
+
+  document.getElementById('tb-opinfo').innerHTML = `OP ${estado.opNumero} — ${estado.opRef}<small>${estado.opDesc||''} · Turno ${estado.turnoNome||'—'} · Ciclo ${estado.ciclo}min · ${estado.nOperadoras} operadoras</small>`;
+}
+
+// ── STATUS DA OPERAÇÃO (Completo / Faltam) ────────────────────
+function statusOperacao(idx) {
+  const meta = estado.metaCiclo || 0;
+  let atribuido = 0;
+  estado.times.forEach(t => t.ops.forEach(o => { if (o.idx === idx) atribuido += (o.qtd || 0); }));
+  if (atribuido <= 0) return {estado: 'livre', atribuido, meta};
+  if (meta > 0 && atribuido >= meta) return {estado: 'completo', atribuido, meta};
+  return {estado: 'parcial', atribuido, meta, faltam: Math.max(0, meta - atribuido)};
+}
+
+function renderOperacoesDisponiveis() {
+  const div = document.getElementById('operacoes-disponiveis');
+  if (!estado.operacoes.length) {
+    div.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">OP sem sequência cadastrada</div>';
+    return;
+  }
+  div.innerHTML = estado.operacoes.map((op, i) => {
+    const st = statusOperacao(i);
+    const badge = st.estado === 'completo' ? `<span class="op-status ok">Completo</span>`
+                : st.estado === 'parcial' ? `<span class="op-status falta">Faltam ${st.faltam} pçs</span>` : '';
+    return `
+    <div class="op-seq-chip" draggable="true" data-idx="${i}"
+         ondragstart="dragOperacao(event, ${i})">
+      <span style="color:#d1d5db;font-size:12px">⠿</span>
+      <div class="op-num">${i+1}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11.5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#1a1a2e;font-weight:700">${op.descricao}</div>
+        <div style="font-size:10px;color:#6b7280;margin-top:1px">${op.tempo_padrao.toFixed(2)} min/pç</div>
+      </div>
+      ${badge}
+    </div>`;
+  }).join('');
+}
+
+// ── OPERADORAS (nome completo + filtro por grupo) ─────────────
+function renderGrupoChips() {
+  const div = document.getElementById('grp-chips');
+  const chips = [{id:'', nome:'Todas'}].concat(GRUPOS.map(g => ({id: String(g.id), nome: g.nome})));
+  div.innerHTML = chips.map(g => `<span class="grp-chip ${String(grupoAtivo)===g.id?'on':''}" onclick="filtrarGrupo('${g.id}')">${g.nome}</span>`).join('');
+}
+function filtrarGrupo(id) { grupoAtivo = id; renderGrupoChips(); renderOperadorasDisponiveis(); }
+
+function renderOperadorasDisponiveis() {
+  const div = document.getElementById('operadoras-disponiveis');
+  let lista = FUNCIONARIOS;
+  if (grupoAtivo) lista = lista.filter(f => String(f.grupo_id) === String(grupoAtivo));
+  if (!lista.length) {
+    div.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Nenhuma operadora neste grupo</div>';
+    return;
+  }
+  const usadas = new Set(estado.times.flatMap(t => t.operadoras.map(o => o.id)));
+  div.innerHTML = lista.map(f => {
+    const usada = usadas.has(f.id);
+    const bg    = usada ? '#fee2e2' : '#dcfce7';
+    const borda = usada ? '#fca5a5' : '#86efac';
+    const cor   = usada ? '#dc2626' : '#15803d';
+    const icon  = usada ? '🔴' : '🟢';
+    return `
+    <div class="operadora-chip" draggable="true"
+         style="background:${bg};border-color:${borda}"
+         ondragstart="dragOperadora(event, ${f.id}, '${f.nome.replace(/'/g,"\\'")}')">
+      <span class="drag-icon" style="color:${cor}">⠿</span>
+      <div class="operadora-avatar" style="background:${cor}">${iniciais(f.nome)}</div>
+      <span style="font-size:11.5px;flex:1;color:${cor};font-weight:700">${f.nome}${f.grupo_nome?`<div style="font-size:9px;font-weight:600;color:#9ca3af">${f.grupo_nome}</div>`:''}</span>
+      <span style="font-size:10px">${icon}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── TEAM TABS + TIME ATIVO ─────────────────────────────────────
+function renderTeamTabs() {
+  const box = document.getElementById('team-tabs');
+  const hiddenBox = document.getElementById('hidden-strip');
+  if (!estado.times.length) { box.innerHTML = ''; hiddenBox.innerHTML = ''; return; }
+
+  const corDot = t => {
+    const carga = t.ops.reduce((s,o)=>s+(o.carga||0),0);
+    if (!t.ops.length) return '#c7cfdd';
+    return carga > estado.ciclo ? '#dc2626' : carga > estado.ciclo*0.9 ? '#d97706' : '#15803d';
+  };
+
+  box.innerHTML = estado.times.map((t, i) => {
+    if (hiddenTeams.has(t.num)) return '';
+    return `<div class="team-tab ${i===activeTeamIdx?'on':''}" onclick="selecionarTime(${i})">
+      <span class="dot" style="background:${corDot(t)}"></span>Time ${t.num}
+      ${t.ops.length ? `<button class="hide-btn" title="Ocultar time (já balanceado)" onclick="event.stopPropagation();hideTeam(${t.num})">✕</button>` : ''}
+    </div>`;
+  }).join('');
+
+  if (hiddenTeams.size) {
+    hiddenBox.innerHTML = `
+      <span class="hidden-chip" onclick="toggleHiddenList()">👁 ${hiddenTeams.size} time${hiddenTeams.size>1?'s':''} oculto${hiddenTeams.size>1?'s':''} ${hiddenListOpen?'▲':'▼'}</span>
+      ${hiddenListOpen ? `<div class="hidden-list">${[...hiddenTeams].map(n=>`<span class="hidden-item">Time ${n}<button onclick="reopenTeam(${n})">Reabrir</button></span>`).join('')}</div>` : ''}
+    `;
+  } else hiddenBox.innerHTML = '';
+}
+function hideTeam(num) {
+  hiddenTeams.add(num);
+  if (estado.times[activeTeamIdx] && estado.times[activeTeamIdx].num === num) {
+    const next = estado.times.findIndex(t => !hiddenTeams.has(t.num));
+    activeTeamIdx = next >= 0 ? next : 0;
+  }
+  renderAll();
+}
+function reopenTeam(num) {
+  hiddenTeams.delete(num);
+  const idx = estado.times.findIndex(t => t.num === num);
+  if (idx >= 0) activeTeamIdx = idx;
+  renderAll();
+}
+function toggleHiddenList() { hiddenListOpen = !hiddenListOpen; renderTeamTabs(); }
+function selecionarTime(idx) { activeTeamIdx = idx; renderAll(); }
+
+function renderActiveTeam() {
+  const box = document.getElementById('team-active');
+  if (!estado.times.length) {
+    box.innerHTML = `<div class="time-card" style="align-items:center;justify-content:center;display:flex;color:#9ca3af;font-size:13px;border-radius:12px;border-top:1px solid #c7cfdd">Clique em "Gerar Times" ou "Auto" para começar</div>`;
+    return;
+  }
+  const ti = activeTeamIdx;
+  const time = estado.times[ti];
+  if (!time) return;
+  const totalCarga = time.ops.reduce((s, o) => s + (o.carga || 0), 0);
+  const ciclo = estado.ciclo;
+  const pct = ciclo > 0 ? Math.min(100, (totalCarga / ciclo) * 100) : 0;
+  const cls = totalCarga > ciclo ? 'ciclo-over' : totalCarga > ciclo * 0.9 ? 'ciclo-warn' : 'ciclo-ok';
+  const cor = totalCarga > ciclo ? '#dc2626' : totalCarga > ciclo * 0.9 ? '#d97706' : '#15803d';
+
+  const opsHtml = time.ops.map((op, oi) => {
+    const alertaCor = op.alerta === 'sem_operadora' ? '#dc2626' : op.alerta === 'sem_treino' ? '#d97706' : null;
+    const alertaIcon = op.alerta === 'sem_operadora' ? '🚨' : op.alerta === 'sem_treino' ? '💡' : '';
+    const apoioBadge = op.apoio ? `<span style="background:#dbeafe;color:#1d4ed8;font-size:8px;padding:1px 4px;border-radius:4px;font-weight:700">↩apoio</span>` : '';
+    const divBadge = op.dividida ? `<span style="background:#f3e8ff;color:#7c3aed;font-size:8px;padding:1px 4px;border-radius:4px;font-weight:700">${op.dividida === 'parte1' ? '÷1' : '÷2'}</span>` : '';
+    const bgCor = alertaCor ? `background:${alertaCor}18;border-color:${alertaCor}66` : '';
+    return `
+    <div class="time-op-item" draggable="true" style="${bgCor}"
+         ondragstart="dragOpDoTime(event, ${ti}, ${oi})" ondblclick="abrirAjuste(${ti}, ${oi})">
+      <div class="op-num" style="width:16px;height:16px;font-size:8px;${alertaCor ? `background:${alertaCor}` : ''}">${(op.idx||oi)+1}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:10.5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:${alertaCor || '#1a1a2e'}">${alertaIcon} ${op.label||op.descricao}</div>
+        <div style="font-size:9px;margin-top:2px;display:flex;gap:3px;flex-wrap:wrap;align-items:center">
+          ${op.operadora_nome ? `<span style="background:#1a1a2e;color:#fff;padding:1px 5px;border-radius:4px;font-size:8px;font-weight:700">👤 ${op.operadora_nome}</span>` : `<span style="background:#fee2e2;color:#dc2626;padding:1px 5px;border-radius:4px;font-size:8px;font-weight:700">⚠ Sem op.</span>`}
+          ${apoioBadge}${divBadge}
+          <span style="color:#6b7280">${(op.tempo_padrao||0).toFixed(2)}min/pç · ${(op.qtd||0)}pcs · ${(op.carga||0).toFixed(1)}m</span>
+        </div>
+      </div>
+      <button onclick="removerOpDoTime(${ti},${oi})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:10px;padding:0 2px;flex-shrink:0">✕</button>
+    </div>`;
+  }).join('');
+
+  const opersHtml = time.operadoras.map((op, oi) => {
+    const isApoio = op.apoio;
+    const bg = isApoio ? '#1d4ed8' : '#1a1a2e';
+    const label = isApoio ? `↩ ${op.nome} (T${op.time_principal})` : op.nome;
+    return `<span class="op-tag" style="background:${bg}" title="${isApoio ? 'Apoio do Time '+op.time_principal : 'Operadora principal'}">
+      ${label}
+      <button class="op-tag-rem" onclick="event.stopPropagation();removerOperadoraDoTime(${ti},${oi})">✕</button>
+    </span>`;
+  }).join('');
+
+  const distribHtml = time.operadoras.length ? time.operadoras.map((op, oi) => {
+    const atribs = op.atribuicoes || [];
+    const totalOp = atribs.reduce((s, a) => s + (a.carga || 0), 0);
+    const restante = ciclo - totalOp;
+    const corOp = totalOp > ciclo ? '#dc2626' : totalOp > ciclo * 0.9 ? '#d97706' : '#15803d';
+    const rowsHtml = atribs.map((a, ai) => `
+      <div class="distrib-row">
+        <select class="distrib-sel" onchange="atualizarAtribOp(${ti},${oi},${ai},this.value)">
+          ${estado.operacoes.map((o, idx) => `<option value="${idx}" ${a.op_idx === idx ? 'selected' : ''}>${o.descricao}</option>`).join('')}
+        </select>
+        <span class="distrib-tempo">${(a.tempo_padrao||0).toFixed(2)}m/pç</span>
+        <input class="distrib-qtd" type="number" min="1" value="${a.qtd}" onchange="atualizarAtribQtd(${ti},${oi},${ai},this.value)">
+        <span class="distrib-carga">${(a.carga||0).toFixed(1)}m</span>
+        <button class="distrib-rem-btn" onclick="removerAtrib(${ti},${oi},${ai})">✕</button>
+      </div>
+    `).join('');
+    return `
+      <div class="distrib-op">
+        <div class="distrib-op-header"
+             ondragover="allowDrop(event)" ondrop="dropOpNaOperadora(${ti},${oi},event)"
+             ondragenter="this.classList.add('drag-over-op')" ondragleave="this.classList.remove('drag-over-op')"
+             title="Arraste uma operação aqui para atribuir automaticamente">
+          <span class="distrib-op-nome">👤 ${op.nome}</span>
+          <span class="distrib-op-total" style="color:${corOp}">${totalOp.toFixed(1)}/${ciclo}m</span>
+          <button class="distrib-add-btn" onclick="adicionarAtrib(${ti},${oi})">+</button>
+        </div>
+        ${rowsHtml || '<div class="distrib-op-vazia">Clique + ou arraste uma operação aqui</div>'}
+        ${atribs.length ? `<div class="distrib-restante" style="color:${corOp}">Restante: <strong>${restante.toFixed(1)} min</strong></div>` : ''}
+      </div>`;
+  }).join('') : '<div style="font-size:10.5px;color:#9ca3af;padding:4px">Adicione operadoras a este time</div>';
+
+  box.innerHTML = `
+    <div class="time-card" id="time-active-card"
+         ondragover="allowDrop(event)" ondrop="dropNoTime(event, ${ti})"
+         ondragenter="this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')">
+      <div class="time-header">
+        <span class="time-num">Time ${time.num}</span>
+        <span class="time-ciclo ${cls}">${totalCarga.toFixed(1)}/${ciclo}min</span>
+      </div>
+      <div class="time-body">
+        <div class="time-operadoras">
+          <div style="font-size:9.5px;color:#9ca3af;margin-bottom:4px;font-weight:700;text-transform:uppercase">Operadoras deste time</div>
+          <div class="time-op-drop" ondragover="allowDrop(event)" ondrop="dropOperadoraNoTime(event, ${ti})"
+               ondragenter="this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')">
+            ${opersHtml || '<span style="font-size:10.5px;color:#d1d5db">Arraste operadoras aqui</span>'}
+          </div>
+        </div>
+        <div class="time-ops">
+          <div style="font-size:9.5px;color:#9ca3af;margin-bottom:4px;font-weight:700;text-transform:uppercase">Operações <span style="color:#6b7280;text-transform:none;font-weight:600">(2x clique p/ ajustar)</span></div>
+          <div class="time-ops-drop" ondragover="allowDrop(event)" ondrop="dropOpNoTime(event, ${ti})"
+               ondragenter="this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')">
+            ${opsHtml || '<span style="font-size:10.5px;color:#d1d5db">Arraste operações aqui</span>'}
+          </div>
+        </div>
+        <div class="time-distrib">
+          <div class="distrib-title">📊 Distribuição por operadora — tempo padrão sempre visível</div>
+          ${distribHtml}
+        </div>
+      </div>
+      <div class="time-footer">
+        <div class="time-total">
+          <span style="font-size:11px;color:#6b7280">Carga total do time</span>
+          <span class="time-total-val" style="color:${cor}">${totalCarga.toFixed(2)} min</span>
+        </div>
+        <div class="time-progress"><div class="time-progress-fill" style="width:${pct}%;background:${cor}"></div></div>
+      </div>
+    </div>`;
+}
+
+function renderAll() {
+  calcularMetas();
+  renderTeamTabs();
+  renderActiveTeam();
+  renderOperadorasDisponiveis();
+  renderOperacoesDisponiveis();
+}
+
+// ── GERAR TIMES ───────────────────────────────────
+function gerarTimes() {
+  estado.times = Array.from({length: estado.nTimes}, (_, i) => ({num: i+1, operadoras: [], ops: []}));
+  activeTeamIdx = 0; hiddenTeams = new Set();
+  renderAll();
+  toast('Times gerados!');
+}
+
+// ── BALANCEAR AUTOMÁTICO INTELIGENTE ─────────────
+async function balancearAutomatico() {
+  if (!CFG.op_id) { toast('Nenhuma OP carregada', 'error'); return; }
+  if (!estado.metaCiclo) { toast('Meta/ciclo inválida — volte à configuração', 'error'); return; }
+  try {
+    const r = await fetch('/api/balanceamento/automatico', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({op_id: parseInt(CFG.op_id), ciclo: estado.ciclo, meta_ciclo: estado.metaCiclo})
+    }).then(r => r.json());
+    if (!r.ok) { toast(r.erro || 'Erro no balanceamento', 'error'); return; }
+    estado.times = r.times.map(t => ({
+      num: t.num,
+      operadoras: t.operadoras.map(o => ({id: o.id, nome: o.nome, atribuicoes: [], apoio: o.apoio || false, time_principal: o.time_principal})),
+      ops: t.ops.map(op => ({
+        idx: (op.idx || 1) - 1, operacao_id: op.operacao_id, descricao: op.descricao, tempo_padrao: op.tempo_padrao,
+        qtd: op.qtd, carga: op.carga, operadora_id: op.operadora_id, operadora_nome: op.operadora_nome,
+        alerta: op.alerta, dividida: op.dividida, apoio: op.apoio,
+        label: op.descricao + (op.dividida === 'parte1' ? ' (÷1)' : op.dividida === 'parte2' ? ' (÷2)' : ''),
+      })),
+    }));
+    estado.nTimes = estado.times.length;
+    activeTeamIdx = 0; hiddenTeams = new Set();
+    renderAll();
+    toast(`✅ ${estado.times.length} times gerados automaticamente!`, 'success');
+    if (r.alertas && r.alertas.length) exibirAlertasBalanceamento(r.alertas);
+  } catch(e) { toast('Erro ao conectar com o servidor', 'error'); }
+}
+
+function exibirAlertasBalanceamento(alertas) {
+  const old = document.getElementById('modal-alertas-bal');
+  if (old) old.remove();
+  const html = `
+  <div class="modal-overlay open" id="modal-alertas-bal" onclick="if(event.target===this)this.remove()">
+    <div class="modal" style="max-width:520px">
+      <div class="modal-header">
+        <div class="modal-title">⚠️ Alertas do Balanceamento</div>
+        <button class="modal-close" onclick="document.getElementById('modal-alertas-bal').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:12px;color:#6b7280;margin-bottom:12px">O balanceamento foi gerado, mas algumas operações precisam de atenção:</p>
+        ${alertas.map(a => `<div style="padding:8px 12px;border-radius:8px;margin-bottom:6px;font-size:12px;background:${a.startsWith('⚠️') ? '#fee2e2' : '#fef9c3'};border:1px solid ${a.startsWith('⚠️') ? '#fca5a5' : '#fde68a'}">${a}</div>`).join('')}
+      </div>
+      <div class="modal-footer"><button class="btn btn-primary btn-sm" onclick="document.getElementById('modal-alertas-bal').remove()">Entendi</button></div>
+    </div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+// ── DRAG & DROP OPERADORA ─────────────────────────
+function dragOperadora(e, id, nome) { dragType = 'operadora'; dragItem = {id, nome}; e.dataTransfer.effectAllowed = 'move'; }
+function dropOperadoraNoTime(e, ti) {
+  e.preventDefault(); e.stopPropagation();
+  if (dragType !== 'operadora' || !dragItem) return;
+  if (estado.times[ti].operadoras.find(o => o.id === dragItem.id)) { toast('Operadora já está neste time', 'error'); return; }
+  estado.times[ti].operadoras.push({...dragItem, atribuicoes: []});
+  dragItem = null; dragType = null; renderAll();
+}
+
+// ── DROP OPERAÇÃO NA OPERADORA ────────────────────
+let _pendingAtrib = null;
+function dropOpNaOperadora(ti, oi, e) {
+  e.preventDefault(); e.stopPropagation();
+  e.currentTarget.classList.remove('drag-over-op');
+  let op = null, op_idx = -1;
+  if (dragType === 'operacao-banco' && dragItem) { op = dragItem; op_idx = estado.operacoes.findIndex(o => o.descricao === op.descricao); }
+  else if (dragType === 'operacao-time' && dragItem) { op = dragItem.op; op_idx = op.idx >= 0 ? op.idx : estado.operacoes.findIndex(o => o.descricao === op.descricao); }
+  else return;
+  dragItem = null; dragType = null;
+
+  if (!estado.times[ti].operadoras[oi].atribuicoes) estado.times[ti].operadoras[oi].atribuicoes = [];
+  const cargaAtual = estado.times[ti].operadoras[oi].atribuicoes.reduce((s, a) => s + (a.carga||0), 0);
+  const restanteCiclo = estado.ciclo - cargaAtual;
+  const opNoTime = estado.times[ti].ops.find(o => o.idx === op_idx || o.descricao === op.descricao);
+  const qtdTotal = opNoTime ? (opNoTime.qtd || 0) : 0;
+  const qtdJaAtrib = estado.times[ti].operadoras.reduce((s, oper) => s + (oper.atribuicoes||[]).filter(a => a.op_idx === op_idx).reduce((ss, a) => ss + a.qtd, 0), 0);
+  const qtdRestanteOp = Math.max(0, qtdTotal - qtdJaAtrib);
+
+  if (restanteCiclo <= 0.01) { toast('Operadora sem tempo restante no ciclo', 'error'); return; }
+  const maxPeloCiclo = Math.floor(restanteCiclo / op.tempo_padrao);
+  if (maxPeloCiclo < 1) { toast(`Tempo insuficiente para 1 peça (${op.tempo_padrao.toFixed(2)} min)`, 'error'); return; }
+  const sugestao = qtdRestanteOp > 0 ? Math.min(maxPeloCiclo, qtdRestanteOp) : maxPeloCiclo;
+
+  _pendingAtrib = { ti, oi, op_idx, op };
+  document.getElementById('ca-nome').textContent = estado.times[ti].operadoras[oi].nome;
+  document.getElementById('ca-op').textContent = op.descricao;
+  document.getElementById('ca-tempo').textContent = op.tempo_padrao.toFixed(2);
+  document.getElementById('ca-restante-ciclo').textContent = restanteCiclo.toFixed(1);
+  document.getElementById('ca-qtd-rest-op').textContent = qtdRestanteOp > 0 ? `${qtdRestanteOp} pcs restantes da operação` : 'Operação não vinculada ao time';
+  document.getElementById('ca-qtd').value = sugestao;
+  recalcConfirm();
+  abrirModal('modal-confirmar-atrib');
+}
+function recalcConfirm() {
+  const qtd = parseInt(document.getElementById('ca-qtd').value) || 0;
+  const op = _pendingAtrib ? _pendingAtrib.op : null;
+  if (!op) return;
+  document.getElementById('ca-carga').textContent = (op.tempo_padrao * qtd).toFixed(2) + ' min';
+}
+function confirmarAtrib() {
+  if (!_pendingAtrib) return;
+  const {ti, oi, op_idx, op} = _pendingAtrib;
+  const qtd = parseInt(document.getElementById('ca-qtd').value) || 1;
+  const carga = op.tempo_padrao * qtd;
+  estado.times[ti].operadoras[oi].atribuicoes.push({op_idx, descricao: op.descricao, tempo_padrao: op.tempo_padrao, qtd, carga});
+  _pendingAtrib = null;
+  fecharModal('modal-confirmar-atrib');
+  renderAll();
+}
+function cancelarAtribModal() { _pendingAtrib = null; fecharModal('modal-confirmar-atrib'); }
+
+// ── DISTRIBUIÇÃO POR OPERADORA ────────────────────
+function adicionarAtrib(ti, oi) {
+  if (!estado.operacoes.length) { toast('OP sem operações', 'error'); return; }
+  if (!estado.times[ti].operadoras[oi].atribuicoes) estado.times[ti].operadoras[oi].atribuicoes = [];
+  const op = estado.operacoes[0];
+  estado.times[ti].operadoras[oi].atribuicoes.push({op_idx: 0, descricao: op.descricao, tempo_padrao: op.tempo_padrao, qtd: 1, carga: op.tempo_padrao});
+  renderAll();
+}
+function removerAtrib(ti, oi, ai) { estado.times[ti].operadoras[oi].atribuicoes.splice(ai, 1); renderAll(); }
+function atualizarAtribOp(ti, oi, ai, val) {
+  const idx = parseInt(val); const op = estado.operacoes[idx]; if (!op) return;
+  const a = estado.times[ti].operadoras[oi].atribuicoes[ai];
+  a.op_idx = idx; a.descricao = op.descricao; a.tempo_padrao = op.tempo_padrao; a.carga = op.tempo_padrao * a.qtd;
+  renderAll();
+}
+function atualizarAtribQtd(ti, oi, ai, val) {
+  const a = estado.times[ti].operadoras[oi].atribuicoes[ai];
+  a.qtd = parseInt(val) || 1; a.carga = a.tempo_padrao * a.qtd; renderAll();
+}
+function removerOperadoraDoTime(ti, oi) {
+  const op = estado.times[ti].operadoras[oi];
+  const temAtrib = op && op.atribuicoes && op.atribuicoes.length > 0;
+  if (temAtrib && !confirm(`Remover ${op.nome} do time?\nAs atribuições de operações desta operadora também serão removidas.`)) return;
+  estado.times[ti].operadoras.splice(oi, 1); renderAll();
+}
+
+// ── DRAG & DROP OPERAÇÃO ──────────────────────────
+function dragOperacao(e, idx) { dragType = 'operacao-banco'; dragItem = {...estado.operacoes[idx]}; e.dataTransfer.effectAllowed = 'move'; }
+function dragOpDoTime(e, ti, oi) { dragType = 'operacao-time'; dragItem = {ti, oi, op: {...estado.times[ti].ops[oi]}}; e.dataTransfer.effectAllowed = 'move'; }
+function dropOpNoTime(e, ti) {
+  e.preventDefault(); e.stopPropagation();
+  if (dragType === 'operacao-banco' && dragItem) { abrirDivisao(ti, dragItem); dragItem = null; dragType = null; }
+  else if (dragType === 'operacao-time' && dragItem) {
+    const {ti: tiOrig, oi, op} = dragItem; dragItem = null; dragType = null;
+    if (tiOrig === ti) return;
+    const qtdAtrib = estado.times[tiOrig].operadoras.reduce((s, oper) => s + (oper.atribuicoes||[]).filter(a => a.op_idx === op.idx || a.descricao === op.descricao).reduce((ss, a) => ss + a.qtd, 0), 0);
+    const qtdTotal = op.qtd || 0;
+    const qtdRest = Math.max(0, qtdTotal - qtdAtrib);
+    if (qtdRest > 0 && qtdAtrib > 0) {
+      const cargaRest = op.tempo_padrao * qtdRest;
+      estado.times[ti].ops.push({...op, qtd: qtdRest, carga: cargaRest});
+      estado.times[tiOrig].ops[oi] = {...op, qtd: qtdAtrib, carga: op.tempo_padrao * qtdAtrib};
+      toast(`Restante (${qtdRest} pcs / ${cargaRest.toFixed(1)}m) movido para Time ${ti+1}`);
+    } else {
+      estado.times[tiOrig].ops.splice(oi, 1);
+      estado.times[ti].ops.push(op);
+    }
+    renderAll();
+  }
+}
+function dropNoTime(e, ti) {
+  e.preventDefault();
+  const card = document.getElementById('time-active-card');
+  if (card) card.classList.remove('drag-over');
+  if (dragType === 'operadora') dropOperadoraNoTime(e, ti);
+  else if (dragType === 'operacao-banco' || dragType === 'operacao-time') dropOpNoTime(e, ti);
+}
+function allowDrop(e) { e.preventDefault(); }
+function removerOpDoTime(ti, oi) { estado.times[ti].ops.splice(oi, 1); renderAll(); }
+
+// ── DIVISÃO DE OPERAÇÃO ───────────────────────────
+let _divOp = null;
+function abrirDivisao(ti, op) {
+  _divOp = op;
+  const meta = estado.metaCiclo || 1;
+  document.getElementById('div-time-idx').value = ti;
+  document.getElementById('div-op-nome').textContent = op.descricao;
+  document.getElementById('div-op-tempo').textContent = op.tempo_padrao.toFixed(2);
+  document.getElementById('div-meta').textContent = meta;
+  document.getElementById('div-qtd1').value = Math.ceil(meta / 2);
+  document.getElementById('div-qtd2').value = Math.floor(meta / 2);
+  document.getElementById('div-campos-divisao').style.display = 'none';
+  document.getElementById('btn-toggle-divisao').style.display = '';
+  document.getElementById('btn-confirmar-divisao').style.display = 'none';
+  atualizarResumo();
+  abrirModal('modal-divisao');
+}
+function toggleDivisao() {
+  const campos = document.getElementById('div-campos-divisao');
+  const visivel = campos.style.display !== 'none';
+  campos.style.display = visivel ? 'none' : '';
+  document.getElementById('btn-toggle-divisao').style.display = visivel ? '' : 'none';
+  document.getElementById('btn-confirmar-divisao').style.display = visivel ? 'none' : '';
+  atualizarResumo();
+}
+function atualizarResumo() {
+  const op = _divOp; if (!op) return;
+  const q1 = parseInt(document.getElementById('div-qtd1').value) || 0;
+  const q2 = parseInt(document.getElementById('div-qtd2').value) || 0;
+  document.getElementById('div-carga1').textContent = (op.tempo_padrao * q1).toFixed(2) + ' min';
+  document.getElementById('div-carga2').textContent = (op.tempo_padrao * q2).toFixed(2) + ' min';
+  document.getElementById('div-total-pcs').textContent = (q1 + q2) + ' pcs';
+}
+function confirmarDivisao(dividir) {
+  const ti = parseInt(document.getElementById('div-time-idx').value);
+  const op = _divOp; if (!op) return;
+  if (dividir) {
+    const q1 = parseInt(document.getElementById('div-qtd1').value) || 1;
+    const q2 = parseInt(document.getElementById('div-qtd2').value) || 1;
+    if (q1 > 0) estado.times[ti].ops.push({...op, qtd: q1, carga: op.tempo_padrao * q1, label: op.descricao + ' (Op.1)'});
+    if (q2 > 0) estado.times[ti].ops.push({...op, qtd: q2, carga: op.tempo_padrao * q2, label: op.descricao + ' (Op.2)'});
+  } else {
+    const qtd = estado.metaCiclo || 1;
+    estado.times[ti].ops.push({...op, qtd, carga: op.tempo_padrao * qtd});
+  }
+  _divOp = null; fecharModal('modal-divisao'); renderAll();
+}
+function cancelarDivisao() { _divOp = null; fecharModal('modal-divisao'); }
+
+// ── AJUSTE OPERAÇÃO ───────────────────────────────
+function abrirAjuste(ti, oi) {
+  const op = estado.times[ti].ops[oi];
+  document.getElementById('ajuste-time-idx').value = ti;
+  document.getElementById('ajuste-op-idx').value = oi;
+  document.getElementById('ajuste-op-nome').textContent = op.descricao;
+  document.getElementById('ajuste-op-info').textContent = `Tempo padrão: ${op.tempo_padrao} min`;
+  document.getElementById('ajuste-tempo').value = op.tempo_padrao;
+  document.getElementById('ajuste-qtd').value = op.qtd || 1;
+  calcularCargaAjuste();
+  abrirModal('modal-ajuste');
+}
+function calcularCargaAjuste() {
+  const tempo = parseFloat(document.getElementById('ajuste-tempo').value) || 0;
+  const qtd = parseInt(document.getElementById('ajuste-qtd').value) || 1;
+  document.getElementById('ajuste-carga').textContent = (tempo * qtd).toFixed(2) + ' min';
+}
+function confirmarAjuste() {
+  const ti = parseInt(document.getElementById('ajuste-time-idx').value);
+  const oi = parseInt(document.getElementById('ajuste-op-idx').value);
+  const tempo = parseFloat(document.getElementById('ajuste-tempo').value) || 0;
+  const qtd = parseInt(document.getElementById('ajuste-qtd').value) || 1;
+  estado.times[ti].ops[oi].tempo_padrao = tempo;
+  estado.times[ti].ops[oi].qtd = qtd;
+  estado.times[ti].ops[oi].carga = tempo * qtd;
+  fecharModal('modal-ajuste'); renderAll(); toast('Operação ajustada!');
+}
+
+// ── IMPRIMIR ──────────────────────────────────────
+function imprimirBalanceamento() {
+  if (!estado.times.length) { toast('Nenhum balanceamento para imprimir', 'error'); return; }
+  const agora = new Date();
+  const dataStr = agora.toLocaleDateString('pt-BR');
+  const horaStr = agora.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  const ciclo = estado.ciclo;
+  const numCiclos = Math.floor(estado.minutos / ciclo);
+
+  const timesHtml = estado.times.map(time => {
+    const totalCarga = time.ops.reduce((s, o) => s + (o.carga || 0), 0);
+    const pct = ciclo > 0 ? Math.min(100, (totalCarga / ciclo) * 100) : 0;
+    const cls = totalCarga > ciclo ? 'over' : totalCarga > ciclo * 0.9 ? 'warn' : 'ok';
+    const cor = totalCarga > ciclo ? '#dc2626' : totalCarga > ciclo * 0.9 ? '#d97706' : '#15803d';
+    const opTagsHtml = time.operadoras.length ? time.operadoras.map(o => `<span class="imp-op-tag">${o.nome}</span>`).join('') : '<span class="imp-vazio">Sem operadoras</span>';
+    const opsHtml = time.ops.length ? time.ops.map((op) => `
+        <div class="imp-op-row"><div class="imp-op-n">${op.idx+1}</div><span class="imp-op-desc" title="${op.descricao}">${op.descricao}</span><span class="imp-op-carga">${(op.carga||0).toFixed(1)}</span></div>
+      `).join('') : '<div class="imp-vazio" style="padding:4px 0">Sem operações</div>';
+    return `
+      <div class="imp-time">
+        <div class="imp-time-header ${cls}"><span class="imp-time-num">Time ${time.num}</span><span class="imp-time-ciclo">${totalCarga.toFixed(1)}/${ciclo}min</span></div>
+        <div class="imp-operadoras"><div class="imp-operadoras-lbl">Operadoras</div><div class="imp-op-tags">${opTagsHtml}</div></div>
+        <div class="imp-ops"><div class="imp-ops-lbl">Operações</div>${opsHtml}</div>
+        <div class="imp-time-footer"><span class="imp-total-lbl">Carga total</span><span class="imp-total-val" style="color:${cor}">${totalCarga.toFixed(2)} min</span></div>
+        <div class="imp-progress"><div class="imp-progress-fill" style="width:${pct}%;background:${cor}"></div></div>
+      </div>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>Balanceamento — JRMTPI CONFECÇÕES</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',Arial,sans-serif;background:#fff;color:#1a1a2e;font-size:13px}
+.imp-page{padding:20px;max-width:1100px;margin:0 auto}
+.imp-header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:3px solid #1a1a2e;padding-bottom:14px;margin-bottom:16px}
+.imp-logo{display:flex;align-items:center;gap:10px}
+.imp-logo-icon{width:44px;height:44px;background:#1a1a2e;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.imp-logo h1{font-size:22px;font-weight:800;letter-spacing:1px;margin:0}
+.imp-logo small{font-size:10px;color:#6b7280;display:block}
+.imp-info{text-align:right;font-size:12px;color:#374151}
+.imp-info strong{display:block;font-size:14px;color:#1a1a2e;margin-bottom:2px}
+.imp-op-banner{background:#1a1a2e;color:#fff;border-radius:10px;padding:12px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.imp-op-banner h2{font-size:16px;font-weight:800;margin:0}
+.imp-op-banner span{font-size:12px;color:#9ca3af}
+.imp-metricas{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:16px}
+.imp-metrica{background:#f8f9fb;border:1px solid #e0e6f0;border-radius:8px;padding:10px;text-align:center}
+.imp-metrica.dest{background:#1a1a2e}
+.imp-metrica-val{font-size:18px;font-weight:800;color:#1a1a2e}
+.imp-metrica.dest .imp-metrica-val{color:#f5a623}
+.imp-metrica-lbl{font-size:9px;color:#9ca3af;text-transform:uppercase;margin-top:2px}
+.imp-times-title{font-size:13px;font-weight:700;margin-bottom:10px;padding-bottom:6px;border-bottom:2px solid #e0e6f0}
+.imp-times-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.imp-time{border:2px solid #e0e6f0;border-radius:10px;overflow:hidden;break-inside:avoid}
+.imp-time-header{padding:8px 10px;display:flex;align-items:center;justify-content:space-between}
+.imp-time-header.ok{background:#dcfce7;border-bottom:2px solid #15803d}
+.imp-time-header.warn{background:#fef9c3;border-bottom:2px solid #d97706}
+.imp-time-header.over{background:#fee2e2;border-bottom:2px solid #dc2626}
+.imp-time-num{font-size:13px;font-weight:800}
+.imp-time-ciclo{font-size:10px;font-weight:700}
+.imp-time-header.ok .imp-time-num,.imp-time-header.ok .imp-time-ciclo{color:#15803d}
+.imp-time-header.warn .imp-time-num,.imp-time-header.warn .imp-time-ciclo{color:#854d0e}
+.imp-time-header.over .imp-time-num,.imp-time-header.over .imp-time-ciclo{color:#dc2626}
+.imp-operadoras{padding:6px 8px;background:#f8f9fb;border-bottom:1px solid #e0e6f0;min-height:28px}
+.imp-operadoras-lbl{font-size:8px;color:#9ca3af;font-weight:700;text-transform:uppercase;margin-bottom:3px}
+.imp-op-tags{display:flex;flex-wrap:wrap;gap:3px}
+.imp-op-tag{background:#1a1a2e;color:#fff;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700}
+.imp-ops{padding:6px 8px}
+.imp-ops-lbl{font-size:8px;color:#9ca3af;font-weight:700;text-transform:uppercase;margin-bottom:4px}
+.imp-op-row{display:flex;align-items:center;gap:4px;padding:3px 0;border-bottom:1px solid #f0f2f5;font-size:10px}
+.imp-op-row:last-child{border-bottom:none}
+.imp-op-n{width:16px;height:16px;background:#e0e6f0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;flex-shrink:0}
+.imp-op-desc{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.imp-op-carga{font-weight:700;color:#1a1a2e;font-size:10px;white-space:nowrap}
+.imp-time-footer{padding:6px 8px;background:#f8f9fb;border-top:1px solid #e0e6f0;display:flex;justify-content:space-between;align-items:center}
+.imp-total-lbl{font-size:9px;color:#6b7280}
+.imp-total-val{font-size:12px;font-weight:800}
+.imp-progress{height:4px;background:#e0e6f0}
+.imp-progress-fill{height:100%}
+.imp-footer{margin-top:20px;padding-top:10px;border-top:1px solid #e0e6f0;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af}
+.imp-vazio{color:#9ca3af;font-size:10px;font-style:italic}
+.no-print{display:flex;justify-content:center;gap:12px;margin-bottom:20px}
+.no-print button{padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}
+.btn-imp{background:#1a1a2e;color:#fff}
+.btn-fec{background:#f0f2f5;color:#374151}
+@media print{.no-print{display:none!important}body{padding:0}@page{margin:10mm}}
+</style></head>
+<body>
+<div class="imp-page">
+  <div class="no-print">
+    <button class="btn-imp" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+    <button class="btn-fec" onclick="window.close()">✕ Fechar</button>
+  </div>
+  <div class="imp-header">
+    <div class="imp-logo"><div class="imp-logo-icon">⏱</div><div><h1>JRMTPI CONFECÇÕES</h1><small>Sistema de Produção</small></div></div>
+    <div class="imp-info"><strong>Balanceamento de Produção</strong>${dataStr} às ${horaStr}<br>Turno: ${estado.turnoNome || '—'}</div>
+  </div>
+  <div class="imp-op-banner">
+    <div><h2>OP ${estado.opNumero} — ${estado.opRef}</h2><span>${estado.opDesc || ''}</span></div>
+    <div style="text-align:right"><span>Ciclo: <strong style="color:#f5a623">${ciclo} min</strong></span><br><span>${estado.nTimes} times • ${estado.nOperadoras} operadoras</span></div>
+  </div>
+  <div class="imp-metricas">
+    <div class="imp-metrica"><div class="imp-metrica-val">${estado.minutos}</div><div class="imp-metrica-lbl">Min. Disponíveis</div></div>
+    <div class="imp-metrica"><div class="imp-metrica-val">${estado.tempoPeca.toFixed(2)}</div><div class="imp-metrica-lbl">Tempo Peça (min)</div></div>
+    <div class="imp-metrica dest"><div class="imp-metrica-val">${estado.metaDia.toLocaleString()}</div><div class="imp-metrica-lbl">Meta Dia (pcs)</div></div>
+    <div class="imp-metrica dest"><div class="imp-metrica-val">${numCiclos}</div><div class="imp-metrica-lbl">Ciclos/Dia</div></div>
+    <div class="imp-metrica dest"><div class="imp-metrica-val">${estado.metaCiclo}</div><div class="imp-metrica-lbl">Meta/Ciclo (pcs)</div></div>
+    <div class="imp-metrica"><div class="imp-metrica-val">${estado.nTimes}</div><div class="imp-metrica-lbl">Nº de Times</div></div>
+  </div>
+  <div class="imp-times-title">📋 Times de Produção</div>
+  <div class="imp-times-grid">${timesHtml}</div>
+  <div class="imp-footer"><span>JRMTPI CONFECÇÕES — Sistema de Produção</span><span>Gerado em ${dataStr} às ${horaStr}</span></div>
+</div>
+</body></html>`;
+
+  const janela = window.open('', '_blank', 'width=1100,height=800');
+  janela.document.write(html);
+  janela.document.close();
+}
+
+// ── SALVAR ────────────────────────────────────────
+function montarPayloadBalanceamento(opId) {
+  return {
+    op_id: opId, turno_id: CFG.turno_id, ciclo_minutos: estado.ciclo, total_operadores: estado.nOperadoras,
+    minutos_disponiveis: estado.minutos, meta_dia: estado.metaDia, meta_ciclo: estado.metaCiclo,
+    total_times: estado.nTimes, times: estado.times,
+  };
+}
+async function salvarBalanceamento() {
+  if (!CFG.op_id) { toast('Nenhuma OP carregada', 'error'); return; }
+  if (!estado.times.length) { toast('Monte os times antes de salvar', 'error'); return; }
+  const r = await fetch('/api/balanceamento/salvar', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(montarPayloadBalanceamento(CFG.op_id))
+  }).then(r => r.json());
+  if (r.ok) toast('Balanceamento salvo!'); else toast(r.erro || 'Erro ao salvar', 'error');
+}
+
+async function abrirSalvarEmOutraOP() {
+  if (!estado.times.length) { toast('Monte os times antes de copiar', 'error'); return; }
+  document.getElementById('outra-op-sel').value = '';
+  document.getElementById('outra-op-aviso').style.display = 'none';
+  abrirModal('modal-salvar-outra-op');
+}
+async function verificarBalExistente() {
+  const opId = document.getElementById('outra-op-sel').value;
+  const aviso = document.getElementById('outra-op-aviso');
+  if (!opId) { aviso.style.display = 'none'; return; }
+  const bal = await fetch('/api/balanceamento/' + opId).then(r => r.json());
+  aviso.style.display = bal && bal.id ? 'block' : 'none';
+}
+async function confirmarSalvarEmOutraOP() {
+  const opDestino = document.getElementById('outra-op-sel').value;
+  if (!opDestino) { toast('Selecione a OP de destino', 'error'); return; }
+  if (opDestino === String(CFG.op_id)) { toast('Selecione uma OP diferente da atual', 'error'); return; }
+  const r = await fetch('/api/balanceamento/salvar', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(montarPayloadBalanceamento(opDestino))
+  }).then(r => r.json());
+  if (r.ok) {
+    fecharModal('modal-salvar-outra-op');
+    toast(`Balanceamento salvo em outra OP`);
+  } else toast(r.erro || 'Erro ao salvar', 'error');
+}
+
+// ── LIMPAR ────────────────────────────────────────
+function limparBalanceamento() {
+  if (!confirm('Limpar os times desta tela?\n\nOs balanceamentos já salvos no sistema não serão apagados.')) return;
+  gerarTimes();
+  toast('Times limpos');
+}
+
+window.__ops = {{ ops | tojson }};
+window.__turnos = {{ turnos | tojson }};
+renderGrupoChips();
+init();
+window.chronaRefresh = function(){
+  toast('Dados atualizados em outra tela. Se precisar dos dados mais recentes, atualize a página.', 'success');
+};
+</script>
+{% endblock %}

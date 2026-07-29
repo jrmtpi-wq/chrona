@@ -144,9 +144,11 @@ def funcionarios():
     """, fids_list).fetchall()
     fabricas = c.execute(f"SELECT * FROM fabricas WHERE id IN ({ph})", fids_list).fetchall()
     funcoes  = c.execute("SELECT * FROM funcoes WHERE ativa=1 ORDER BY nome").fetchall()
+    grupos   = c.execute(f"SELECT * FROM grupos_operadoras WHERE fabrica_id IN ({ph}) AND ativo=1 ORDER BY ordem, nome", fids_list).fetchall()
     c.close()
     return render_template('funcionarios.html', user=user, funcs=[dict(r) for r in funcs],
-                           fabricas=[dict(r) for r in fabricas], funcoes=[dict(r) for r in funcoes])
+                           fabricas=[dict(r) for r in fabricas], funcoes=[dict(r) for r in funcoes],
+                           grupos=[dict(r) for r in grupos])
 
 @app.route('/api/funcionario/salvar', methods=['POST'])
 @gestor_required
@@ -154,10 +156,10 @@ def api_func_salvar():
     d = request.json; c = m.conn()
     user = get_user()
     fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
-    campos = ['fabrica_id','funcao_id','nome','cpf','rg','sexo','data_nascimento',
+    campos = ['fabrica_id','funcao_id','grupo_id','nome','cpf','rg','sexo','data_nascimento',
               'telefone','celular','email','endereco','numero','bairro','cidade',
               'estado','cep','data_admissao','salario','bonificacao','ifood','situacao','observacao','matricula']
-    vals = [fab_id, d.get('funcao_id') or None, d.get('nome','').strip(),
+    vals = [fab_id, d.get('funcao_id') or None, d.get('grupo_id') or None, d.get('nome','').strip(),
             d.get('cpf',''), d.get('rg',''), d.get('sexo',''),
             d.get('data_nascimento',''), d.get('telefone',''), d.get('celular',''),
             d.get('email',''), d.get('endereco',''), d.get('numero',''),
@@ -221,9 +223,10 @@ def api_funcs_lista():
     busca = request.args.get('q','').strip()
     situacao = request.args.get('situacao','ATIVO')
     c = m.conn()
-    sql = f"""SELECT fn.*,f.nome fab_nome,fc.nome funcao_nome
+    sql = f"""SELECT fn.*,f.nome fab_nome,fc.nome funcao_nome,g.nome grupo_nome
               FROM funcionarios fn JOIN fabricas f ON fn.fabrica_id=f.id
               LEFT JOIN funcoes fc ON fn.funcao_id=fc.id
+              LEFT JOIN grupos_operadoras g ON fn.grupo_id=g.id
               WHERE fn.fabrica_id IN ({ph})"""
     params = list(fids_list)
     if situacao != 'TODOS': sql += " AND fn.situacao=?"; params.append(situacao)
@@ -260,6 +263,60 @@ def api_funcao_excluir(fid):
     c = m.conn()
     c.execute("UPDATE funcoes SET ativa=0 WHERE id=?", (fid,))
     c.commit(); c.close(); return jsonify({'ok':True})
+
+# ── GRUPOS DE OPERADORAS ────────────────────────────────────────
+@app.route('/grupos-operadoras')
+@login_required
+def grupos_operadoras():
+    user = get_user(); c = m.conn()
+    fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
+    grupos = c.execute(f"""
+        SELECT g.*, f.nome fab_nome FROM grupos_operadoras g
+        JOIN fabricas f ON g.fabrica_id=f.id
+        WHERE g.fabrica_id IN ({ph}) AND g.ativo=1
+        ORDER BY g.ordem, g.nome
+    """, fids_list).fetchall()
+    fabricas = c.execute(f"SELECT * FROM fabricas WHERE id IN ({ph})", fids_list).fetchall()
+    c.close()
+    return render_template('grupos_operadoras.html', user=user,
+        grupos=[dict(r) for r in grupos], fabricas=[dict(r) for r in fabricas])
+
+@app.route('/api/grupo/salvar', methods=['POST'])
+@login_required
+def api_grupo_salvar():
+    d = request.json; user = get_user(); c = m.conn()
+    fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user, c))
+    nome = (d.get('nome') or '').strip()
+    if not nome:
+        c.close(); return jsonify({'ok': False, 'erro': 'Nome obrigatório'})
+    try:
+        if d.get('id'):
+            c.execute("UPDATE grupos_operadoras SET fabrica_id=?,nome=?,ordem=? WHERE id=?",
+                      (fab_id, nome, int(d.get('ordem') or 0), d['id']))
+        else:
+            c.execute("INSERT INTO grupos_operadoras (fabrica_id,nome,ordem) VALUES (?,?,?)",
+                      (fab_id, nome, int(d.get('ordem') or 0)))
+        c.commit(); c.close(); return jsonify({'ok': True})
+    except Exception as e:
+        c.close(); return jsonify({'ok': False, 'erro': str(e)})
+
+@app.route('/api/grupo/excluir/<int:gid>', methods=['DELETE'])
+@login_required
+def api_grupo_excluir(gid):
+    c = m.conn()
+    c.execute("UPDATE grupos_operadoras SET ativo=0 WHERE id=?", (gid,))
+    c.execute("UPDATE funcionarios SET grupo_id=NULL WHERE grupo_id=?", (gid,))
+    c.commit(); c.close(); return jsonify({'ok': True})
+
+@app.route('/api/grupos/lista')
+@login_required
+def api_grupos_lista():
+    user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
+    c = m.conn()
+    rows = c.execute(f"""
+        SELECT * FROM grupos_operadoras WHERE fabrica_id IN ({ph}) AND ativo=1 ORDER BY ordem, nome
+    """, fids_list).fetchall()
+    c.close(); return jsonify([dict(r) for r in rows])
 
 # ── EQUIPAMENTOS ──────────────────────────────────────────────
 @app.route('/equipamentos')
@@ -1022,14 +1079,69 @@ def balanceamento():
     """, fids_list).fetchall()
  
     funcionarios = c.execute(f"""
-        SELECT * FROM funcionarios WHERE fabrica_id IN ({ph}) AND situacao='ATIVO' ORDER BY nome
+        SELECT fn.*, g.nome grupo_nome
+        FROM funcionarios fn
+        LEFT JOIN grupos_operadoras g ON fn.grupo_id=g.id
+        WHERE fn.fabrica_id IN ({ph}) AND fn.situacao='ATIVO' ORDER BY fn.nome
     """, fids_list).fetchall()
- 
+
+    grupos = c.execute(f"""
+        SELECT * FROM grupos_operadoras WHERE fabrica_id IN ({ph}) AND ativo=1 ORDER BY ordem, nome
+    """, fids_list).fetchall()
+
     c.close()
     return render_template('balanceamento.html', user=user,
         ops=[dict(r) for r in ops],
         turnos=[dict(r) for r in turnos],
-        funcionarios=[dict(r) for r in funcionarios])
+        funcionarios=[dict(r) for r in funcionarios],
+        grupos=[dict(r) for r in grupos])
+
+
+@app.route('/balanceamento/montar')
+@login_required
+def balanceamento_montar():
+    user = get_user()
+    fids_list = fab_ids(user)
+    ph = ','.join('?'*len(fids_list))
+    c = m.conn()
+
+    ops = c.execute(f"""
+        SELECT op.*,r.codigo ref_codigo
+        FROM ordens_producao op
+        LEFT JOIN referencias r ON op.referencia_id=r.id
+        WHERE op.fabrica_id IN ({ph}) AND op.situacao IN ('ABERTA','PRODUCAO')
+        ORDER BY op.id DESC
+    """, fids_list).fetchall()
+
+    turnos = c.execute(f"""
+        SELECT * FROM turnos WHERE fabrica_id IN ({ph}) AND ativo=1 ORDER BY numero
+    """, fids_list).fetchall()
+
+    funcionarios = c.execute(f"""
+        SELECT fn.*, g.nome grupo_nome
+        FROM funcionarios fn
+        LEFT JOIN grupos_operadoras g ON fn.grupo_id=g.id
+        WHERE fn.fabrica_id IN ({ph}) AND fn.situacao='ATIVO' ORDER BY fn.nome
+    """, fids_list).fetchall()
+
+    grupos = c.execute(f"""
+        SELECT * FROM grupos_operadoras WHERE fabrica_id IN ({ph}) AND ativo=1 ORDER BY ordem, nome
+    """, fids_list).fetchall()
+
+    c.close()
+    return render_template('balanceamento_montar.html', user=user,
+        ops=[dict(r) for r in ops],
+        turnos=[dict(r) for r in turnos],
+        funcionarios=[dict(r) for r in funcionarios],
+        grupos=[dict(r) for r in grupos],
+        cfg={
+            'op_id': request.args.get('op_id', ''),
+            'turno_id': request.args.get('turno_id', ''),
+            'operadoras': request.args.get('operadoras', '20'),
+            'ciclo': request.args.get('ciclo', '15'),
+            'times': request.args.get('times', '10'),
+            'grupo_id': request.args.get('grupo_id', ''),
+        })
  
  
 @app.route('/api/balanceamento/salvar', methods=['POST'])

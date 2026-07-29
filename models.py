@@ -120,10 +120,19 @@ CREATE TABLE IF NOT EXISTS funcoes (
     salario_base REAL DEFAULT 0,
     ativa INTEGER DEFAULT 1
 );
+CREATE TABLE IF NOT EXISTS grupos_operadoras (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fabrica_id INTEGER NOT NULL,
+    nome TEXT NOT NULL,
+    ordem INTEGER DEFAULT 0,
+    ativo INTEGER DEFAULT 1,
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id)
+);
 CREATE TABLE IF NOT EXISTS funcionarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     fabrica_id INTEGER NOT NULL,
     funcao_id INTEGER,
+    grupo_id INTEGER,
     nome TEXT NOT NULL,
     cpf TEXT,
     rg TEXT,
@@ -510,10 +519,19 @@ CREATE TABLE IF NOT EXISTS funcoes (
     salario_base REAL DEFAULT 0,
     ativa INTEGER DEFAULT 1
 );
+CREATE TABLE IF NOT EXISTS grupos_operadoras (
+    id SERIAL PRIMARY KEY,
+    fabrica_id INTEGER NOT NULL,
+    nome TEXT NOT NULL,
+    ordem INTEGER DEFAULT 0,
+    ativo INTEGER DEFAULT 1,
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id)
+);
 CREATE TABLE IF NOT EXISTS funcionarios (
     id SERIAL PRIMARY KEY,
     fabrica_id INTEGER NOT NULL,
     funcao_id INTEGER,
+    grupo_id INTEGER,
     nome TEXT NOT NULL,
     cpf TEXT,
     rg TEXT,
@@ -895,6 +913,10 @@ def init():
         except Exception:
             pass
         try:
+            c.execute("ALTER TABLE funcionarios ADD COLUMN IF NOT EXISTS grupo_id INTEGER")
+        except Exception:
+            pass
+        try:
             c.execute("ALTER TABLE operacoes ADD COLUMN IF NOT EXISTS modelo TEXT DEFAULT ''")
         except Exception:
             pass
@@ -1098,6 +1120,10 @@ def init():
             pass
         try:
             c.execute("ALTER TABLE funcionarios ADD COLUMN matricula INTEGER")
+        except Exception:
+            pass
+        try:
+            c.execute("ALTER TABLE funcionarios ADD COLUMN grupo_id INTEGER")
         except Exception:
             pass
         try:

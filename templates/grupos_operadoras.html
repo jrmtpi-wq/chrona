@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Grupos de Operadoras{% endblock %}
+{% block page_title %}🧵 Grupos de Operadoras{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-header-left">
+    <h1>Grupos de Operadoras</h1>
+    <p>Ex: Preparação, Montagem, Costura Final, Acabamento — usados para filtrar operadoras no balanceamento</p>
+  </div>
+  <button class="btn btn-primary" onclick="novoGrupo()">＋ Novo Grupo</button>
+</div>
+<div class="row">
+  <div class="col" style="max-width:400px">
+    <div class="card">
+      <div class="card-header"><div class="card-title">✏️ Cadastrar / Editar</div></div>
+      <input type="hidden" id="gp-id">
+      {% if fabricas|length > 1 %}
+      <div class="form-group"><label class="form-label">Fábrica *</label>
+        <select class="form-control" id="gp-fab">
+          {% for f in fabricas %}
+          <option value="{{ f.id }}">{{ f.nome }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% else %}
+      <input type="hidden" id="gp-fab" value="{{ fabricas[0].id if fabricas else '' }}">
+      {% endif %}
+      <div class="form-group"><label class="form-label">Nome do Grupo *</label>
+        <input type="text" class="form-control" id="gp-nome" placeholder="Ex: Montagem"></div>
+      <div class="form-group"><label class="form-label">Ordem de exibição</label>
+        <input type="number" class="form-control" id="gp-ordem" value="0"></div>
+      <div class="btn-group">
+        <button class="btn btn-success" onclick="salvarGrupo()">✓ Salvar</button>
+        <button class="btn btn-secondary" onclick="limparGrupo()">↺ Limpar</button>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card" style="padding:0">
+      <div class="table-wrap" style="border:none">
+        <table>
+          <thead><tr><th>Grupo</th>{% if fabricas|length > 1 %}<th>Fábrica</th>{% endif %}<th>Ordem</th><th>Ações</th></tr></thead>
+          <tbody id="tbody-gp">
+            {% for g in grupos %}
+            <tr>
+              <td><strong>{{ g.nome }}</strong></td>
+              {% if fabricas|length > 1 %}<td>{{ g.fab_nome }}</td>{% endif %}
+              <td>{{ g.ordem }}</td>
+              <td>
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-primary" onclick="editarGrupo({{ g.id }},'{{ g.nome }}',{{ g.ordem or 0 }},{{ g.fabrica_id }})">✏️</button>
+                  <button class="btn btn-sm btn-danger" onclick="excluirGrupo({{ g.id }})">🗑</button>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="empty">Nenhum grupo cadastrado ainda — crie o primeiro ao lado</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function novoGrupo(){limparGrupo()}
+function editarGrupo(id,nome,ordem,fabId){
+  document.getElementById('gp-id').value=id;
+  document.getElementById('gp-nome').value=nome;
+  document.getElementById('gp-ordem').value=ordem;
+  const fabEl=document.getElementById('gp-fab');
+  if(fabEl) fabEl.value=fabId;
+}
+function limparGrupo(){
+  document.getElementById('gp-id').value='';
+  document.getElementById('gp-nome').value='';
+  document.getElementById('gp-ordem').value=0;
+}
+async function salvarGrupo(){
+  const nome=document.getElementById('gp-nome').value.trim();
+  if(!nome){toast('Nome obrigatório!','err');return}
+  const fabEl=document.getElementById('gp-fab');
+  const r=await api('/api/grupo/salvar','POST',{
+    id:document.getElementById('gp-id').value||null,
+    fabrica_id:fabEl?fabEl.value:null,
+    nome,ordem:document.getElementById('gp-ordem').value||0});
+  if(r.ok){toast('Grupo salvo!');location.reload()}
+  else toast('Erro: '+r.erro,'err');
+}
+async function excluirGrupo(id){
+  if(!confirm('Excluir este grupo? As operadoras vinculadas ficarão sem grupo.'))return;
+  await api('/api/grupo/excluir/'+id,'DELETE');
+  toast('Grupo removido','warn');location.reload();
+}
+</script>
+{% endblock %}

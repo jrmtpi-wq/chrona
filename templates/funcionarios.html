@@ -176,6 +176,15 @@
           </select>
         </div>
         <div class="form-group">
+          <label class="form-label">Grupo de Operadoras</label>
+          <select class="form-control" id="fn-grupo">
+            <option value="">Sem grupo</option>
+            {% for g in grupos %}
+            <option value="{{ g.id }}">{{ g.nome }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
           <label class="form-label">Situação</label>
           <select class="form-control" id="fn-sit">
             <option value="ATIVO">Ativo</option>
@@ -262,6 +271,7 @@ async function novoFunc(){
     document.getElementById(id).value='';
   });
   document.getElementById('fn-sexo').value='';
+  document.getElementById('fn-grupo').value='';
   document.getElementById('fn-sit').value='ATIVO';
   document.getElementById('fn-sal').value='0';
   document.getElementById('fn-nasc').value='';
@@ -295,6 +305,7 @@ async function editarFunc(id){
   document.getElementById('fn-uf').value=f.estado||'';
   document.getElementById('fn-cep').value=f.cep||'';
   document.getElementById('fn-fab').value=f.fabrica_id||'';
+  document.getElementById('fn-grupo').value=f.grupo_id||'';
   await carregarFuncoes(f.funcao_id||null);
   document.getElementById('fn-sit').value=f.situacao||'ATIVO';
   document.getElementById('fn-adm').value=f.data_admissao||'';
@@ -314,6 +325,7 @@ async function salvar(){
     id:document.getElementById('fn-id').value||null,
     fabrica_id:document.getElementById('fn-fab').value,
     funcao_id:document.getElementById('fn-funcao').value||null,
+    grupo_id:document.getElementById('fn-grupo').value||null,
     nome,cpf:document.getElementById('fn-cpf').value,
     rg:document.getElementById('fn-rg').value,
     sexo:document.getElementById('fn-sexo').value,
