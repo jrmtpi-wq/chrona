@@ -162,7 +162,7 @@
   <div class="bal-layout">
     <div class="operacoes-panel">
       <div class="operadoras-title">⚙️ Operações da OP</div>
-      <div id="operacoes-disponiveis"><div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Carregando...</div></div>
+      <div id="operacoes-disponiveis" ondragover="autoScrollOnDrag(event, this)"><div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">Carregando...</div></div>
     </div>
 
     <div id="team-active"></div>
@@ -170,7 +170,7 @@
     <div class="operadoras-panel">
       <div class="operadoras-title">👩 Operadoras</div>
       <div class="grp-chips" id="grp-chips"></div>
-      <div class="operadoras-list" id="operadoras-disponiveis"></div>
+      <div class="operadoras-list" id="operadoras-disponiveis" ondragover="autoScrollOnDrag(event, this)"></div>
     </div>
   </div>
 </div>
@@ -651,7 +651,7 @@ function renderActiveTeam() {
         <span class="time-num">Time ${time.num}</span>
         <span class="time-ciclo ${cls}">${totalCarga.toFixed(1)}/${ciclo}min</span>
       </div>
-      <div class="time-body">
+      <div class="time-body" ondragover="autoScrollOnDrag(event, this)">
         <div class="time-operadoras">
           <div style="font-size:9.5px;color:#9ca3af;margin-bottom:4px;font-weight:700;text-transform:uppercase">Operadoras deste time</div>
           <div class="time-op-drop" ondragover="allowDrop(event)" ondrop="dropOperadoraNoTime(event, ${ti})"
@@ -865,6 +865,16 @@ function dropNoTime(e, ti) {
   else if (dragType === 'operacao-banco' || dragType === 'operacao-time') dropOpNoTime(e, ti);
 }
 function allowDrop(e) { e.preventDefault(); }
+
+// ── AUTO-SCROLL DURANTE O ARRASTO ─────────────────
+// Arraste HTML5 nativo não rola containers com scroll interno sozinho;
+// isso rola automaticamente quando o mouse chega perto da borda de cima/baixo.
+function autoScrollOnDrag(e, el) {
+  const rect = el.getBoundingClientRect();
+  const margem = 48, velocidade = 18;
+  if (e.clientY < rect.top + margem) el.scrollTop -= velocidade;
+  else if (e.clientY > rect.bottom - margem) el.scrollTop += velocidade;
+}
 function removerOpDoTime(ti, oi) { estado.times[ti].ops.splice(oi, 1); renderAll(); }
 
 // ── DIVISÃO DE OPERAÇÃO ───────────────────────────
