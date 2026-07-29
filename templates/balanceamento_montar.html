@@ -223,7 +223,7 @@
       <input type="hidden" id="div-time-idx">
       <div style="margin-bottom:14px">
         <div style="font-size:14px;font-weight:700" id="div-op-nome">—</div>
-        <div style="font-size:12px;color:#6b7280">Tempo padrão: <span id="div-op-tempo">—</span> min &nbsp;|&nbsp; Meta/ciclo: <span id="div-meta">—</span> pcs</div>
+        <div style="font-size:12px;color:#6b7280">Tempo padrão: <span id="div-op-tempo">—</span> min &nbsp;|&nbsp; <span id="div-meta-label">Meta/ciclo</span>: <span id="div-meta">—</span> pcs</div>
       </div>
       <div style="background:#f8f9fb;border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:#374151">
         Você pode adicionar a operação inteira <strong>ou dividir</strong> a quantidade de peças do ciclo entre duas operadoras.
@@ -451,6 +451,21 @@ function statusOperacaoNoTime(ti, op) {
   return {completo: false, atribuido, alvo, faltam: Math.max(0, alvo - atribuido)};
 }
 
+// Soma quanto já foi atribuído a operadoras (em qualquer time) para esta operação —
+// usado pra saber quanto AINDA falta espalhar entre os times (pode ser em outro time diferente).
+function restanteGlobalOperacao(idx) {
+  const meta = estado.metaCiclo || 0;
+  let atribuido = 0;
+  estado.times.forEach(t => {
+    const temAtribManual = t.operadoras.some(o => (o.atribuicoes||[]).some(a => a.op_idx === idx));
+    if (!temAtribManual) {
+      t.ops.forEach(o => { if (o.idx === idx && o.operadora_id) atribuido += (o.qtd || 0); });
+    }
+    t.operadoras.forEach(o => (o.atribuicoes||[]).forEach(a => { if (a.op_idx === idx) atribuido += (a.qtd || 0); }));
+  });
+  return {atribuido, meta, restante: Math.max(0, meta - atribuido)};
+}
+
 function renderOperacoesDisponiveis() {
   const div = document.getElementById('operacoes-disponiveis');
   if (!estado.operacoes.length) {
@@ -464,6 +479,10 @@ function renderOperacoesDisponiveis() {
     const cor = usada ? '#dc2626' : '#15803d';
     const bg = usada ? '#fee2e2' : '#dcfce7';
     const borda = usada ? '#fca5a5' : '#86efac';
+    const g = restanteGlobalOperacao(i);
+    const badge = !usada ? '' : (g.meta > 0 && g.restante <= 0)
+      ? `<span class="op-status ok">Completo</span>`
+      : `<span class="op-status falta" title="Arraste esta operação pra outro time pra distribuir o restante">Faltam ${g.restante} pçs</span>`;
     return `
     <div class="op-seq-chip" draggable="true" data-idx="${i}"
          style="background:${bg};border-color:${borda}"
@@ -474,6 +493,7 @@ function renderOperacoesDisponiveis() {
         <div style="font-size:11.5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:${cor};font-weight:700">${op.descricao}</div>
         <div style="font-size:10px;color:#6b7280;margin-top:1px">${op.tempo_padrao.toFixed(2)} min/pç</div>
       </div>
+      ${badge}
       <span style="font-size:10px">${usada ? '🔴' : '🟢'}</span>
     </div>`;
   }).join('');
@@ -888,15 +908,22 @@ function removerOpDoTime(ti, oi) { estado.times[ti].ops.splice(oi, 1); renderAll
 
 // ── DIVISÃO DE OPERAÇÃO ───────────────────────────
 let _divOp = null;
+let _divMeta = 1;
 function abrirDivisao(ti, op) {
   _divOp = op;
-  const meta = estado.metaCiclo || 1;
+  // Se esta operação já tem peças balanceadas em outro time, sugere só o RESTANTE
+  // (não o ciclo inteiro de novo) — é assim que dá pra completar uma operação
+  // espalhando o que falta entre times diferentes.
+  const g = restanteGlobalOperacao(op.idx);
+  const jaComecada = g.atribuido > 0;
+  _divMeta = jaComecada ? g.restante : (estado.metaCiclo || 1);
   document.getElementById('div-time-idx').value = ti;
   document.getElementById('div-op-nome').textContent = op.descricao;
   document.getElementById('div-op-tempo').textContent = op.tempo_padrao.toFixed(2);
-  document.getElementById('div-meta').textContent = meta;
-  document.getElementById('div-qtd1').value = Math.ceil(meta / 2);
-  document.getElementById('div-qtd2').value = Math.floor(meta / 2);
+  document.getElementById('div-meta-label').textContent = jaComecada ? 'Restante a balancear' : 'Meta/ciclo';
+  document.getElementById('div-meta').textContent = _divMeta;
+  document.getElementById('div-qtd1').value = Math.ceil(_divMeta / 2);
+  document.getElementById('div-qtd2').value = Math.floor(_divMeta / 2);
   document.getElementById('div-campos-divisao').style.display = 'none';
   document.getElementById('btn-toggle-divisao').style.display = '';
   document.getElementById('btn-confirmar-divisao').style.display = 'none';
@@ -928,7 +955,7 @@ function confirmarDivisao(dividir) {
     if (q1 > 0) estado.times[ti].ops.push({...op, qtd: q1, carga: op.tempo_padrao * q1, label: op.descricao + ' (Op.1)'});
     if (q2 > 0) estado.times[ti].ops.push({...op, qtd: q2, carga: op.tempo_padrao * q2, label: op.descricao + ' (Op.2)'});
   } else {
-    const qtd = estado.metaCiclo || 1;
+    const qtd = _divMeta || 1;
     estado.times[ti].ops.push({...op, qtd, carga: op.tempo_padrao * qtd});
   }
   _divOp = null; fecharModal('modal-divisao'); renderAll();
