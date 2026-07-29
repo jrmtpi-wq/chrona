@@ -451,6 +451,17 @@ function statusOperacaoNoTime(ti, op) {
   return {completo: false, atribuido, alvo, faltam: Math.max(0, alvo - atribuido)};
 }
 
+// Soma a carga (minutos) já atribuída a uma operadora em TODOS os times em que ela
+// aparece (uma operadora pode dar apoio em mais de um time no mesmo ciclo).
+function cargaGlobalOperadora(fid) {
+  let carga = 0;
+  estado.times.forEach(t => t.operadoras.forEach(o => {
+    if (o.id !== fid) return;
+    carga += (o.atribuicoes||[]).reduce((s, a) => s + (a.carga||0), 0);
+  }));
+  return carga;
+}
+
 // Soma quanto já foi atribuído a operadoras (em qualquer time) para esta operação —
 // usado pra saber quanto AINDA falta espalhar entre os times (pode ser em outro time diferente).
 function restanteGlobalOperacao(idx) {
@@ -518,18 +529,24 @@ function renderOperadorasDisponiveis() {
   const usadas = new Set(estado.times.flatMap(t => t.operadoras.map(o => o.id)));
   div.innerHTML = lista.map(f => {
     const usada = usadas.has(f.id);
-    const bg    = usada ? '#fee2e2' : '#dcfce7';
-    const borda = usada ? '#fca5a5' : '#86efac';
-    const cor   = usada ? '#dc2626' : '#15803d';
-    const icon  = usada ? '🔴' : '🟢';
+    const carga = usada ? cargaGlobalOperadora(f.id) : 0;
+    const restante = estado.ciclo - carga;
+    // Livre = ainda não está em nenhum time · Parcial = já tem carga mas ainda sobra
+    // tempo no ciclo (dá pra arrastar pra outro time, tipo apoio) · Completa = 15min ocupados
+    let bg, borda, cor, icon, extra = '';
+    if (!usada) { bg='#dcfce7'; borda='#86efac'; cor='#15803d'; icon='🟢'; }
+    else if (restante > 0.05) {
+      bg='#fef3c7'; borda='#fcd34d'; cor='#b45309'; icon='🟡';
+      extra = `<div style="font-size:9px;font-weight:700;color:#b45309">Restam ${restante.toFixed(1)}min — pode ir p/ outro time</div>`;
+    } else { bg='#fee2e2'; borda='#fca5a5'; cor='#dc2626'; icon='🔴'; }
     return `
     <div class="operadora-chip" draggable="true"
-         style="background:${bg};border-color:${borda}"
+         style="background:${bg};border-color:${borda};align-items:flex-start"
          ondragstart="dragOperadora(event, ${f.id}, '${f.nome.replace(/'/g,"\\'")}')">
-      <span class="drag-icon" style="color:${cor}">⠿</span>
+      <span class="drag-icon" style="color:${cor};margin-top:2px">⠿</span>
       <div class="operadora-avatar" style="background:${cor}">${iniciais(f.nome)}</div>
-      <span style="font-size:11.5px;flex:1;color:${cor};font-weight:700">${f.nome}${f.grupo_nome?`<div style="font-size:9px;font-weight:600;color:#9ca3af">${f.grupo_nome}</div>`:''}</span>
-      <span style="font-size:10px">${icon}</span>
+      <span style="font-size:11.5px;flex:1;color:${cor};font-weight:700">${f.nome}${f.grupo_nome?`<div style="font-size:9px;font-weight:600;color:#9ca3af">${f.grupo_nome}</div>`:''}${extra}</span>
+      <span style="font-size:10px;margin-top:2px">${icon}</span>
     </div>`;
   }).join('');
 }
@@ -786,8 +803,9 @@ function dropOpNaOperadora(ti, oi, e) {
   dragItem = null; dragType = null;
 
   if (!estado.times[ti].operadoras[oi].atribuicoes) estado.times[ti].operadoras[oi].atribuicoes = [];
-  const cargaAtual = estado.times[ti].operadoras[oi].atribuicoes.reduce((s, a) => s + (a.carga||0), 0);
-  const restanteCiclo = estado.ciclo - cargaAtual;
+  // Restante considera TODOS os times em que a operadora está (apoio inclusive),
+  // pra não deixar passar de 15min de trabalho dela no ciclo somando tudo.
+  const restanteCiclo = estado.ciclo - cargaGlobalOperadora(estado.times[ti].operadoras[oi].id);
   const opNoTime = estado.times[ti].ops.find(o => o.idx === op_idx || o.descricao === op.descricao);
   const qtdTotal = opNoTime ? (opNoTime.qtd || 0) : 0;
   const qtdJaAtrib = estado.times[ti].operadoras.reduce((s, oper) => s + (oper.atribuicoes||[]).filter(a => a.op_idx === op_idx).reduce((ss, a) => ss + a.qtd, 0), 0);
@@ -1018,6 +1036,38 @@ function imprimirBalanceamento() {
       </div>`;
   }).join('');
 
+  // Resumo por operadora — soma a carga e agrupa as operações dela em todos os
+  // times em que aparece (operadora de apoio pode estar em mais de um time).
+  const resumoOperadoras = (() => {
+    const map = {};
+    estado.times.forEach(t => {
+      t.operadoras.forEach(o => {
+        if (!map[o.id]) map[o.id] = {nome: o.nome, times: new Set(), opsMap: {}, carga: 0};
+        const m = map[o.id];
+        m.times.add(t.num);
+        (o.atribuicoes||[]).forEach(a => {
+          m.carga += (a.carga||0);
+          m.opsMap[a.descricao] = (m.opsMap[a.descricao]||0) + (a.qtd||0);
+        });
+      });
+    });
+    return Object.values(map).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  })();
+
+  const resumoHtml = resumoOperadoras.length ? resumoOperadoras.map(r => {
+    const opsTxt = Object.keys(r.opsMap).length
+      ? Object.entries(r.opsMap).map(([desc, qtd]) => `${desc} (${qtd}pç)`).join(', ')
+      : '<span class="imp-vazio">Sem operações atribuídas</span>';
+    const corCarga = r.carga > ciclo ? '#dc2626' : r.carga >= ciclo * 0.95 ? '#15803d' : '#b45309';
+    return `
+      <tr>
+        <td class="imp-res-nome">${r.nome}</td>
+        <td class="imp-res-times">${[...r.times].sort((a,b)=>a-b).map(n=>`Time ${n}`).join(', ')}</td>
+        <td class="imp-res-ops">${opsTxt}</td>
+        <td class="imp-res-carga" style="color:${corCarga}">${r.carga.toFixed(1)}/${ciclo}min</td>
+      </tr>`;
+  }).join('') : `<tr><td colspan="4" class="imp-vazio" style="padding:8px">Nenhuma operadora com atribuições ainda</td></tr>`;
+
   const html = `<!DOCTYPE html>
 <html lang="pt-BR"><head><meta charset="UTF-8"><title>Balanceamento — JRMTPI CONFECÇÕES</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -1071,6 +1121,13 @@ body{font-family:'Inter',Arial,sans-serif;background:#fff;color:#1a1a2e;font-siz
 .imp-progress-fill{height:100%}
 .imp-footer{margin-top:20px;padding-top:10px;border-top:1px solid #e0e6f0;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af}
 .imp-vazio{color:#9ca3af;font-size:10px;font-style:italic}
+.imp-resumo-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:6px}
+.imp-resumo-table th{background:#f8f9fb;border:1px solid #e0e6f0;padding:6px 8px;text-align:left;font-size:9px;text-transform:uppercase;color:#6b7280}
+.imp-resumo-table td{border:1px solid #e0e6f0;padding:6px 8px;vertical-align:top}
+.imp-res-nome{font-weight:700;white-space:nowrap}
+.imp-res-times{white-space:nowrap;color:#6b7280;font-size:10px}
+.imp-res-carga{font-weight:800;white-space:nowrap;text-align:right}
+@media print{.imp-resumo-table tr{break-inside:avoid}}
 .no-print{display:flex;justify-content:center;gap:12px;margin-bottom:20px}
 .no-print button{padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}
 .btn-imp{background:#1a1a2e;color:#fff}
@@ -1101,6 +1158,13 @@ body{font-family:'Inter',Arial,sans-serif;background:#fff;color:#1a1a2e;font-siz
   </div>
   <div class="imp-times-title">📋 Times de Produção</div>
   <div class="imp-times-grid">${timesHtml}</div>
+
+  <div class="imp-times-title" style="margin-top:22px">📊 Resumo por Operadora</div>
+  <table class="imp-resumo-table">
+    <thead><tr><th>Operadora</th><th>Time(s)</th><th>Operações</th><th>Carga</th></tr></thead>
+    <tbody>${resumoHtml}</tbody>
+  </table>
+
   <div class="imp-footer"><span>JRMTPI CONFECÇÕES — Sistema de Produção</span><span>Gerado em ${dataStr} às ${horaStr}</span></div>
 </div>
 </body></html>`;
