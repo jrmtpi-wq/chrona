@@ -78,16 +78,16 @@
 .ciclo-warn{background:#fef9c3;color:#854d0e}
 .ciclo-over{background:#fee2e2;color:#dc2626}
 .time-body{flex:1 1 auto}
-.time-operadoras{padding:10px 14px;border-bottom:1px solid #f0f2f5}
+.time-operadoras{padding:8px 12px;border-bottom:1px solid #f0f2f5}
 .time-op-drop{min-height:34px;border:1px dashed #d1d5db;border-radius:6px;padding:6px;display:flex;flex-wrap:wrap;gap:5px}
 .time-op-drop.drag-over{border-color:#1d4ed8;background:#eff6ff}
 .op-tag{background:#1a1a2e;color:#fff;border-radius:4px;padding:3px 5px 3px 8px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:5px}
 .op-tag-rem{background:none;border:none;color:#fff;cursor:pointer;font-size:11px;font-weight:700;padding:0 2px;line-height:1;opacity:.7;border-radius:3px;flex-shrink:0}
 .op-tag-rem:hover{opacity:1;background:rgba(220,38,38,.8)}
-.time-ops{padding:10px 14px;border-bottom:1px solid #f0f2f5}
-.time-ops-drop{min-height:44px;border:1px dashed #d1d5db;border-radius:6px;padding:6px}
+.time-ops{padding:8px 12px;border-bottom:1px solid #f0f2f5}
+.time-ops-drop{min-height:36px;border:1px dashed #d1d5db;border-radius:6px;padding:5px}
 .time-ops-drop.drag-over{border-color:#1d4ed8;background:#eff6ff}
-.time-op-item{background:#f0f2f5;border-radius:5px;padding:6px 8px;margin-bottom:4px;font-size:11px;display:flex;align-items:center;gap:6px;cursor:grab}
+.time-op-item{background:#f0f2f5;border-radius:5px;padding:5px 7px;margin-bottom:3px;font-size:11px;display:flex;align-items:flex-start;gap:5px;cursor:grab}
 .time-op-item:hover{background:#fee2e2}
 .time-footer{padding:10px 14px;border-top:1px solid #f0f2f5;flex:0 0 auto}
 .time-total{display:flex;justify-content:space-between;align-items:center;font-size:12px}
@@ -95,7 +95,7 @@
 .time-progress{height:5px;background:#e0e6f0;border-radius:3px;margin-top:5px}
 .time-progress-fill{height:100%;border-radius:3px;transition:width .3s}
 
-.time-distrib{padding:10px 14px;background:#fafbfc}
+.time-distrib{padding:8px 12px;background:#fafbfc}
 .distrib-title{font-size:9.5px;font-weight:700;text-transform:uppercase;color:#6b7280;letter-spacing:.5px;margin-bottom:8px}
 .distrib-op{background:#fff;border:1px solid #e0e6f0;border-radius:8px;margin-bottom:8px;overflow:hidden}
 .distrib-op-header{display:flex;align-items:center;justify-content:space-between;padding:6px 9px;background:#f0f2f5;transition:all .15s}
@@ -606,10 +606,10 @@ function renderActiveTeam() {
     return `
     <div class="time-op-item" draggable="true" style="${bgCor}"
          ondragstart="dragOpDoTime(event, ${ti}, ${oi})" ondblclick="abrirAjuste(${ti}, ${oi})">
-      <div class="op-num" style="width:16px;height:16px;font-size:8px;${alertaCor ? `background:${alertaCor}` : ''}">${(op.idx||oi)+1}</div>
+      <div class="op-num" style="width:14px;height:14px;font-size:7.5px;margin-top:1px;${alertaCor ? `background:${alertaCor}` : ''}">${(op.idx||oi)+1}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:10.5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:${alertaCor || '#1a1a2e'}">${alertaIcon} ${op.label||op.descricao}</div>
-        <div style="font-size:9px;margin-top:2px;display:flex;gap:3px;flex-wrap:wrap;align-items:center">
+        <div style="font-size:10.5px;white-space:normal;line-height:1.3;word-break:break-word;color:${alertaCor || '#1a1a2e'}">${alertaIcon} ${op.label||op.descricao}</div>
+        <div style="font-size:9px;margin-top:3px;display:flex;gap:3px;flex-wrap:wrap;align-items:center">
           ${op.operadora_nome ? `<span style="background:#1a1a2e;color:#fff;padding:1px 5px;border-radius:4px;font-size:8px;font-weight:700">👤 ${op.operadora_nome}</span>` : `<span style="background:#fee2e2;color:#dc2626;padding:1px 5px;border-radius:4px;font-size:8px;font-weight:700">⚠ Sem op.</span>`}
           ${apoioBadge}${divBadge}
           ${statusHtml}
