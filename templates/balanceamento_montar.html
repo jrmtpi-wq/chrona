@@ -105,6 +105,7 @@
 .distrib-op-total{font-size:10.5px;font-weight:700;margin-right:8px}
 .distrib-add-btn{background:#1a1a2e;color:#fff;border:none;border-radius:4px;width:19px;height:19px;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .distrib-row{display:grid;grid-template-columns:1fr 56px 46px 36px 16px;gap:4px;align-items:center;padding:5px 8px;border-top:1px solid #f0f2f5}
+.distrib-row-solo{background:#eff6ff}
 .distrib-sel{width:100%;font-size:10px;padding:3px 4px;border:1px solid #e0e6f0;border-radius:4px;outline:none;background:#fff}
 .distrib-tempo{font-size:9.5px;color:#6b7280;text-align:center}
 .distrib-qtd{width:100%;font-size:10px;padding:3px 4px;border:1px solid #e0e6f0;border-radius:4px;outline:none;text-align:center}
@@ -435,14 +436,20 @@ function calcularMetas() {
   document.getElementById('tb-opinfo').innerHTML = `OP ${estado.opNumero} — ${estado.opRef}<small>${estado.opDesc||''} · Turno ${estado.turnoNome||'—'} · Ciclo ${estado.ciclo}min · ${estado.nOperadoras} operadoras</small>`;
 }
 
-// ── STATUS DA OPERAÇÃO (Completo / Faltam) ────────────────────
-function statusOperacao(idx) {
-  const meta = estado.metaCiclo || 0;
+// ── STATUS DA OPERAÇÃO DENTRO DE UM TIME (Completo / Faltam) ──
+// "Completo" só é avaliado na distribuição por operadora (atribuições),
+// não no simples ato de arrastar a operação para dentro do time.
+function statusOperacaoNoTime(ti, op) {
+  const time = estado.times[ti];
+  const alvo = op.qtd || 0;
+  // Assinalada diretamente pelo balanceamento automático (sem atribuições manuais)
+  if (op.operadora_id && !time.operadoras.some(o => (o.atribuicoes||[]).some(a => a.op_idx === op.idx))) {
+    return {completo: true, atribuido: alvo, alvo};
+  }
   let atribuido = 0;
-  estado.times.forEach(t => t.ops.forEach(o => { if (o.idx === idx) atribuido += (o.qtd || 0); }));
-  if (atribuido <= 0) return {estado: 'livre', atribuido, meta};
-  if (meta > 0 && atribuido >= meta) return {estado: 'completo', atribuido, meta};
-  return {estado: 'parcial', atribuido, meta, faltam: Math.max(0, meta - atribuido)};
+  time.operadoras.forEach(o => (o.atribuicoes||[]).forEach(a => { if (a.op_idx === op.idx) atribuido += (a.qtd || 0); }));
+  if (alvo > 0 && atribuido >= alvo) return {completo: true, atribuido, alvo};
+  return {completo: false, atribuido, alvo, faltam: Math.max(0, alvo - atribuido)};
 }
 
 function renderOperacoesDisponiveis() {
@@ -451,20 +458,24 @@ function renderOperacoesDisponiveis() {
     div.innerHTML = '<div style="text-align:center;color:#9ca3af;font-size:12px;padding:20px">OP sem sequência cadastrada</div>';
     return;
   }
+  // Verde = ainda não usada em nenhum time · Vermelho = já levada para algum time (evita repetir)
+  const usadas = new Set(estado.times.flatMap(t => t.ops.map(o => o.idx)));
   div.innerHTML = estado.operacoes.map((op, i) => {
-    const st = statusOperacao(i);
-    const badge = st.estado === 'completo' ? `<span class="op-status ok">Completo</span>`
-                : st.estado === 'parcial' ? `<span class="op-status falta">Faltam ${st.faltam} pçs</span>` : '';
+    const usada = usadas.has(i);
+    const cor = usada ? '#dc2626' : '#15803d';
+    const bg = usada ? '#fee2e2' : '#dcfce7';
+    const borda = usada ? '#fca5a5' : '#86efac';
     return `
     <div class="op-seq-chip" draggable="true" data-idx="${i}"
+         style="background:${bg};border-color:${borda}"
          ondragstart="dragOperacao(event, ${i})">
       <span style="color:#d1d5db;font-size:12px">⠿</span>
-      <div class="op-num">${i+1}</div>
+      <div class="op-num" style="background:${cor}">${i+1}</div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:11.5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:#1a1a2e;font-weight:700">${op.descricao}</div>
+        <div style="font-size:11.5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:${cor};font-weight:700">${op.descricao}</div>
         <div style="font-size:10px;color:#6b7280;margin-top:1px">${op.tempo_padrao.toFixed(2)} min/pç</div>
       </div>
-      ${badge}
+      <span style="font-size:10px">${usada ? '🔴' : '🟢'}</span>
     </div>`;
   }).join('');
 }
@@ -569,6 +580,10 @@ function renderActiveTeam() {
     const apoioBadge = op.apoio ? `<span style="background:#dbeafe;color:#1d4ed8;font-size:8px;padding:1px 4px;border-radius:4px;font-weight:700">↩apoio</span>` : '';
     const divBadge = op.dividida ? `<span style="background:#f3e8ff;color:#7c3aed;font-size:8px;padding:1px 4px;border-radius:4px;font-weight:700">${op.dividida === 'parte1' ? '÷1' : '÷2'}</span>` : '';
     const bgCor = alertaCor ? `background:${alertaCor}18;border-color:${alertaCor}66` : '';
+    const st = statusOperacaoNoTime(ti, op);
+    const statusHtml = st.completo
+      ? `<span class="op-status ok">Completo</span>`
+      : `<span class="op-status falta">Faltam ${st.faltam} pçs</span> <span style="color:#6b7280">· ${(op.tempo_padrao||0).toFixed(2)}min/pç</span>`;
     return `
     <div class="time-op-item" draggable="true" style="${bgCor}"
          ondragstart="dragOpDoTime(event, ${ti}, ${oi})" ondblclick="abrirAjuste(${ti}, ${oi})">
@@ -578,7 +593,7 @@ function renderActiveTeam() {
         <div style="font-size:9px;margin-top:2px;display:flex;gap:3px;flex-wrap:wrap;align-items:center">
           ${op.operadora_nome ? `<span style="background:#1a1a2e;color:#fff;padding:1px 5px;border-radius:4px;font-size:8px;font-weight:700">👤 ${op.operadora_nome}</span>` : `<span style="background:#fee2e2;color:#dc2626;padding:1px 5px;border-radius:4px;font-size:8px;font-weight:700">⚠ Sem op.</span>`}
           ${apoioBadge}${divBadge}
-          <span style="color:#6b7280">${(op.tempo_padrao||0).toFixed(2)}min/pç · ${(op.qtd||0)}pcs · ${(op.carga||0).toFixed(1)}m</span>
+          ${statusHtml}
         </div>
       </div>
       <button onclick="removerOpDoTime(${ti},${oi})" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:10px;padding:0 2px;flex-shrink:0">✕</button>
@@ -600,17 +615,19 @@ function renderActiveTeam() {
     const totalOp = atribs.reduce((s, a) => s + (a.carga || 0), 0);
     const restante = ciclo - totalOp;
     const corOp = totalOp > ciclo ? '#dc2626' : totalOp > ciclo * 0.9 ? '#d97706' : '#15803d';
-    const rowsHtml = atribs.map((a, ai) => `
-      <div class="distrib-row">
+    const rowsHtml = atribs.map((a, ai) => {
+      const solo = estado.metaCiclo > 0 && a.qtd >= estado.metaCiclo;
+      return `
+      <div class="distrib-row ${solo ? 'distrib-row-solo' : ''}" title="${solo ? 'Esta operadora fez o ciclo inteiro desta operação sozinha' : ''}">
         <select class="distrib-sel" onchange="atualizarAtribOp(${ti},${oi},${ai},this.value)">
           ${estado.operacoes.map((o, idx) => `<option value="${idx}" ${a.op_idx === idx ? 'selected' : ''}>${o.descricao}</option>`).join('')}
         </select>
         <span class="distrib-tempo">${(a.tempo_padrao||0).toFixed(2)}m/pç</span>
         <input class="distrib-qtd" type="number" min="1" value="${a.qtd}" onchange="atualizarAtribQtd(${ti},${oi},${ai},this.value)">
-        <span class="distrib-carga">${(a.carga||0).toFixed(1)}m</span>
+        <span class="distrib-carga" style="${solo ? 'color:#1d4ed8;font-weight:800' : ''}">${(a.carga||0).toFixed(1)}m${solo ? ' 🔵' : ''}</span>
         <button class="distrib-rem-btn" onclick="removerAtrib(${ti},${oi},${ai})">✕</button>
       </div>
-    `).join('');
+    `; }).join('');
     return `
       <div class="distrib-op">
         <div class="distrib-op-header"
