@@ -141,7 +141,10 @@
     <div class="card">
       <div class="card-title" style="justify-content:space-between">
         <span>📋 Sequência Montada</span>
-        <button class="btn btn-danger btn-xs" onclick="limparSequencia()">🗑️ Limpar</button>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-purple btn-xs" onclick="imprimirSequencia()">🖨️ Imprimir</button>
+          <button class="btn btn-danger btn-xs" onclick="limparSequencia()">🗑️ Limpar</button>
+        </div>
       </div>
 
       <!-- Info da sequência -->
@@ -537,6 +540,89 @@ function limparSequencia() {
   if (sequencia.length && !confirm('Limpar a sequência montada?')) return;
   sequencia = [];
   renderSequencia();
+}
+
+// ── IMPRIMIR SEQUÊNCIA ────────────────────────────
+function imprimirSequencia() {
+  if (!sequencia.length) { toast('Monte uma sequência antes de imprimir', 'error'); return; }
+  const agora = new Date();
+  const dataStr = agora.toLocaleDateString('pt-BR');
+  const horaStr = agora.toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+  const nome = document.getElementById('seq-nome').value.trim() || 'Sequência sem nome';
+  const modelo = document.getElementById('seq-modelo').value;
+  const total = sequencia.reduce((s, o) => s + parseFloat(o.tempo_padrao||0), 0);
+
+  const linhasHtml = sequencia.map((op, i) => `
+    <tr>
+      <td class="imp-seq-n">${i+1}</td>
+      <td class="imp-seq-desc">${op.descricao}</td>
+      <td class="imp-seq-eq">${op.equip_nome || '—'}</td>
+      <td class="imp-seq-tempo">${parseFloat(op.tempo_padrao||0).toFixed(2)} min</td>
+    </tr>`).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><title>Sequência Operacional — JRMTPI CONFECÇÕES</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',Arial,sans-serif;background:#fff;color:#1a1a2e;font-size:13px}
+.imp-page{padding:20px;max-width:900px;margin:0 auto}
+.imp-header{display:flex;align-items:flex-start;justify-content:space-between;border-bottom:3px solid #1a1a2e;padding-bottom:14px;margin-bottom:16px}
+.imp-logo{display:flex;align-items:center;gap:10px}
+.imp-logo-icon{width:44px;height:44px;background:#1a1a2e;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px}
+.imp-logo h1{font-size:22px;font-weight:800;letter-spacing:1px;margin:0}
+.imp-logo small{font-size:10px;color:#6b7280;display:block}
+.imp-info{text-align:right;font-size:12px;color:#374151}
+.imp-info strong{display:block;font-size:14px;color:#1a1a2e;margin-bottom:2px}
+.imp-seq-banner{background:#1a1a2e;color:#fff;border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.imp-seq-banner h2{font-size:16px;font-weight:800;margin:0}
+.imp-seq-banner span{font-size:12px;color:#9ca3af}
+.imp-seq-table{width:100%;border-collapse:collapse;font-size:12px}
+.imp-seq-table th{background:#f8f9fb;border:1px solid #e0e6f0;padding:8px 10px;text-align:left;font-size:10px;text-transform:uppercase;color:#6b7280}
+.imp-seq-table td{border:1px solid #e0e6f0;padding:7px 10px;vertical-align:top}
+.imp-seq-n{width:32px;text-align:center;font-weight:700;color:#6b7280}
+.imp-seq-desc{font-weight:700}
+.imp-seq-eq{color:#6b7280}
+.imp-seq-tempo{font-weight:700;text-align:right;white-space:nowrap}
+.imp-total{background:#1a1a2e;border-radius:10px;padding:12px 18px;margin-top:14px;display:flex;align-items:center;justify-content:space-between}
+.imp-total-lbl{font-size:12px;color:#9ca3af}
+.imp-total-val{font-size:18px;font-weight:800;color:#f5a623}
+.imp-footer{margin-top:20px;padding-top:10px;border-top:1px solid #e0e6f0;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af}
+.no-print{display:flex;justify-content:center;gap:12px;margin-bottom:20px}
+.no-print button{padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}
+.btn-imp{background:#1a1a2e;color:#fff}
+.btn-fec{background:#f0f2f5;color:#374151}
+@media print{.no-print{display:none!important}body{padding:0}@page{margin:10mm}}
+</style></head>
+<body>
+<div class="imp-page">
+  <div class="no-print">
+    <button class="btn-imp" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+    <button class="btn-fec" onclick="window.close()">✕ Fechar</button>
+  </div>
+  <div class="imp-header">
+    <div class="imp-logo"><div class="imp-logo-icon">⚙️</div><div><h1>JRMTPI CONFECÇÕES</h1><small>Sistema de Produção</small></div></div>
+    <div class="imp-info"><strong>Sequência Operacional</strong>${dataStr} às ${horaStr}</div>
+  </div>
+  <div class="imp-seq-banner">
+    <div><h2>${nome}</h2><span>${tagModelo[modelo] ? modelo : 'Modelo não definido'}</span></div>
+    <div style="text-align:right"><span>${sequencia.length} operações</span></div>
+  </div>
+  <table class="imp-seq-table">
+    <thead><tr><th>#</th><th>Operação</th><th>Máquina</th><th>Tempo</th></tr></thead>
+    <tbody>${linhasHtml}</tbody>
+  </table>
+  <div class="imp-total">
+    <span class="imp-total-lbl">⏱ Tempo Total da Peça</span>
+    <span class="imp-total-val">${total.toFixed(2)} min</span>
+  </div>
+  <div class="imp-footer"><span>JRMTPI CONFECÇÕES — Sistema de Produção</span><span>Gerado em ${dataStr} às ${horaStr}</span></div>
+</div>
+</body></html>`;
+
+  const janela = window.open('', '_blank', 'width=900,height=800');
+  janela.document.write(html);
+  janela.document.close();
 }
 
 // ── NOVA / EDITAR OPERAÇÃO ────────────────────────
