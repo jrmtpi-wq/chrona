@@ -358,6 +358,7 @@ function toast(msg, tipo='success') {
 function fecharModal(id) { document.getElementById(id).classList.remove('open') }
 function abrirModal(id) { document.getElementById(id).classList.add('open') }
 function iniciais(nome) { return (nome||'').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase(); }
+function maquinaDaOp(idx) { const op = estado.operacoes[idx]; return op ? (op.equip_nome || '') : ''; }
 
 // ── CARREGAR OP (na abertura da página) ───────────────────────
 async function init() {
@@ -380,6 +381,7 @@ async function init() {
   estado.operacoes = seq.map((s, i) => ({
     idx: i, operacao_id: s.operacao_id, descricao: s.descricao,
     tempo_padrao: parseFloat(s.tempo_padrao) || 0, equipamento_id: s.equipamento_id,
+    equip_nome: s.equip_nome || '',
   }));
   estado.tempoPeca = estado.operacoes.reduce((s, o) => s + o.tempo_padrao, 0);
 
@@ -502,7 +504,7 @@ function renderOperacoesDisponiveis() {
       <div class="op-num" style="background:${cor};margin-top:1px">${i+1}</div>
       <div style="flex:1;min-width:0">
         <div style="font-size:11.5px;white-space:normal;line-height:1.3;word-break:break-word;color:${cor};font-weight:700">${op.descricao}</div>
-        <div style="font-size:10px;color:#6b7280;margin-top:1px">${op.tempo_padrao.toFixed(2)} min/pç</div>
+        <div style="font-size:10px;color:#6b7280;margin-top:1px">${op.tempo_padrao.toFixed(2)} min/pç${op.equip_nome ? ` · 🔧 ${op.equip_nome}` : ''}</div>
       </div>
       ${badge}
       <span style="font-size:10px">${usada ? '🔴' : '🟢'}</span>
@@ -616,6 +618,8 @@ function renderActiveTeam() {
     const apoioBadge = op.apoio ? `<span style="background:#dbeafe;color:#1d4ed8;font-size:8px;padding:1px 4px;border-radius:4px;font-weight:700">↩apoio</span>` : '';
     const divBadge = op.dividida ? `<span style="background:#f3e8ff;color:#7c3aed;font-size:8px;padding:1px 4px;border-radius:4px;font-weight:700">${op.dividida === 'parte1' ? '÷1' : '÷2'}</span>` : '';
     const bgCor = alertaCor ? `background:${alertaCor}18;border-color:${alertaCor}66` : '';
+    const maq = maquinaDaOp(op.idx);
+    const maqBadge = maq ? `<span style="background:#f0f2f5;color:#374151;padding:1px 5px;border-radius:4px;font-size:8px;font-weight:700">🔧 ${maq}</span>` : '';
     const st = statusOperacaoNoTime(ti, op);
     const statusHtml = st.completo
       ? `<span class="op-status ok">Completo</span>`
@@ -628,6 +632,7 @@ function renderActiveTeam() {
         <div style="font-size:10.5px;white-space:normal;line-height:1.3;word-break:break-word;color:${alertaCor || '#1a1a2e'}">${alertaIcon} ${op.label||op.descricao}</div>
         <div style="font-size:9px;margin-top:3px;display:flex;gap:3px;flex-wrap:wrap;align-items:center">
           ${op.operadora_nome ? `<span style="background:#1a1a2e;color:#fff;padding:1px 5px;border-radius:4px;font-size:8px;font-weight:700">👤 ${op.operadora_nome}</span>` : `<span style="background:#fee2e2;color:#dc2626;padding:1px 5px;border-radius:4px;font-size:8px;font-weight:700">⚠ Sem op.</span>`}
+          ${maqBadge}
           ${apoioBadge}${divBadge}
           ${statusHtml}
         </div>
@@ -1023,9 +1028,11 @@ function imprimirBalanceamento() {
     const cls = totalCarga > ciclo ? 'over' : totalCarga > ciclo * 0.9 ? 'warn' : 'ok';
     const cor = totalCarga > ciclo ? '#dc2626' : totalCarga > ciclo * 0.9 ? '#d97706' : '#15803d';
     const opTagsHtml = time.operadoras.length ? time.operadoras.map(o => `<span class="imp-op-tag">${o.nome}</span>`).join('') : '<span class="imp-vazio">Sem operadoras</span>';
-    const opsHtml = time.ops.length ? time.ops.map((op) => `
-        <div class="imp-op-row"><div class="imp-op-n">${op.idx+1}</div><span class="imp-op-desc" title="${op.descricao}">${op.descricao}</span><span class="imp-op-carga">${(op.carga||0).toFixed(1)}</span></div>
-      `).join('') : '<div class="imp-vazio" style="padding:4px 0">Sem operações</div>';
+    const opsHtml = time.ops.length ? time.ops.map((op) => {
+      const maq = maquinaDaOp(op.idx);
+      const descComMaq = maq ? `${op.descricao} (${maq})` : op.descricao;
+      return `<div class="imp-op-row"><div class="imp-op-n">${op.idx+1}</div><span class="imp-op-desc" title="${descComMaq}">${descComMaq}</span><span class="imp-op-carga">${(op.carga||0).toFixed(1)}</span></div>`;
+      }).join('') : '<div class="imp-vazio" style="padding:4px 0">Sem operações</div>';
     return `
       <div class="imp-time">
         <div class="imp-time-header ${cls}"><span class="imp-time-num">Time ${time.num}</span><span class="imp-time-ciclo">${totalCarga.toFixed(1)}/${ciclo}min</span></div>

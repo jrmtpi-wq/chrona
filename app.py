@@ -990,9 +990,10 @@ def api_fila_lancar_producao():
 def api_op_sequencia_get(oid):
     c = m.conn()
     rows = c.execute("""
-        SELECT sq.*, o.descricao, o.tempo_padrao as tp, o.equipamento_id as eq_id
+        SELECT sq.*, o.descricao, o.tempo_padrao as tp, o.equipamento_id as eq_id, e.nome as equip_nome
         FROM sequencia_op sq
         JOIN operacoes o ON sq.operacao_id=o.id
+        LEFT JOIN equipamentos e ON o.equipamento_id=e.id
         WHERE sq.op_id=? ORDER BY sq.ordem
     """, (oid,)).fetchall()
     c.close()
@@ -1002,6 +1003,7 @@ def api_op_sequencia_get(oid):
         'descricao': r['descricao'],
         'tempo_padrao': r['tempo_padrao'],
         'equipamento_id': r['equipamento_id'],
+        'equip_nome': r['equip_nome'] or '',
         'ordem': r['ordem'],
         'time_numero': r['time_numero'],
     } for r in rows])
