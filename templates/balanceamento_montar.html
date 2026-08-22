@@ -392,7 +392,8 @@ async function init() {
     if (bal.total_times) estado.nTimes = bal.total_times;
 
     const opComTime = seq.filter(s => s.time_numero != null && s.time_numero > 0);
-    if (opComTime.length) {
+    const temOperadorasSalvas = bal.operadoras_times && bal.operadoras_times.length > 0;
+    if (opComTime.length || temOperadorasSalvas) {
       const timesMap = {};
       seq.forEach((s, i) => {
         if (!s.time_numero || s.time_numero <= 0) return;
@@ -406,9 +407,32 @@ async function init() {
           label: s.descricao,
         });
       });
+
+      // Restaura operadoras e suas atribuições (qtd de peças por operação) em cada time
+      (bal.operadoras_times || []).forEach(ot => {
+        const tn = ot.time_numero;
+        if (!timesMap[tn]) timesMap[tn] = {num: tn, operadoras: [], ops: []};
+        timesMap[tn].operadoras.push({
+          id: ot.funcionario_id, nome: ot.nome,
+          apoio: !!ot.apoio, time_principal: ot.time_principal,
+          atribuicoes: (ot.atribuicoes || []).map(a => {
+            const opIdx = estado.operacoes.findIndex(o => o.operacao_id === a.operacao_id);
+            const opRef = opIdx >= 0 ? estado.operacoes[opIdx] : null;
+            return {
+              op_idx: opIdx, descricao: opRef ? opRef.descricao : '',
+              tempo_padrao: opRef ? opRef.tempo_padrao : 0,
+              qtd: a.qtd, carga: a.carga,
+            };
+          }),
+        });
+      });
+
       estado.times = Object.values(timesMap).sort((a, b) => a.num - b.num);
       restaurouTimes = true;
-      toast('Balanceamento anterior carregado. Adicione as operadoras aos times.', 'success');
+      const msg = temOperadorasSalvas
+        ? 'Balanceamento anterior carregado, com operadoras e operações restauradas.'
+        : 'Balanceamento anterior carregado. Adicione as operadoras aos times.';
+      toast(msg, 'success');
     }
   }
 
@@ -1182,11 +1206,25 @@ body{font-family:'Inter',Arial,sans-serif;background:#fff;color:#1a1a2e;font-siz
 }
 
 // ── SALVAR ────────────────────────────────────────
+// Antes de enviar, resolve op_idx -> operacao_id em cada atribuição (op_idx só faz sentido
+// nesta sessão do navegador; o servidor precisa do operacao_id real para persistir).
+function timesComOperacaoIdResolvido() {
+  return estado.times.map(t => ({
+    ...t,
+    operadoras: (t.operadoras || []).map(oper => ({
+      ...oper,
+      atribuicoes: (oper.atribuicoes || []).map(a => {
+        const opRef = estado.operacoes[a.op_idx];
+        return { ...a, operacao_id: opRef ? opRef.operacao_id : null };
+      }),
+    })),
+  }));
+}
 function montarPayloadBalanceamento(opId) {
   return {
     op_id: opId, turno_id: CFG.turno_id, ciclo_minutos: estado.ciclo, total_operadores: estado.nOperadoras,
     minutos_disponiveis: estado.minutos, meta_dia: estado.metaDia, meta_ciclo: estado.metaCiclo,
-    total_times: estado.nTimes, times: estado.times,
+    total_times: estado.nTimes, times: timesComOperacaoIdResolvido(),
   };
 }
 async function salvarBalanceamento() {

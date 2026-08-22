@@ -1170,15 +1170,34 @@ def api_balanceamento_salvar():
  
         # Limpa atribuições anteriores para não sobrar operações de times antigos
         c.execute("UPDATE sequencia_op SET time_numero=NULL WHERE op_id=?", (d['op_id'],))
+        c.execute("DELETE FROM balanceamento_atribuicoes WHERE op_id=?", (d['op_id'],))
+        c.execute("DELETE FROM balanceamento_operadoras WHERE op_id=?", (d['op_id'],))
 
-        # Atualiza time_numero na sequencia_op
+        # Atualiza time_numero na sequencia_op, e persiste operadoras + atribuições de cada time
         for time in d.get('times', []):
             for op in time.get('ops', []):
                 if op.get('operacao_id'):
                     c.execute("""UPDATE sequencia_op SET time_numero=?
                                  WHERE op_id=? AND operacao_id=?""",
                               (time['num'], d['op_id'], op['operacao_id']))
- 
+
+            for oper in time.get('operadoras', []):
+                if not oper.get('id'):
+                    continue
+                c.execute("""INSERT INTO balanceamento_operadoras
+                             (op_id,time_numero,funcionario_id,apoio,time_principal)
+                             VALUES (?,?,?,?,?)""",
+                          (d['op_id'], time['num'], oper['id'],
+                           1 if oper.get('apoio') else 0, oper.get('time_principal')))
+                for atrib in oper.get('atribuicoes', []):
+                    if not atrib.get('operacao_id'):
+                        continue
+                    c.execute("""INSERT INTO balanceamento_atribuicoes
+                                 (op_id,time_numero,funcionario_id,operacao_id,qtd,carga)
+                                 VALUES (?,?,?,?,?,?)""",
+                              (d['op_id'], time['num'], oper['id'], atrib['operacao_id'],
+                               atrib.get('qtd', 0), atrib.get('carga', 0)))
+
         c.commit(); c.close()
         return jsonify({'ok': True, 'bal_id': bal_id})
     except Exception as e:
@@ -1191,8 +1210,44 @@ def api_balanceamento_get(op_id):
     user = get_user(); fids_list = fab_ids(user); ph = ','.join('?'*len(fids_list))
     c = m.conn()
     bal = c.execute(f"SELECT * FROM balanceamento WHERE op_id=? AND fabrica_id IN ({ph})", (op_id,)+tuple(fids_list)).fetchone()
+    if not bal:
+        c.close()
+        return jsonify({})
+
+    bd = dict(bal)
+
+    opers = c.execute("""
+        SELECT bo.time_numero, bo.funcionario_id, bo.apoio, bo.time_principal, f.nome
+        FROM balanceamento_operadoras bo
+        JOIN funcionarios f ON bo.funcionario_id = f.id
+        WHERE bo.op_id=?
+    """, (op_id,)).fetchall()
+
+    atribs = c.execute("""
+        SELECT time_numero, funcionario_id, operacao_id, qtd, carga
+        FROM balanceamento_atribuicoes WHERE op_id=?
+    """, (op_id,)).fetchall()
     c.close()
-    return jsonify(dict(bal) if bal else {})
+
+    atribs_por_func = {}
+    for a in atribs:
+        ad = dict(a)
+        key = (ad['time_numero'], ad['funcionario_id'])
+        atribs_por_func.setdefault(key, []).append({
+            'operacao_id': ad['operacao_id'], 'qtd': ad['qtd'], 'carga': ad['carga']
+        })
+
+    operadoras_times = []
+    for o in opers:
+        od = dict(o)
+        key = (od['time_numero'], od['funcionario_id'])
+        operadoras_times.append({
+            'time_numero': od['time_numero'], 'funcionario_id': od['funcionario_id'],
+            'nome': od['nome'], 'apoio': bool(od['apoio']), 'time_principal': od['time_principal'],
+            'atribuicoes': atribs_por_func.get(key, []),
+        })
+    bd['operadoras_times'] = operadoras_times
+    return jsonify(bd)
 
 
 @app.route('/balanceamento/historico')
@@ -1257,6 +1312,38 @@ def api_balanceamento_exportar():
                 'ordem': sd['ordem'],
             })
         bd['times'] = [{'numero': k, 'operacoes': v} for k, v in sorted(times_map.items())]
+
+        opers = c.execute("""
+            SELECT bo.time_numero, bo.funcionario_id, f.nome, bo.apoio, bo.time_principal
+            FROM balanceamento_operadoras bo
+            JOIN funcionarios f ON bo.funcionario_id = f.id
+            WHERE bo.op_id=?
+        """, (bd['op_id'],)).fetchall()
+        atribs = c.execute("""
+            SELECT ba.time_numero, ba.funcionario_id, ba.operacao_id, ba.qtd, ba.carga, o.descricao
+            FROM balanceamento_atribuicoes ba
+            JOIN operacoes o ON ba.operacao_id = o.id
+            WHERE ba.op_id=?
+        """, (bd['op_id'],)).fetchall()
+        atribs_por_func = {}
+        for a in atribs:
+            ad = dict(a)
+            key = (ad['time_numero'], ad['funcionario_id'])
+            atribs_por_func.setdefault(key, []).append({
+                'operacao_id': ad['operacao_id'], 'descricao': ad['descricao'],
+                'qtd': ad['qtd'], 'carga': ad['carga'],
+            })
+        operadoras_times = []
+        for o in opers:
+            od = dict(o)
+            key = (od['time_numero'], od['funcionario_id'])
+            operadoras_times.append({
+                'time_numero': od['time_numero'], 'funcionario_id': od['funcionario_id'],
+                'nome': od['nome'], 'apoio': bool(od['apoio']), 'time_principal': od['time_principal'],
+                'atribuicoes': atribs_por_func.get(key, []),
+            })
+        bd['operadoras_times'] = operadoras_times
+
         resultado.append(bd)
     c.close()
     return jsonify(resultado)

@@ -385,6 +385,28 @@ CREATE TABLE IF NOT EXISTS balanceamento (
     criado_em TEXT DEFAULT (datetime('now','localtime')),
     FOREIGN KEY(op_id) REFERENCES ordens_producao(id)
 );
+CREATE TABLE IF NOT EXISTS balanceamento_operadoras (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id INTEGER NOT NULL,
+    time_numero INTEGER NOT NULL,
+    funcionario_id INTEGER NOT NULL,
+    apoio INTEGER DEFAULT 0,
+    time_principal INTEGER,
+    FOREIGN KEY(op_id) REFERENCES ordens_producao(id),
+    FOREIGN KEY(funcionario_id) REFERENCES funcionarios(id)
+);
+CREATE TABLE IF NOT EXISTS balanceamento_atribuicoes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id INTEGER NOT NULL,
+    time_numero INTEGER NOT NULL,
+    funcionario_id INTEGER NOT NULL,
+    operacao_id INTEGER NOT NULL,
+    qtd REAL DEFAULT 0,
+    carga REAL DEFAULT 0,
+    FOREIGN KEY(op_id) REFERENCES ordens_producao(id),
+    FOREIGN KEY(funcionario_id) REFERENCES funcionarios(id),
+    FOREIGN KEY(operacao_id) REFERENCES operacoes(id)
+);
 CREATE TABLE IF NOT EXISTS producao (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     fabrica_id INTEGER,
@@ -783,6 +805,28 @@ CREATE TABLE IF NOT EXISTS balanceamento (
     total_times INTEGER DEFAULT 0,
     criado_em TEXT DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS'),
     FOREIGN KEY(op_id) REFERENCES ordens_producao(id)
+);
+CREATE TABLE IF NOT EXISTS balanceamento_operadoras (
+    id SERIAL PRIMARY KEY,
+    op_id INTEGER NOT NULL,
+    time_numero INTEGER NOT NULL,
+    funcionario_id INTEGER NOT NULL,
+    apoio INTEGER DEFAULT 0,
+    time_principal INTEGER,
+    FOREIGN KEY(op_id) REFERENCES ordens_producao(id),
+    FOREIGN KEY(funcionario_id) REFERENCES funcionarios(id)
+);
+CREATE TABLE IF NOT EXISTS balanceamento_atribuicoes (
+    id SERIAL PRIMARY KEY,
+    op_id INTEGER NOT NULL,
+    time_numero INTEGER NOT NULL,
+    funcionario_id INTEGER NOT NULL,
+    operacao_id INTEGER NOT NULL,
+    qtd REAL DEFAULT 0,
+    carga REAL DEFAULT 0,
+    FOREIGN KEY(op_id) REFERENCES ordens_producao(id),
+    FOREIGN KEY(funcionario_id) REFERENCES funcionarios(id),
+    FOREIGN KEY(operacao_id) REFERENCES operacoes(id)
 );
 CREATE TABLE IF NOT EXISTS producao (
     id SERIAL PRIMARY KEY,
