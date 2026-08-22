@@ -334,8 +334,10 @@ tbody td{padding:7px 12px;font-size:12px;vertical-align:middle}
       <span class="nav-icon">📋</span><span class="nav-label">Ref / OP</span></a>
     <a href="/sequencia-op" class="nav-item {% if 'sequencia-op' in request.path %}active{% endif %}">
       <span class="nav-icon">⚙️</span><span class="nav-label">Sequência OP</span></a>
-    <a href="/balanceamento" class="nav-item {% if 'balanceamento' in request.path %}active{% endif %}">
+    <a href="/balanceamento" class="nav-item {% if request.path == '/balanceamento' or request.path.startswith('/balanceamento/montar') %}active{% endif %}">
       <span class="nav-icon">⚖️</span><span class="nav-label">Balanceamento</span></a>
+    <a href="/balanceamento/historico" class="nav-item {% if 'balanceamento/historico' in request.path %}active{% endif %}">
+      <span class="nav-icon">🗂️</span><span class="nav-label">Histórico Balanceamento</span></a>
     <a href="/fila-producao" class="nav-item {% if 'fila-producao' in request.path %}active{% endif %}">
       <span class="nav-icon">📅</span><span class="nav-label">Fila de Produção</span></a>
     <a href="/lancamento" class="nav-item {% if 'lancamento' in request.path %}active{% endif %}">

@@ -1072,7 +1072,7 @@ def balanceamento():
         SELECT op.*,r.codigo ref_codigo
         FROM ordens_producao op
         LEFT JOIN referencias r ON op.referencia_id=r.id
-        WHERE op.fabrica_id IN ({ph}) AND op.situacao IN ('ABERTA','PRODUCAO')
+        WHERE op.fabrica_id IN ({ph}) AND op.situacao IN ('ABERTA','PRODUCAO','ENCERRADA')
         ORDER BY op.id DESC
     """, fids_list).fetchall()
  
@@ -1111,7 +1111,7 @@ def balanceamento_montar():
         SELECT op.*,r.codigo ref_codigo
         FROM ordens_producao op
         LEFT JOIN referencias r ON op.referencia_id=r.id
-        WHERE op.fabrica_id IN ({ph}) AND op.situacao IN ('ABERTA','PRODUCAO')
+        WHERE op.fabrica_id IN ({ph}) AND op.situacao IN ('ABERTA','PRODUCAO','ENCERRADA')
         ORDER BY op.id DESC
     """, fids_list).fetchall()
 
@@ -1193,6 +1193,73 @@ def api_balanceamento_get(op_id):
     bal = c.execute(f"SELECT * FROM balanceamento WHERE op_id=? AND fabrica_id IN ({ph})", (op_id,)+tuple(fids_list)).fetchone()
     c.close()
     return jsonify(dict(bal) if bal else {})
+
+
+@app.route('/balanceamento/historico')
+@login_required
+def balanceamento_historico():
+    user = get_user()
+    fids_list = fab_ids(user)
+    ph = ','.join('?'*len(fids_list))
+    c = m.conn()
+    bals = c.execute(f"""
+        SELECT b.*, op.numero op_numero, op.situacao op_situacao,
+               r.codigo ref_codigo, r.descricao ref_descricao
+        FROM balanceamento b
+        JOIN ordens_producao op ON b.op_id = op.id
+        LEFT JOIN referencias r ON op.referencia_id = r.id
+        WHERE b.fabrica_id IN ({ph})
+        ORDER BY b.criado_em DESC
+    """, fids_list).fetchall()
+    c.close()
+    return render_template('balanceamento_historico.html', user=user,
+        bals=[dict(r) for r in bals])
+
+
+@app.route('/api/balanceamento/exportar')
+@login_required
+def api_balanceamento_exportar():
+    """Exporta todos os balanceamentos salvos (com detalhe de times/operações) em JSON,
+    para o usuário baixar e usar como base de dados real (ex: calibrar o algoritmo automático)."""
+    user = get_user()
+    fids_list = fab_ids(user)
+    ph = ','.join('?'*len(fids_list))
+    c = m.conn()
+    bals = c.execute(f"""
+        SELECT b.*, op.numero op_numero, op.situacao op_situacao,
+               r.codigo ref_codigo, r.descricao ref_descricao
+        FROM balanceamento b
+        JOIN ordens_producao op ON b.op_id = op.id
+        LEFT JOIN referencias r ON op.referencia_id = r.id
+        WHERE b.fabrica_id IN ({ph})
+        ORDER BY b.criado_em DESC
+    """, fids_list).fetchall()
+
+    resultado = []
+    for b in bals:
+        bd = dict(b)
+        seq = c.execute("""
+            SELECT sq.time_numero, sq.operacao_id, sq.ordem, o.descricao, o.tempo_padrao, o.tipo
+            FROM sequencia_op sq
+            JOIN operacoes o ON sq.operacao_id = o.id
+            WHERE sq.op_id=? AND sq.time_numero IS NOT NULL
+            ORDER BY sq.time_numero, sq.ordem
+        """, (bd['op_id'],)).fetchall()
+        times_map = {}
+        for s in seq:
+            sd = dict(s)
+            tn = sd['time_numero']
+            times_map.setdefault(tn, []).append({
+                'operacao_id': sd['operacao_id'],
+                'descricao': sd['descricao'],
+                'tempo_padrao': sd['tempo_padrao'],
+                'tipo': sd['tipo'],
+                'ordem': sd['ordem'],
+            })
+        bd['times'] = [{'numero': k, 'operacoes': v} for k, v in sorted(times_map.items())]
+        resultado.append(bd)
+    c.close()
+    return jsonify(resultado)
 
 
 @app.route('/api/balanceamento/automatico', methods=['POST'])

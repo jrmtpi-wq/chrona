@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block title %}Histórico de Balanceamentos{% endblock %}
+{% block page_title %}Histórico de Balanceamentos{% endblock %}
+{% block content %}
+<style>
+.bh-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px}
+.bh-title{font-size:15px;font-weight:700;color:#1a1a2e;display:flex;align-items:center;gap:6px}
+.btn{padding:8px 16px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.btn-primary{background:#1a1a2e;color:#fff}.btn-primary:hover{background:#2d3a6e}
+.btn-light{background:#f0f2f5;color:#374151}.btn-light:hover{background:#e5e7eb}
+.btn-sm{padding:5px 10px;font-size:11px}
+.card{background:#fff;border-radius:10px;border:1px solid #e0e6f0;overflow:hidden}
+table.bh-table{width:100%;border-collapse:collapse;font-size:12.5px}
+table.bh-table th{background:#f8f9fb;text-align:left;padding:9px 10px;font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:#6b7280;border-bottom:1px solid #e0e6f0;white-space:nowrap}
+table.bh-table td{padding:9px 10px;border-bottom:1px solid #f0f2f5;vertical-align:middle}
+table.bh-table tr:last-child td{border-bottom:none}
+table.bh-table tr:hover td{background:#fafbfc}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.badge-aberta{background:#dbeafe;color:#1d4ed8}
+.badge-producao{background:#dcfce7;color:#15803d}
+.badge-encerrada{background:#e5e7eb;color:#4b5563}
+.badge-cancelada{background:#fee2e2;color:#b91c1c}
+.empty-preview{text-align:center;color:#9ca3af;font-size:13px;padding:60px 20px;background:#fff;border-radius:12px;border:1px dashed #e0e6f0}
+.ref-desc{color:#9ca3af;font-size:11px}
+</style>
+
+<div class="bh-header">
+  <div class="bh-title">🗂️ Histórico de Balanceamentos</div>
+  <div style="display:flex;gap:8px">
+    <a href="/balanceamento" class="btn btn-light btn-sm">⚖️ Ir para Balanceamento</a>
+    <button class="btn btn-primary btn-sm" onclick="exportarJson()">⬇️ Exportar tudo (JSON)</button>
+  </div>
+</div>
+
+{% if not bals %}
+<div class="empty-preview">
+  Nenhum balanceamento salvo ainda.<br>
+  Vá em <a href="/balanceamento">Balanceamento</a>, monte e salve — os registros aparecerão aqui, mesmo depois da OP ser encerrada.
+</div>
+{% else %}
+<div class="card">
+  <table class="bh-table">
+    <thead>
+      <tr>
+        <th>OP</th><th>Referência</th><th>Situação</th><th>Ciclo</th>
+        <th>Operadores</th><th>Times</th><th>Meta/Ciclo</th><th>Meta/Dia</th>
+        <th>Salvo em</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in bals %}
+      <tr>
+        <td><strong>OP {{ b.op_numero }}</strong></td>
+        <td>{{ b.ref_codigo or '—' }}<div class="ref-desc">{{ b.ref_descricao or '' }}</div></td>
+        <td>
+          {% if b.op_situacao == 'ABERTA' %}<span class="badge badge-aberta">Aberta</span>
+          {% elif b.op_situacao == 'PRODUCAO' %}<span class="badge badge-producao">Produção</span>
+          {% elif b.op_situacao == 'ENCERRADA' %}<span class="badge badge-encerrada">Encerrada</span>
+          {% elif b.op_situacao == 'CANCELADA' %}<span class="badge badge-cancelada">Cancelada</span>
+          {% else %}<span class="badge badge-encerrada">{{ b.op_situacao }}</span>{% endif %}
+        </td>
+        <td>{{ b.ciclo_minutos }} min</td>
+        <td>{{ b.total_operadores }}</td>
+        <td>{{ b.total_times }}</td>
+        <td>{{ b.meta_ciclo }}</td>
+        <td>{{ b.meta_dia }}</td>
+        <td>{{ b.criado_em }}</td>
+        <td><a class="btn btn-light btn-sm" href="/balanceamento/montar?op_id={{ b.op_id }}&operadoras={{ b.total_operadores }}&ciclo={{ b.ciclo_minutos }}&times={{ b.total_times }}">Abrir</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<script>
+async function exportarJson() {
+  const r = await fetch('/api/balanceamento/exportar');
+  const data = await r.json();
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'balanceamentos_export_' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+window.chronaRefresh = function(){};
+</script>
+{% endblock %}
