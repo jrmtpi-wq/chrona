@@ -68,6 +68,9 @@ class _Conn:
     def commit(self):
         self._raw.commit()
 
+    def rollback(self):
+        self._raw.rollback()
+
     def close(self):
         self._raw.close()
 
@@ -96,6 +99,7 @@ def _pg_exec(c, sql):
 
 
 SCHEMA_SQLITE = """
+CREATE TABLE IF NOT EXISTS configuracao_instalacao (chave TEXT PRIMARY KEY, valor TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS fabricas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL,
@@ -526,6 +530,7 @@ CREATE TABLE IF NOT EXISTS despesas_docs (
 """
 
 SCHEMA_PG = """
+CREATE TABLE IF NOT EXISTS configuracao_instalacao (chave TEXT PRIMARY KEY, valor TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS fabricas (
     id SERIAL PRIMARY KEY,
     nome TEXT NOT NULL,
@@ -1372,43 +1377,14 @@ def _ins(sql, conflict=''):
 def seed():
     c = conn()
     if c.execute("SELECT COUNT(*) FROM fabricas").fetchone()[0] == 0:
-        fabricas_nomes = [
-            ('Fabrica Matriz', 'Icara'),
-            ('Fabrica 3',      'Icara'),
-            ('Fabrica 2',      'Icara'),
-            ('Fabrica 1',      'Icara'),
-        ]
-        for nome, cidade in fabricas_nomes:
-            c.execute("INSERT INTO fabricas (nome,cidade) VALUES (?,?)", (nome, cidade))
-        c.commit()
-
-        # Busca os IDs reais das fábricas após commit
-        fab_rows = c.execute("SELECT id, nome FROM fabricas ORDER BY id").fetchall()
-        prefixos_map = {
-            'Fabrica Matriz': 'matriz',
-            'Fabrica 3':      'fabrica3',
-            'Fabrica 2':      'fabrica2',
-            'Fabrica 1':      'fabrica1',
-        }
-
-        c.execute(_ins("INSERT INTO usuarios (nome,login,senha_hash,perfil) VALUES (?,?,?,?)", True),
-                  ('Administrador', 'admin', hash_senha('admin123'), 'admin'))
-
-        for row in fab_rows:
-            fab_id = row[0]
-            fab_nome = row[1]
-            prefixo = prefixos_map.get(fab_nome, fab_nome.lower().split()[0])
-            usuarios_fab = [
-                (f'Gestor {prefixo.capitalize()}',     f'{prefixo}.gestor', 'gestor'),
-                (f'Operador {prefixo.capitalize()} 1', f'{prefixo}.op1',    'operador'),
-                (f'Operador {prefixo.capitalize()} 2', f'{prefixo}.op2',    'operador'),
-                (f'Operador {prefixo.capitalize()} 3', f'{prefixo}.op3',    'operador'),
-            ]
-            for nome, login, perfil in usuarios_fab:
-                c.execute(
-                    _ins("INSERT INTO usuarios (nome,login,senha_hash,perfil,fabrica_id,ativo) VALUES (?,?,?,?,?,1)", True),
-                    (nome, login, hash_senha('giassi123'), perfil, fab_id)
-                )
+        senha = os.environ.get('CHRONA_ADMIN_SENHA', '')
+        if len(senha) < 12 or (PG_MODE and not os.environ.get('SECRET_KEY')):
+            c.close()
+            raise RuntimeError('Nova instalação exige CHRONA_ADMIN_SENHA com pelo menos 12 caracteres e SECRET_KEY própria em produção.')
+        fab_id = c.insert_id('INSERT INTO fabricas(nome) VALUES (?)',
+                             (os.environ.get('CHRONA_EMPRESA_NOME', 'JTMTPI CONFECÇÕES'),))
+        c.execute('INSERT INTO usuarios(nome,login,senha_hash,perfil,fabrica_id) VALUES (?,?,?,?,?)',
+                  ('Administrador', os.environ.get('CHRONA_ADMIN_LOGIN', 'admin'), hash_senha(senha), 'admin', fab_id))
 
     if c.execute("SELECT COUNT(*) FROM categorias_despesa").fetchone()[0] == 0:
         for i, nome in enumerate(DESPESAS_PADRAO):
@@ -1464,5 +1440,21 @@ def efic_classe(ef):
     return 'azul'
 
 
-init()
-seed()
+from fabrica_unica import consolidar_fabricas
+
+def inicializar_instalacao():
+    trava = conn() if PG_MODE else None
+    try:
+        if trava:
+            trava.execute('SELECT pg_advisory_lock(74201952)')
+        init()
+        consolidar_fabricas(conn, os.environ.get('CHRONA_EMPRESA_NOME', 'JTMTPI CONFECÇÕES'), PG_MODE)
+        seed()
+    finally:
+        if trava:
+            try:
+                trava.execute('SELECT pg_advisory_unlock(74201952)')
+            finally:
+                trava.close()
+
+inicializar_instalacao()

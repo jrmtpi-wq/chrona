@@ -56,6 +56,7 @@
     const factories = data.fabricas.map(f => `<option value="${Number(f.id)}">${escape(f.nome)}</option>`).join('');
     $('fabrica').innerHTML = factories || '<option value="">Sem fábrica disponível</option>';
     $('fabrica').value = data.fabrica_id ?? '';
+    $('fabrica').closest('label').hidden = data.fabricas.length === 1;
     selectedFactory = String(data.fabrica_id ?? '');
     $('fabrica-nome').textContent = data.fabricas.find(f => f.id === data.fabrica_id)?.nome || 'Produção da fábrica';
     $('data').value = data.data;

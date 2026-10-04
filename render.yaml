@@ -5,6 +5,14 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2
     envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CHRONA_EMPRESA_NOME
+        value: JTMTPI CONFECÇÕES
+      - key: CHRONA_ADMIN_LOGIN
+        value: admin
+      - key: CHRONA_ADMIN_SENHA
+        sync: false
       - key: DATABASE_URL
         fromDatabase:
           name: chrona-db

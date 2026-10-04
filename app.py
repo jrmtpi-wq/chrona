@@ -4,9 +4,11 @@ from datetime import datetime, date
 from werkzeug.utils import secure_filename
 import os, uuid
 import models as m
+from instalacao import fabrica_da_instalacao, registrar_instalacao, chave_da_instalacao
 
 app = Flask(__name__)
-app.secret_key = 'chrona_2025_producao_secret'
+app.secret_key = os.environ.get('SECRET_KEY') or chave_da_instalacao(m.conn)
+app.config['FABRICA_UNICA'] = True
 
 UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static', 'uploads')
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -25,7 +27,8 @@ def salvar_upload(arquivo):
 
 @app.context_processor
 def inject_globals():
-    return dict(get_user=get_user, session=session)
+    empresa = fabrica_da_instalacao(app, m)
+    return dict(get_user=get_user, session=session, empresa=empresa, fabrica_unica=empresa is not None)
 
 def login_required(f):
     @wraps(f)
@@ -53,9 +56,19 @@ def get_user():
     c = m.conn()
     u = c.execute("SELECT u.*,f.nome fab_nome FROM usuarios u LEFT JOIN fabricas f ON u.fabrica_id=f.id WHERE u.id=?",
                   (session['uid'],)).fetchone()
-    c.close(); return u
+    c.close()
+    empresa = fabrica_da_instalacao(app, m)
+    if empresa and u:
+        if not u['ativo'] or (u['fabrica_id'] != empresa['id'] and not (u['perfil'] == 'admin' and u['fabrica_id'] is None)):
+            return None
+        u = dict(u)
+        u.update(fabrica_id=empresa['id'], fab_nome=empresa['nome'])
+    return u
 
 def fab_ids(user):
+    empresa = fabrica_da_instalacao(app, m)
+    if empresa:
+        return [empresa['id']]
     if user['perfil'] == 'admin':
         c = m.conn()
         ids = [r[0] for r in c.execute("SELECT id FROM fabricas WHERE ativa=1").fetchall()]
@@ -64,6 +77,9 @@ def fab_ids(user):
 
 def resolve_fab_id(d, user, c=None):
     """Retorna fabrica_id a partir do payload ou do usuário; fallback para primeira fábrica ativa."""
+    empresa = fabrica_da_instalacao(app, m)
+    if empresa:
+        return empresa['id']
     fid = d.get('fabrica_id') if d else None
     if not fid:
         fid = user['fabrica_id'] if user else None
@@ -87,6 +103,9 @@ def login():
         u = c.execute("SELECT * FROM usuarios WHERE LOWER(login)=LOWER(?) AND senha_hash=? AND ativo=1",
                       (request.form['login'], m.hash_senha(request.form['senha']))).fetchone()
         c.close()
+        empresa = fabrica_da_instalacao(app, m)
+        if u and empresa and u['fabrica_id'] != empresa['id'] and not (u['perfil'] == 'admin' and u['fabrica_id'] is None):
+            u = None
         if u:
             session.update({'uid':u['id'],'nome':u['nome'],'perfil':u['perfil'],'fab_id':u['fabrica_id']})
             next_url = session.pop('next', None)
@@ -2675,7 +2694,8 @@ def usuarios():
 def api_usuarios_salvar():
     d = request.json; c = m.conn()
     try:
-        fab_id = int(d['fabrica_id']) if d.get('fabrica_id') else None
+        empresa = fabrica_da_instalacao(app, m)
+        fab_id = empresa['id'] if empresa else int(d['fabrica_id']) if d.get('fabrica_id') else None
         if d.get('id'):
             sql = "UPDATE usuarios SET nome=?,login=?,perfil=?,fabrica_id=?,ativo=?"
             params = [d['nome'], d['login'], d['perfil'], fab_id, int(d.get('ativo', 1))]
@@ -2901,6 +2921,7 @@ def fix_icara():
 
 
 from painel_tv import registrar_painel
+registrar_instalacao(app, m, get_user)
 registrar_painel(app, m, get_user, fab_ids, login_required)
 
 if __name__ == '__main__':

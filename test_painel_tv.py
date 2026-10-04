@@ -1,5 +1,6 @@
 """Testes isolados: importa o app com SQLite temporário, sem init/seed de produção."""
 import ast
+import hashlib
 from datetime import date
 from pathlib import Path
 import sqlite3
@@ -28,12 +29,15 @@ c.executescript(schema)
 c.close()
 model = types.ModuleType('models')
 model.conn = connect
+model.hash_senha = lambda s: hashlib.sha256(s.encode()).hexdigest()
 sys.modules['models'] = model
 import app as application
+application.app.config['FABRICA_UNICA'] = False
 
 
 def seed():
     c = connect()
+    c.execute('DROP TABLE IF EXISTS consolidacao_fabricas_backup')
     for table in ('metas_producao_dia', 'producao', 'ordens_producao', 'referencias', 'usuarios', 'fabricas'):
         c.execute(f'DELETE FROM {table}')
     c.executemany('INSERT INTO fabricas(id,nome) VALUES (?,?)', [(1,'Fábrica Centro'),(2,'Fábrica Norte')])
@@ -204,10 +208,14 @@ class PainelTVTests(unittest.TestCase):
 if __name__ == '__main__':
     if '--serve' in sys.argv:
         seed()
+        if '--single' in sys.argv:
+            from fabrica_unica import consolidar_fabricas
+            consolidar_fabricas(connect, 'JTMTPI CONFECÇÕES')
+            application.app.config['FABRICA_UNICA'] = True
         @application.app.get('/test-login')
         def test_login():
             from flask import session, redirect
-            session['uid'] = 1
+            session['uid'] = 3 if '--single' in sys.argv else 1
             return redirect('/painel-producao?data=2026-10-04')
         application.app.run(host='127.0.0.1', port=5051, debug=False, use_reloader=False)
     else:
