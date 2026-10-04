@@ -34,7 +34,7 @@ import app as application
 
 def seed():
     c = connect()
-    for table in ('producao', 'ordens_producao', 'referencias', 'usuarios', 'fabricas'):
+    for table in ('metas_producao_dia', 'producao', 'ordens_producao', 'referencias', 'usuarios', 'fabricas'):
         c.execute(f'DELETE FROM {table}')
     c.executemany('INSERT INTO fabricas(id,nome) VALUES (?,?)', [(1,'Fábrica Centro'),(2,'Fábrica Norte')])
     c.executemany('INSERT INTO usuarios(id,nome,login,senha_hash,perfil,fabrica_id) VALUES (?,?,?,?,?,?)',
@@ -140,6 +140,40 @@ class PainelTVTests(unittest.TestCase):
         self.assertEqual(self.client.get('/painel-producao').status_code, 200)
         page = self.client.get('/lancamento').get_data(as_text=True)
         self.assertIn('Gestão à vista · TV', page)
+
+    def test_daily_target_save_replace_and_date_isolation(self):
+        self.assertIsNone(self.get().get_json()['meta_dia']['quantidade'])
+        target = dict(fabrica_id=1, data='2026-10-04', quantidade=500)
+        self.assertTrue(self.client.post('/api/painel-producao/meta-dia', json=target).get_json()['ok'])
+        self.assertEqual(self.get().get_json()['meta_dia'], dict(quantidade=500, atingimento=60.0, faltam=200))
+        self.assertEqual(self.get().get_json()['resumo']['meta'], 300)
+        target['quantidade'] = 200
+        self.assertEqual(self.client.post('/api/painel-producao/meta-dia', json=target).status_code, 200)
+        self.assertEqual(self.get().get_json()['meta_dia'], dict(quantidade=200, atingimento=150.0, faltam=0))
+        self.assertIsNone(self.client.get('/api/painel-producao?data=2026-10-03').get_json()['meta_dia']['quantidade'])
+        self.login(3)
+        self.assertIsNone(self.get('&fabrica_id=2').get_json()['meta_dia']['quantidade'])
+        c = connect()
+        self.assertEqual(c.execute('SELECT COUNT(*) FROM metas_producao_dia').fetchone()[0], 1)
+        c.close()
+
+    def test_daily_target_permissions_and_validation(self):
+        target = dict(fabrica_id=1, data='2026-10-04', quantidade=500)
+        self.assertEqual(self.client.post('/api/painel-producao/meta-dia', json={**target, 'fabrica_id':2}).status_code, 403)
+        for quantidade in (0, -5, 2.5, True, '500', None, 10000001):
+            self.assertEqual(self.client.post('/api/painel-producao/meta-dia', json={**target, 'quantidade':quantidade}).status_code, 400)
+        self.assertEqual(self.client.post('/api/painel-producao/meta-dia', json={**target, 'data':'2026-02-30'}).status_code, 400)
+        self.login(2)
+        self.assertFalse(self.get('&fabrica_id=2').get_json()['pode_editar_meta'])
+        self.assertEqual(self.client.post('/api/painel-producao/meta-dia', json={**target,'fabrica_id':2}).status_code, 403)
+        self.client = application.app.test_client()
+        self.assertEqual(self.client.post('/api/painel-producao/meta-dia', json=target).status_code, 401)
+
+    def test_daily_target_before_first_pointing(self):
+        target = dict(fabrica_id=1, data='2026-01-01', quantidade=500)
+        self.assertEqual(self.client.post('/api/painel-producao/meta-dia', json=target).status_code, 200)
+        data = self.client.get('/api/painel-producao?data=2026-01-01').get_json()
+        self.assertEqual(data['meta_dia'], dict(quantidade=500, atingimento=0.0, faltam=500))
 
 
 if __name__ == '__main__':

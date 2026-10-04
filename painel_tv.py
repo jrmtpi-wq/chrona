@@ -18,6 +18,39 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
     def painel_producao():
         return render_template('painel_producao.html')
 
+    @app.post('/api/painel-producao/meta-dia')
+    def salvar_meta_dia():
+        user = get_user()
+        if user is None:
+            return jsonify(erro='Entre no sistema para definir a meta.'), 401
+        if user['perfil'] not in ('gestor', 'admin'):
+            return jsonify(erro='Somente gestores e administradores podem definir a meta.'), 403
+        d = request.get_json(silent=True) or {}
+        try:
+            dia = d['data']
+            if not isinstance(dia, str) or date.fromisoformat(dia).isoformat() != dia:
+                raise ValueError()
+            fid = d['fabrica_id']
+            qtd = d['quantidade']
+            if type(fid) is not int or type(qtd) is not int or not 1 <= qtd <= 10000000:
+                raise ValueError()
+        except (KeyError, TypeError, ValueError):
+            return jsonify(erro='Informe fábrica, data e uma meta inteira entre 1 e 10.000.000 peças.'), 400
+        if fid not in fab_ids(user):
+            return jsonify(erro='Fábrica não autorizada.'), 403
+        c = m.conn()
+        try:
+            c.execute('''INSERT INTO metas_producao_dia
+                         (fabrica_id,data,quantidade,atualizado_por,atualizado_em)
+                         VALUES (?,?,?,?,?) ON CONFLICT (fabrica_id,data) DO UPDATE SET
+                         quantidade=excluded.quantidade,atualizado_por=excluded.atualizado_por,
+                         atualizado_em=excluded.atualizado_em''',
+                      (fid, dia, qtd, user['id'], datetime.now(timezone(timedelta(hours=-3))).isoformat()))
+            c.commit()
+        finally:
+            c.close()
+        return jsonify(ok=True)
+
     @app.get('/api/painel-producao')
     def api_painel_producao():
         user = get_user()
@@ -74,8 +107,16 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                                        restante=max(0, quantidade - total),
                                        ultimo_periodo=op['hora'], **resumo(items)))
             ordens.sort(key=lambda o: (o['ultimo_periodo'], o['op_id']), reverse=True)
+            meta_row = c.execute('SELECT quantidade FROM metas_producao_dia WHERE fabrica_id=? AND data=?',
+                                 (fid, dia)).fetchone() if fid is not None else None
+            meta_dia = meta_row['quantidade'] if meta_row else None
+            totais = resumo(rows)
             result = dict(data=dia, atualizado_em=agora.isoformat(), fabrica_id=fid,
-                          fabricas=fabricas, resumo=resumo(rows), ops=ordens,
+                          fabricas=fabricas, resumo=totais, ops=ordens,
+                          pode_editar_meta=user['perfil'] in ('gestor', 'admin'),
+                          meta_dia=dict(quantidade=meta_dia,
+                                        atingimento=round(totais['produzido'] / meta_dia * 100, 1) if meta_dia else None,
+                                        faltam=max(0, meta_dia - totais['produzido']) if meta_dia else None),
                           horas=[dict(hora=h, **resumo(items)) for h, items in sorted(horas.items())],
                           recentes=[dict(id=r['id'], numero=r['numero'], referencia=r['referencia'] or '',
                                          hora=r['hora'], operadores=r['operadores'], **resumo([r]))

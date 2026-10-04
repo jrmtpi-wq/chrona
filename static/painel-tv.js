@@ -10,6 +10,7 @@
   let selectedDate = new URLSearchParams(location.search).get('data') || '';
   let selectedFactory = new URLSearchParams(location.search).get('fabrica_id') || '';
   let lastSuccess = null;
+  let metaContext = null;
 
   function renderOps() {
     if (!data) return;
@@ -43,10 +44,14 @@
     const day = new Date(`${data.data}T12:00:00-03:00`).toLocaleDateString('pt-BR', {timeZone:'America/Sao_Paulo',weekday:'long',day:'2-digit',month:'long',year:'numeric'});
     $('dia-legenda').textContent = day;
     $('produzido').textContent = n(data.resumo.produzido);
-    $('meta').textContent = n(data.resumo.meta);
+    $('meta').textContent = data.meta_dia.quantidade === null ? '—' : n(data.meta_dia.quantidade);
+    $('atingimento').textContent = data.meta_dia.quantidade === null ? 'Meta ainda não definida' : `${percent(data.meta_dia.atingimento)} da meta atingida`;
+    $('definir-meta').hidden = !data.pode_editar_meta || data.fabrica_id === null;
+    $('definir-meta').textContent = data.meta_dia.quantidade === null ? 'Definir meta do dia' : 'Editar meta do dia';
     $('eficiencia').textContent = percent(data.resumo.eficiencia);
     $('ef-card').className = `metric ${color(data.resumo.eficiencia)}`;
-    $('saldo').textContent = `${data.resumo.saldo > 0 ? '+' : ''}${n(data.resumo.saldo)}`;
+    $('saldo').textContent = data.meta_dia.faltam === null ? '—' : n(data.meta_dia.faltam);
+    $('meta-apontada').textContent = data.meta_dia.faltam === 0 ? 'Meta do dia atingida!' : 'peças para atingir a meta';
     $('farol').textContent = data.resumo.eficiencia === null ? 'Sem meta apontada' : data.resumo.eficiencia < 85 ? 'Abaixo de 85%' : data.resumo.eficiencia < 92 ? 'Atenção ao ritmo' : data.resumo.eficiencia <= 100 ? 'Faixa verde · 92% a 100%' : 'Acima da meta apontada';
     $('contagem').textContent = `${n(data.resumo.lancamentos)} lançamentos na data`;
     $('recentes').innerHTML = data.recentes.length ? data.recentes.map(r =>
@@ -107,6 +112,9 @@
     $('contagem').textContent = '—';
     $('atualizacao').textContent = 'Última consulta: —';
     lastSuccess = null;
+    $('atingimento').textContent = 'Consultando meta do dia';
+    $('meta-apontada').textContent = 'peças para atingir a meta';
+    $('definir-meta').hidden = true;
     $('ops').innerHTML = '<div class="empty">Consultando produção…</div>';
     $('horas').innerHTML = '';
     $('recentes').innerHTML = '';
@@ -117,6 +125,30 @@
   $('fabrica').addEventListener('change', () => { selectedFactory = $('fabrica').value; changeFilter(); });
   $('data').addEventListener('change', () => { selectedDate = $('data').value; changeFilter(); });
   $('hoje').addEventListener('click', () => { selectedDate = ''; changeFilter(); });
+  $('definir-meta').addEventListener('click', () => {
+    if (!data) return;
+    metaContext = {fabrica_id:data.fabrica_id, data:data.data};
+    $('meta-contexto').textContent = `${$('fabrica-nome').textContent} · ${data.data.split('-').reverse().join('/')}`;
+    $('meta-quantidade').value = data.meta_dia.quantidade ?? '';
+    $('meta-erro').textContent = '';
+    $('modal-meta').showModal();
+    $('meta-quantidade').focus();
+  });
+  $('cancelar-meta').addEventListener('click', () => $('modal-meta').close());
+  $('form-meta').addEventListener('submit', async event => {
+    event.preventDefault();
+    if ($('salvar-meta').disabled) return;
+    $('salvar-meta').disabled = true;
+    $('meta-erro').textContent = '';
+    try {
+      const response = await fetch('/api/painel-producao/meta-dia', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...metaContext,quantidade:Number($('meta-quantidade').value)})});
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.erro || 'Não foi possível salvar a meta.');
+      $('modal-meta').close();
+      refresh();
+    } catch (error) { $('meta-erro').textContent = error.message; }
+    finally { $('salvar-meta').disabled = false; }
+  });
   $('tela-cheia').addEventListener('click', async () => {
     try {
       if (document.fullscreenElement) await document.exitFullscreen();

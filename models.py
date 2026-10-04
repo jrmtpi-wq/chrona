@@ -103,6 +103,15 @@ CREATE TABLE IF NOT EXISTS fabricas (
     endereco TEXT,
     ativa INTEGER DEFAULT 1
 );
+CREATE TABLE IF NOT EXISTS metas_producao_dia (
+    fabrica_id INTEGER NOT NULL,
+    data TEXT NOT NULL,
+    quantidade INTEGER NOT NULL CHECK (quantidade > 0),
+    atualizado_por INTEGER NOT NULL,
+    atualizado_em TEXT NOT NULL,
+    PRIMARY KEY (fabrica_id, data),
+    FOREIGN KEY (fabrica_id) REFERENCES fabricas(id)
+);
 CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL,
@@ -523,6 +532,15 @@ CREATE TABLE IF NOT EXISTS fabricas (
     cidade TEXT,
     endereco TEXT,
     ativa INTEGER DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS metas_producao_dia (
+    fabrica_id INTEGER NOT NULL,
+    data TEXT NOT NULL,
+    quantidade INTEGER NOT NULL CHECK (quantidade > 0),
+    atualizado_por INTEGER NOT NULL,
+    atualizado_em TEXT NOT NULL,
+    PRIMARY KEY (fabrica_id, data),
+    FOREIGN KEY (fabrica_id) REFERENCES fabricas(id)
 );
 CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,

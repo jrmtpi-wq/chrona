@@ -18,6 +18,7 @@
     <label>Fábrica <select id="fabrica" aria-label="Fábrica"><option value="">Carregando…</option></select></label>
     <label>Data <input type="date" id="data"></label>
     <button id="hoje">Hoje</button>
+    <button id="definir-meta" hidden>Definir meta do dia</button>
     <button id="tela-cheia">Tela cheia</button>
     <span class="refresh-note">Atualiza a cada 15 segundos</span>
   </nav>
@@ -25,9 +26,9 @@
     <div id="aviso" role="alert" hidden></div>
     <section class="metrics" aria-label="Resumo da produção">
       <article class="metric featured"><span>Produzido no dia</span><strong id="produzido">—</strong><small>peças apontadas</small></article>
-      <article class="metric"><span>Meta apontada</span><strong id="meta">—</strong><small>dos períodos registrados</small></article>
+      <article class="metric"><span>Meta do dia</span><strong id="meta">—</strong><small id="atingimento">Meta ainda não definida</small></article>
       <article class="metric" id="ef-card"><span>Eficiência acumulada</span><strong id="eficiencia">—</strong><small id="farol">Aguardando apontamentos</small></article>
-      <article class="metric"><span>Saldo em peças</span><strong id="saldo">—</strong><small>produzido − meta apontada</small></article>
+      <article class="metric"><span>Falta para a meta do dia</span><strong id="saldo">—</strong><small id="meta-apontada">peças para atingir a meta</small></article>
     </section>
     <div class="body-grid">
       <section class="panel orders">
@@ -47,5 +48,15 @@
     </section>
   </main>
   <footer><span>Fonte: Lançamento de Produção · Eficiência = produzido ÷ meta dos períodos apontados</span><span id="atualizacao">Última consulta: —</span></footer>
+  <dialog id="modal-meta">
+    <form id="form-meta">
+      <h2>Meta do dia</h2>
+      <p id="meta-contexto"></p>
+      <label for="meta-quantidade">Quantidade de peças para o dia inteiro</label>
+      <input id="meta-quantidade" type="number" min="1" max="10000000" step="1" required>
+      <p id="meta-erro" role="alert" class="red"></p>
+      <div class="dialog-actions"><button id="cancelar-meta" type="button">Cancelar</button><button id="salvar-meta" type="submit">Salvar meta</button></div>
+    </form>
+  </dialog>
 </body>
 </html>
