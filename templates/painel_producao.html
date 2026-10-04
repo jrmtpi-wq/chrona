@@ -10,7 +10,7 @@
 <body>
   <header>
     <div class="brand"><span class="brand-mark">C</span><div><strong>CHRONA</strong><small>GESTÃO À VISTA · PRODUÇÃO</small></div></div>
-    <div class="context"><strong id="fabrica-nome">Produção da fábrica</strong><span id="dia-legenda">Carregando dados…</span></div>
+    <div class="context"><span class="board-label">PAINEL DE BORDO</span><strong id="fabrica-nome">Produção da fábrica</strong><span id="dia-legenda">Carregando dados…</span></div>
     <div class="clock"><strong id="relogio">—</strong><span id="conexao" role="status">Conectando…</span></div>
   </header>
   <nav aria-label="Configuração do painel">
@@ -19,18 +19,37 @@
     <label>Data <input type="date" id="data"></label>
     <button id="hoje">Hoje</button>
     <button id="definir-meta" hidden>Definir meta do dia</button>
+    <button id="alternar-visao">Ver OPs</button>
     <button id="tela-cheia">Tela cheia</button>
     <span class="refresh-note">Atualiza a cada 15 segundos</span>
   </nav>
   <main>
     <div id="aviso" role="alert" hidden></div>
-    <section class="metrics" aria-label="Resumo da produção">
-      <article class="metric featured"><span>Produzido no dia</span><strong id="produzido">—</strong><small>peças apontadas</small></article>
-      <article class="metric"><span>Meta do dia</span><strong id="meta">—</strong><small id="atingimento">Meta ainda não definida</small></article>
-      <article class="metric" id="ef-card"><span>Eficiência acumulada</span><strong id="eficiencia">—</strong><small id="farol">Aguardando apontamentos</small></article>
-      <article class="metric"><span>Falta para a meta do dia</span><strong id="saldo">—</strong><small id="meta-apontada">peças para atingir a meta</small></article>
+    <div class="board-layout">
+    <section class="panel board-hourly">
+      <div class="section-title"><h1>Produção por horário</h1><span class="muted" id="periodos-pagina"></span></div>
+      <table class="board-table">
+        <thead><tr><th>Hora</th><th>Meta</th><th>Realizado</th><th>Saldo</th><th>Efic. %</th></tr></thead>
+        <tbody id="periodos"></tbody>
+        <tfoot><tr><th>Total apontado</th><td id="total-meta">—</td><td id="total-realizado">—</td><td id="total-saldo">—</td><td id="total-eficiencia">—</td></tr></tfoot>
+      </table>
     </section>
-    <div class="body-grid">
+    <section class="metrics" aria-label="Resumo da produção">
+      <article class="metric"><span>Meta do dia</span><strong id="meta">—</strong><small id="atingimento">Meta ainda não definida</small></article>
+      <article class="metric featured"><span>Realizado dia</span><strong id="produzido">—</strong><small>peças apontadas</small></article>
+      <article class="metric"><span>Saldo dia</span><strong id="saldo">—</strong><small id="meta-apontada">realizado − meta do dia</small></article>
+      <article class="metric" id="ef-card"><span>Eficiência dia</span><strong id="eficiencia">—</strong><small id="farol">Aguardando apontamentos</small></article>
+    </section>
+    </div>
+    <section class="panel monthly">
+      <div class="section-title"><h2>Acumulado mês</h2><span class="muted" id="mes-legenda">Até a data selecionada</span></div>
+      <div class="month-grid">
+        <article><span>Meta mês</span><strong id="meta-mes">—</strong><small>metas diárias cadastradas</small></article>
+        <article><span>Realizado mês</span><strong id="produzido-mes">—</strong><small>peças apontadas no mês</small></article>
+        <article><span>Eficiência mês</span><strong id="eficiencia-mes">—</strong><small id="mes-nota">realizado ÷ meta do mês</small></article>
+      </div>
+    </section>
+    <div class="body-grid detail-view" hidden>
       <section class="panel orders">
         <div class="section-title"><div><span class="eyebrow">ACOMPANHAMENTO</span><h1>Ordens apontadas no dia</h1></div><span id="paginas" class="muted"></span></div>
         <div id="ops" class="op-grid"><div class="empty">Aguardando dados da produção…</div></div>
@@ -42,12 +61,12 @@
         <div id="horas" class="hour-chart"></div>
       </section>
     </div>
-    <section class="panel recent">
+    <section class="panel recent detail-view" hidden>
       <div class="section-title"><h2>Últimos períodos apontados</h2><span class="muted" id="contagem">—</span></div>
       <div id="recentes" class="recent-grid"></div>
     </section>
   </main>
-  <footer><span>Fonte: Lançamento de Produção · Eficiência = produzido ÷ meta dos períodos apontados</span><span id="atualizacao">Última consulta: —</span></footer>
+  <footer><span>Saldo = realizado − meta · Eficiência = realizado ÷ meta · Horários sem apontamento aparecem em cinza</span><span id="atualizacao">Última consulta: —</span></footer>
   <dialog id="modal-meta">
     <form id="form-meta">
       <h2>Meta do dia</h2>

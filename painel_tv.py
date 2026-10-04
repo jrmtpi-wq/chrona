@@ -86,9 +86,11 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                 WHERE p.fabrica_id=? AND p.data=? ORDER BY p.hora,p.id
             ''', (fid, dia)).fetchall()] if fid is not None else []
             horas = defaultdict(list)
+            periodos = defaultdict(list)
             ops = defaultdict(list)
             for row in rows:
                 horas[row['hora'][:2] + ':00'].append(row)
+                periodos[row['hora'][:5]].append(row)
                 ops[row['op_id']].append(row)
             ordens = []
             if ops:
@@ -111,12 +113,29 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                                  (fid, dia)).fetchone() if fid is not None else None
             meta_dia = meta_row['quantidade'] if meta_row else None
             totais = resumo(rows)
+            inicio_mes = dia[:7] + '-01'
+            mensal = c.execute('''
+                SELECT COALESCE(SUM(p.qtd_produzida),0) produzido,
+                       COUNT(DISTINCT CASE WHEN md.data IS NULL THEN p.data END) dias_sem_meta
+                FROM producao p
+                JOIN ordens_producao op ON op.id=p.op_id AND op.fabrica_id=p.fabrica_id
+                LEFT JOIN metas_producao_dia md ON md.fabrica_id=p.fabrica_id AND md.data=p.data
+                WHERE p.fabrica_id=? AND p.data>=? AND p.data<=?
+            ''', (fid, inicio_mes, dia)).fetchone()
+            metas_mes = c.execute('''SELECT SUM(quantidade) quantidade FROM metas_producao_dia
+                                    WHERE fabrica_id=? AND data>=? AND data<=?''',
+                                 (fid, inicio_mes, dia)).fetchone()['quantidade']
+            mes_completo = metas_mes is not None and mensal['dias_sem_meta'] == 0
             result = dict(data=dia, atualizado_em=agora.isoformat(), fabrica_id=fid,
                           fabricas=fabricas, resumo=totais, ops=ordens,
                           pode_editar_meta=user['perfil'] in ('gestor', 'admin'),
                           meta_dia=dict(quantidade=meta_dia,
                                         atingimento=round(totais['produzido'] / meta_dia * 100, 1) if meta_dia else None,
                                         faltam=max(0, meta_dia - totais['produzido']) if meta_dia else None),
+                          mes=dict(inicio=inicio_mes, fim=dia, meta=metas_mes,
+                                   produzido=mensal['produzido'], dias_sem_meta=mensal['dias_sem_meta'],
+                                   eficiencia=round(mensal['produzido'] / metas_mes * 100, 1) if mes_completo else None),
+                          periodos=[dict(hora=h, **resumo(items)) for h, items in sorted(periodos.items())],
                           horas=[dict(hora=h, **resumo(items)) for h, items in sorted(horas.items())],
                           recentes=[dict(id=r['id'], numero=r['numero'], referencia=r['referencia'] or '',
                                          hora=r['hora'], operadores=r['operadores'], **resumo([r]))

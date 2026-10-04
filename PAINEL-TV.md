@@ -1,5 +1,19 @@
 # Gestão à vista da produção
 
+## Painel de bordo
+
+A visão padrão segue o modelo de referência: tabela **Hora / Meta / Realizado / Saldo / Efic. %**, resumo diário à direita e acumulado mensal abaixo. **Ver OPs** abre a visão de acompanhamento anterior.
+
+- Horários iniciais: 08:00, 09:00, 10:00, 11:00, 13:30, 14:30, 15:30, 16:30 e 17:30. Horários adicionais registrados são incluídos automaticamente, preservando os minutos (09:00 e 09:30 são distintos). Mais de dez horários têm rodízio automático.
+- Metas e realizados por horário vêm dos lançamentos. Horários sem apontamento aparecem em cinza com “—”, sem distribuir artificialmente a meta diária entre horas.
+- Saldo horário e diário = realizado menos meta, com valores negativos quando a produção ainda não alcançou a meta.
+- Eficiência do dia = realizado dividido pela meta diária cadastrada. Eficiência dos horários e do total apontado = realizado dividido pelas metas dos lançamentos.
+- Acumulado mensal: do primeiro dia do mês até a data selecionada; realizado vem dos apontamentos, meta é a soma das metas diárias cadastradas nesse período. Metas ou produções futuras ficam fora.
+- Se houver dias com produção e sem meta diária, a eficiência mensal aparece “—” com a quantidade de dias pendentes. Sem meta, nenhuma eficiência gera divisão por zero.
+- Números da referência enviada não foram importados como produção real nem como metas.
+
+Validação desta atualização: quatorze testes de dados/integração, incluindo horários com meia hora, corte mensal, isolamento de fábrica e metas mensais incompletas; teste no navegador inclui tabela, resumo diário/mensal, configuração de meta, troca de visão e layout de TV/celular.
+
 Abra **Lançamento → Gestão à vista · TV**, ou `/painel-producao`, após entrar no sistema. Selecione a fábrica e clique em **Tela cheia**. Os apontamentos continuam sendo feitos pela tela Lançamento em outro computador ou celular.
 
 O painel consulta `/api/painel-producao` a cada 15 segundos. Inclusões, alterações e exclusões de lançamentos são refletidas na consulta seguinte. Em caso de falha, os valores anteriores permanecem identificados como desatualizados; a consulta é tentada novamente automaticamente. Uma sessão encerrada exige novo login.

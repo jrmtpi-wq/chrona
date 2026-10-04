@@ -6,11 +6,29 @@
   const percent = value => value === null ? '—' : `${n(value)}%`;
   const color = ef => ef === null ? '' : ef < 85 ? 'red' : ef < 92 ? 'amber' : ef <= 100 ? 'green' : 'blue';
   const time = value => new Date(value).toLocaleTimeString('pt-BR', {timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  let data = null, page = 0, hourPage = 0, timer, busy = false, again = false;
+  let data = null, page = 0, hourPage = 0, periodPage = 0, timer, busy = false, again = false;
   let selectedDate = new URLSearchParams(location.search).get('data') || '';
   let selectedFactory = new URLSearchParams(location.search).get('fabrica_id') || '';
   let lastSuccess = null;
   let metaContext = null;
+  const signed = value => value === null ? '—' : `${value > 0 ? '+' : ''}${n(value)}`;
+  function renderPeriods() {
+    if (!data) return;
+    const defaults = ['08:00','09:00','10:00','11:00','13:30','14:30','15:30','16:30','17:30'];
+    const periods = new Map(data.periodos.map(p => [p.hora,p]));
+    const times = [...new Set([...defaults,...periods.keys()])].sort();
+    const pages = Math.max(1, Math.ceil(times.length / 10));
+    periodPage %= pages;
+    $('periodos-pagina').textContent = `${n(data.resumo.lancamentos)} apontamentos${pages > 1 ? ` · página ${periodPage + 1}/${pages}` : ''}`;
+    $('periodos').innerHTML = times.slice(periodPage * 10, periodPage * 10 + 10).map(h => {
+      const p = periods.get(h);
+      return `<tr class="${p ? '' : 'pending'}"><th scope="row">${escape(h)}</th><td>${p ? n(p.meta) : '—'}</td><td>${p ? n(p.produzido) : '—'}</td><td class="${p ? p.saldo < 0 ? 'red' : 'green' : ''}">${p ? signed(p.saldo) : '—'}</td><td class="${p ? color(p.eficiencia) : ''}">${p ? percent(p.eficiencia) : '—'}</td></tr>`;
+    }).join('');
+    $('total-meta').textContent = n(data.resumo.meta);
+    $('total-realizado').textContent = n(data.resumo.produzido);
+    $('total-saldo').textContent = signed(data.resumo.saldo);
+    $('total-eficiencia').textContent = percent(data.resumo.eficiencia);
+  }
 
   function renderOps() {
     if (!data) return;
@@ -48,16 +66,23 @@
     $('atingimento').textContent = data.meta_dia.quantidade === null ? 'Meta ainda não definida' : `${percent(data.meta_dia.atingimento)} da meta atingida`;
     $('definir-meta').hidden = !data.pode_editar_meta || data.fabrica_id === null;
     $('definir-meta').textContent = data.meta_dia.quantidade === null ? 'Definir meta do dia' : 'Editar meta do dia';
-    $('eficiencia').textContent = percent(data.resumo.eficiencia);
-    $('ef-card').className = `metric ${color(data.resumo.eficiencia)}`;
-    $('saldo').textContent = data.meta_dia.faltam === null ? '—' : n(data.meta_dia.faltam);
-    $('meta-apontada').textContent = data.meta_dia.faltam === 0 ? 'Meta do dia atingida!' : 'peças para atingir a meta';
-    $('farol').textContent = data.resumo.eficiencia === null ? 'Sem meta apontada' : data.resumo.eficiencia < 85 ? 'Abaixo de 85%' : data.resumo.eficiencia < 92 ? 'Atenção ao ritmo' : data.resumo.eficiencia <= 100 ? 'Faixa verde · 92% a 100%' : 'Acima da meta apontada';
+    $('eficiencia').textContent = percent(data.meta_dia.atingimento);
+    $('ef-card').className = `metric ${color(data.meta_dia.atingimento)}`;
+    $('saldo').textContent = data.meta_dia.quantidade === null ? '—' : signed(data.resumo.produzido - data.meta_dia.quantidade);
+    $('meta-apontada').textContent = data.meta_dia.faltam === null ? 'realizado − meta do dia' : data.meta_dia.faltam === 0 ? 'Meta do dia atingida!' : `Faltam ${n(data.meta_dia.faltam)} peças`;
+    $('farol').textContent = data.meta_dia.atingimento === null ? 'Defina a meta do dia' : 'realizado ÷ meta do dia';
+    $('meta-mes').textContent = data.mes.meta === null ? '—' : n(data.mes.meta);
+    $('produzido-mes').textContent = n(data.mes.produzido);
+    $('eficiencia-mes').textContent = percent(data.mes.eficiencia);
+    $('eficiencia-mes').className = color(data.mes.eficiencia);
+    $('mes-legenda').textContent = `De 01/${data.data.slice(5,7)} até ${data.data.split('-').reverse().join('/')}`;
+    $('mes-nota').textContent = data.mes.dias_sem_meta ? `${n(data.mes.dias_sem_meta)} dia(s) apontado(s) sem meta cadastrada` : 'realizado ÷ meta do mês';
     $('contagem').textContent = `${n(data.resumo.lancamentos)} lançamentos na data`;
     $('recentes').innerHTML = data.recentes.length ? data.recentes.map(r =>
       `<article class="recent-item"><span class="time">${escape(r.hora)} · OP ${escape(r.numero)}</span><strong>${n(r.produzido)} <small class="muted">peças</small></strong><span>Meta ${n(r.meta)} · <b class="${color(r.eficiencia)}">${percent(r.eficiencia)}</b></span></article>`
     ).join('') : '<div class="empty">Nenhum período apontado</div>';
     renderOps();
+    renderPeriods();
   }
 
   async function refresh() {
@@ -102,9 +127,14 @@
   }
 
   function changeFilter() {
-    page = 0; hourPage = 0;
+    page = 0; hourPage = 0; periodPage = 0;
     data = null;
     for (const id of ['produzido','meta','eficiencia','saldo']) $(id).textContent = '—';
+    for (const id of ['meta-mes','produzido-mes','eficiencia-mes','total-meta','total-realizado','total-saldo','total-eficiencia']) $(id).textContent = '—';
+    $('periodos').innerHTML = '';
+    $('periodos-pagina').textContent = '';
+    $('mes-legenda').textContent = 'Consultando mês…';
+    $('mes-nota').textContent = '';
     $('ef-card').className = 'metric';
     $('farol').textContent = 'Consultando apontamentos';
     $('dia-legenda').textContent = 'Consultando data selecionada…';
@@ -125,6 +155,11 @@
   $('fabrica').addEventListener('change', () => { selectedFactory = $('fabrica').value; changeFilter(); });
   $('data').addEventListener('change', () => { selectedDate = $('data').value; changeFilter(); });
   $('hoje').addEventListener('click', () => { selectedDate = ''; changeFilter(); });
+  $('alternar-visao').addEventListener('click', () => {
+    const detail = document.body.classList.toggle('op-mode');
+    document.querySelectorAll('.detail-view').forEach(e => e.hidden = !detail);
+    $('alternar-visao').textContent = detail ? 'Ver painel de bordo' : 'Ver OPs';
+  });
   $('definir-meta').addEventListener('click', () => {
     if (!data) return;
     metaContext = {fabrica_id:data.fabrica_id, data:data.data};
@@ -166,7 +201,7 @@
       $('conexao').className = 'red';
     }
   }, 1000);
-  setInterval(() => { page++; hourPage++; renderOps(); }, 12000);
+  setInterval(() => { page++; hourPage++; periodPage++; renderOps(); renderPeriods(); }, 12000);
   $('relogio').textContent = time(Date.now());
   refresh();
 })();

@@ -175,6 +175,31 @@ class PainelTVTests(unittest.TestCase):
         data = self.client.get('/api/painel-producao?data=2026-01-01').get_json()
         self.assertEqual(data['meta_dia'], dict(quantidade=500, atingimento=0.0, faltam=500))
 
+    def test_exact_periods_keep_half_hour(self):
+        periods = self.get().get_json()['periodos']
+        self.assertEqual([p['hora'] for p in periods], ['08:00', '09:00', '09:30'])
+        self.assertEqual(periods[-1]['eficiencia'], 150)
+        self.assertEqual(periods[-1]['saldo'], 40)
+
+    def test_monthly_targets_and_production_cutoff(self):
+        c = connect()
+        c.executemany('INSERT INTO metas_producao_dia(fabrica_id,data,quantidade,atualizado_por,atualizado_em) VALUES (?,?,?,?,?)',
+                      [(1,'2026-10-03',200,1,'test'),(1,'2026-10-04',500,1,'test'),
+                       (1,'2026-10-05',900,1,'test'),(2,'2026-10-04',999,2,'test'),
+                       (1,'2026-09-30',800,1,'test')])
+        c.execute("INSERT INTO producao(fabrica_id,op_id,data,hora,qtd_produzida) VALUES (1,1,'2026-09-30','08:00',700)")
+        c.commit(); c.close()
+        mes = self.get().get_json()['mes']
+        self.assertEqual(mes, dict(inicio='2026-10-01', fim='2026-10-04', meta=700, produzido=500, dias_sem_meta=0, eficiencia=71.4))
+
+    def test_monthly_missing_daily_target_is_explicit(self):
+        self.client.post('/api/painel-producao/meta-dia', json=dict(fabrica_id=1,data='2026-10-04',quantidade=500))
+        mes = self.get().get_json()['mes']
+        self.assertEqual(mes['produzido'], 500)
+        self.assertEqual(mes['meta'], 500)
+        self.assertEqual(mes['dias_sem_meta'], 1)
+        self.assertIsNone(mes['eficiencia'])
+
 
 if __name__ == '__main__':
     if '--serve' in sys.argv:
