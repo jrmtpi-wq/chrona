@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestão à vista • Chrona</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='painel-tv.css') }}">
+  <script src="{{ url_for('static', filename='painel-tv.js') }}" defer></script>
+</head>
+<body>
+  <header>
+    <div class="brand"><span class="brand-mark">C</span><div><strong>CHRONA</strong><small>GESTÃO À VISTA · PRODUÇÃO</small></div></div>
+    <div class="context"><strong id="fabrica-nome">Produção da fábrica</strong><span id="dia-legenda">Carregando dados…</span></div>
+    <div class="clock"><strong id="relogio">—</strong><span id="conexao" role="status">Conectando…</span></div>
+  </header>
+  <nav aria-label="Configuração do painel">
+    <a href="/lancamento">← Lançamento</a>
+    <label>Fábrica <select id="fabrica" aria-label="Fábrica"><option value="">Carregando…</option></select></label>
+    <label>Data <input type="date" id="data"></label>
+    <button id="hoje">Hoje</button>
+    <button id="tela-cheia">Tela cheia</button>
+    <span class="refresh-note">Atualiza a cada 15 segundos</span>
+  </nav>
+  <main>
+    <div id="aviso" role="alert" hidden></div>
+    <section class="metrics" aria-label="Resumo da produção">
+      <article class="metric featured"><span>Produzido no dia</span><strong id="produzido">—</strong><small>peças apontadas</small></article>
+      <article class="metric"><span>Meta apontada</span><strong id="meta">—</strong><small>dos períodos registrados</small></article>
+      <article class="metric" id="ef-card"><span>Eficiência acumulada</span><strong id="eficiencia">—</strong><small id="farol">Aguardando apontamentos</small></article>
+      <article class="metric"><span>Saldo em peças</span><strong id="saldo">—</strong><small>produzido − meta apontada</small></article>
+    </section>
+    <div class="body-grid">
+      <section class="panel orders">
+        <div class="section-title"><div><span class="eyebrow">ACOMPANHAMENTO</span><h1>Ordens apontadas no dia</h1></div><span id="paginas" class="muted"></span></div>
+        <div id="ops" class="op-grid"><div class="empty">Aguardando dados da produção…</div></div>
+        <div class="legend"><span class="red-dot">Abaixo de 85%</span><span class="amber-dot">85% a &lt;92%</span><span class="green-dot">92% a 100%</span><span class="blue-dot">Acima de 100%</span></div>
+      </section>
+      <section class="panel hourly">
+        <div class="section-title"><div><span class="eyebrow">RITMO DA PRODUÇÃO</span><h2>Produzido × meta por hora</h2></div></div>
+        <div class="chart-key"><span class="actual-key">Produzido</span><span class="target-key">Meta apontada</span></div>
+        <div id="horas" class="hour-chart"></div>
+      </section>
+    </div>
+    <section class="panel recent">
+      <div class="section-title"><h2>Últimos períodos apontados</h2><span class="muted" id="contagem">—</span></div>
+      <div id="recentes" class="recent-grid"></div>
+    </section>
+  </main>
+  <footer><span>Fonte: Lançamento de Produção · Eficiência = produzido ÷ meta dos períodos apontados</span><span id="atualizacao">Última consulta: —</span></footer>
+</body>
+</html>

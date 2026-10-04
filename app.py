@@ -2900,5 +2900,8 @@ def fix_icara():
         return jsonify({'ok': False, 'erro': str(e)})
 
 
+from painel_tv import registrar_painel
+registrar_painel(app, m, get_user, fab_ids, login_required)
+
 if __name__ == '__main__':
     app.run(debug=False, use_reloader=False, host='0.0.0.0', port=5050)
