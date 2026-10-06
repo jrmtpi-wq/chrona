@@ -1,0 +1,33 @@
+# Programação e metas por OP
+
+Acesse **Metas por OP**. Cadastre a primeira OP com turno, data/hora de início, tempo padrão em minutos por peça, operadores, times, ciclo por time e eficiência. Salve a programação. Para cada OP seguinte, informe seus próprios parâmetros: o sistema calcula o início a partir da saída da anterior, respeitando os horários de seu turno e as exceções do calendário.
+
+O ciclo é comum aos times de uma OP, mas pode mudar entre OPs. Os dados são independentes do balanceamento. A fila é compartilhada por fábrica, na ordem em que as OPs são programadas. Use **Editar** na tabela para alterar uma OP. Alterações na primeira ou nas intermediárias recalculam as previsões seguintes, sem mudar a ordem nem duplicar os planejamentos existentes.
+
+**Calcular** mostra uma prévia. **Salvar planejamento** aplica a alteração à fila e à **Gestão à vista**, que consulta automaticamente a programação a cada 15 segundos. Somente gestores e administradores salvam; operadores podem acompanhar a fila e a TV.
+
+## Cálculos
+
+- Taxa por minuto = operadores ÷ tempo padrão × eficiência ÷ 100.
+- Capacidade diária = minutos úteis do dia × taxa por minuto.
+- Meta horária = 60 × taxa por minuto.
+- Primeira peça = entrada + times × ciclo, consumindo apenas minutos úteis.
+- Saída = primeira peça + (quantidade da OP − 1) ÷ taxa por minuto, consumindo apenas minutos úteis.
+
+As metas na TV correspondem às **peças prontas previstas em cada dia e horário**. Consideram atravessamento inicial, pausas, troca de OP, jornadas diferentes e quantidade restante no último dia. Por isso, a meta programada de um dia parcial pode ser inferior à capacidade diária. Os valores mantêm precisão interna; a exibição é arredondada. Períodos horários terminam em horas cheias; apontamentos com minutos são agrupados no período que termina na próxima hora cheia.
+
+Produção realizada continua vindo exclusivamente da tela **Lançamento**. Não há soma com o contador da fila nem criação de apontamentos. Nas datas abrangidas pela programação, a TV usa as metas planejadas para horários, OPs, resumo diário e acumulado mensal. Metas manuais antigas permanecem armazenadas e continuam valendo fora dessas datas. O mês considera apenas datas até a selecionada. O botão de meta manual fica oculto em dias cobertos pela programação.
+
+Sem registro diário no calendário, usa a jornada normal de segunda a sexta e a saída especial de sexta. Cadastre exceções, feriados, folgas e trabalho no fim de semana no calendário.
+
+## Preservação e limites
+
+A atualização cria a tabela aditiva `sequencia_metas_op`. Planejamentos antigos são incluídos uma única vez, ordenados pelo início originalmente salvo, com desempate por OP/data; a versão anterior não registrava a ordem dos salvamentos. Os cadastros antigos são preservados. A chave OP/data do cadastro permanece estável quando as datas previstas são recalculadas.
+
+O encadeamento é sequencial, sem sobreposição de OPs, com uma fila por fábrica. Atrasos e adiantamentos nos lançamentos ainda não recalculam automaticamente as previsões. Não há movimentação manual de posição, remoção de OP da fila nem histórico imutável de revisões nesta entrega.
+
+## Verificação
+
+`python -m unittest test_metas_op test_painel_tv test_fabrica_unica` executa 34 testes isolados, incluindo datas encadeadas, pausas/feriados, edição sem duplicação, migração idempotente, acesso por fábrica, metas da TV, distribuição da quantidade completa e proteção contra divisão por zero.
+
+Para testar o navegador, execute `python test_metas_op.py --serve` e `node test_browser_metas.cjs` (Playwright instalado; caminho alternativo via `PLAYWRIGHT_MODULE`). Usa SQLite temporário e dados fictícios, nas telas 1920×1080, 1366×768 e 390×844.

@@ -9,8 +9,8 @@
     <label>Descrição do produto<input id="descricao" class="form-control" readonly></label>
     <label>Quantidade da OP<input id="quantidade" class="form-control" readonly></label>
     <label>Turno<select name="turno_id" id="turno" class="form-control" required><option value="">Selecione</option>{% for t in turnos %}<option value="{{ t.id }}" data-fabrica="{{ t.fabrica_id }}">{{ t.nome }}</option>{% endfor %}</select></label>
-    <label>Data<input name="data" id="data" type="date" class="form-control" required></label>
-    <label>Início previsto<input name="inicio" id="inicio" type="datetime-local" class="form-control" required></label>
+    <label>Data de início<input name="data" id="data" type="date" class="form-control" required></label>
+    <label>Início previsto<input name="inicio" id="inicio" type="datetime-local" step="any" class="form-control" required></label>
     <label>Tempo padrão (minutos por peça)<input name="tempo_padrao" type="number" min="0.0001" step="any" class="form-control" required></label>
     <label>Operadores<input name="operadores" type="number" min="1" max="10000" step="1" class="form-control" required></label>
     <label>Quantidade de times<input name="times" type="number" min="1" max="10000" step="1" class="form-control" required></label>
@@ -18,9 +18,11 @@
     <label>Eficiência planejada (%)<input name="eficiencia" type="number" min="0.01" max="100" step="any" value="100" class="form-control" required></label>
   </div>
   <p>O ciclo informado vale para todos os times desta OP. Metas calculadas com a jornada do turno e as exceções do calendário. Sem cadastro diário, usa segunda a sexta; cadastre feriados e folgas no calendário.</p>
+  <p id="sequencia-nota">A primeira OP define o início. As próximas seguem automaticamente a saída da anterior.</p>
   {% if user.perfil in ('admin','gestor') %}<button class="btn btn-primary" type="submit">Calcular</button><button class="btn btn-primary" type="submit" value="salvar">Salvar planejamento</button>{% else %}<p>O cálculo e a edição do planejamento estão disponíveis para gestores e administradores.</p>{% endif %}
   <p id="mensagem" role="status" aria-live="polite"></p>
 </form>
+<section class="card"><h2>Sequência programada</h2><p>As metas de peças prontas desta programação aparecem automaticamente na <a href="/painel-producao">Gestão à vista</a>, por dia e horário.</p><div style="overflow-x:auto"><table class="table"><thead><tr><th>Ordem</th><th>OP / produto</th><th>Quantidade</th><th>Entrada prevista</th><th>Primeira peça</th><th>Saída prevista</th><th></th></tr></thead><tbody id="fila-programada"></tbody></table></div><p id="fila-erro" role="status"></p></section>
 <div id="resultado" class="card" hidden><h2>Metas e previsões</h2><div id="valores" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px"></div><p>Meta diária = minutos úteis × operadores ÷ tempo padrão × eficiência. A capacidade diária não é limitada ao saldo da OP. Previsão da saída considera a primeira peça pronta e a produção das peças restantes.</p></div>
 <script>
 const ops={{ ops|tojson }}, turnos={{ turnos|tojson }};

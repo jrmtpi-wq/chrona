@@ -99,6 +99,12 @@ def _pg_exec(c, sql):
 
 
 SCHEMA_SQLITE = """
+CREATE TABLE IF NOT EXISTS sequencia_metas_op (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    op_id INTEGER NOT NULL, data TEXT NOT NULL,
+    UNIQUE(op_id,data),
+    FOREIGN KEY(op_id,data) REFERENCES planejamento_metas_op(op_id,data)
+);
 CREATE TABLE IF NOT EXISTS planejamento_metas_op (
     op_id INTEGER NOT NULL, data TEXT NOT NULL, turno_id INTEGER NOT NULL,
     tempo_padrao REAL NOT NULL, operadores INTEGER NOT NULL, times INTEGER NOT NULL,
@@ -973,6 +979,11 @@ CREATE TABLE IF NOT EXISTS planejamento_metas_op (
     atualizado_por INTEGER NOT NULL, PRIMARY KEY(op_id,data),
     FOREIGN KEY(op_id) REFERENCES ordens_producao(id), FOREIGN KEY(turno_id) REFERENCES turnos(id)
 );
+CREATE TABLE IF NOT EXISTS sequencia_metas_op (
+    id SERIAL PRIMARY KEY, op_id INTEGER NOT NULL, data TEXT NOT NULL,
+    UNIQUE(op_id,data),
+    FOREIGN KEY(op_id,data) REFERENCES planejamento_metas_op(op_id,data)
+);
 """
 
 
@@ -980,6 +991,8 @@ def init():
     c = conn()
     schema = SCHEMA_PG if PG_MODE else SCHEMA_SQLITE
     _pg_exec(c, schema)
+    from metas_op import importar_planejamentos
+    importar_planejamentos(c)
     # Migrações: adicionar colunas que podem não existir em bancos antigos
     if PG_MODE:
         try:

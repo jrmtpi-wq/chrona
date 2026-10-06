@@ -16,7 +16,7 @@
     if (!data) return;
     const defaults = ['08:00','09:00','10:00','11:00','13:30','14:30','15:30','16:30','17:30'];
     const periods = new Map(data.periodos.map(p => [p.hora,p]));
-    const times = [...new Set([...defaults,...periods.keys()])].sort();
+    const times = [...new Set([...(data.fonte_meta === 'programacao' ? [] : defaults),...periods.keys()])].sort();
     const pages = Math.max(1, Math.ceil(times.length / 10));
     periodPage %= pages;
     $('periodos-pagina').textContent = `${n(data.resumo.lancamentos)} apontamentos${pages > 1 ? ` · página ${periodPage + 1}/${pages}` : ''}`;
@@ -25,6 +25,7 @@
       return `<tr class="${p ? '' : 'pending'}"><th scope="row">${escape(h)}</th><td>${p ? n(p.meta) : '—'}</td><td>${p ? n(p.produzido) : '—'}</td><td class="${p ? p.saldo < 0 ? 'red' : 'green' : ''}">${p ? signed(p.saldo) : '—'}</td><td class="${p ? color(p.eficiencia) : ''}">${p ? percent(p.eficiencia) : '—'}</td></tr>`;
     }).join('');
     $('total-meta').textContent = n(data.resumo.meta);
+    $('total-legenda').textContent = data.fonte_meta === 'programacao' ? 'Total planejado' : 'Total apontado';
     $('total-realizado').textContent = n(data.resumo.produzido);
     $('total-saldo').textContent = signed(data.resumo.saldo);
     $('total-eficiencia').textContent = percent(data.resumo.eficiencia);
@@ -40,7 +41,7 @@
       const progress = o.quantidade > 0 ? Math.min(100, Math.max(0, o.acumulado / o.quantidade * 100)) : 0;
       return `<article class="op-card ${color(o.eficiencia)}"><div class="op-head"><strong>OP ${escape(o.numero)}</strong><span class="pill">${percent(o.eficiencia)}</span></div>
         <div class="op-ref" title="${escape(o.descricao)}">${escape(o.referencia || 'Sem referência')} · ${escape(o.descricao)}</div>
-        <div class="op-numbers"><div><strong>${n(o.produzido)}</strong><span>produzido hoje</span></div><div><strong>${n(o.meta)}</strong><span>meta apontada</span></div></div>
+        <div class="op-numbers"><div><strong>${n(o.produzido)}</strong><span>produzido hoje</span></div><div><strong>${n(o.meta)}</strong><span>${data.fonte_meta === 'programacao' ? 'meta planejada' : 'meta apontada'}</span></div></div>
         <div class="progress"><span style="width:${progress}%"></span></div>
         <div class="op-progress"><span>${n(o.acumulado)} / ${n(o.quantidade)} peças na OP</span><span>${n(o.restante)} restantes</span></div></article>`;
     }).join('') : '<div class="empty">Nenhum lançamento nesta data.<br>Os apontamentos salvos aparecerão aqui automaticamente.</div>';
@@ -53,6 +54,7 @@
   }
 
   function render() {
+    document.body.classList.toggle('has-program',data.fonte_meta === 'programacao');
     const factories = data.fabricas.map(f => `<option value="${Number(f.id)}">${escape(f.nome)}</option>`).join('');
     $('fabrica').innerHTML = factories || '<option value="">Sem fábrica disponível</option>';
     $('fabrica').value = data.fabrica_id ?? '';
@@ -72,6 +74,11 @@
     $('saldo').textContent = data.meta_dia.quantidade === null ? '—' : signed(data.resumo.produzido - data.meta_dia.quantidade);
     $('meta-apontada').textContent = data.meta_dia.faltam === null ? 'realizado − meta do dia' : data.meta_dia.faltam === 0 ? 'Meta do dia atingida!' : `Faltam ${n(data.meta_dia.faltam)} peças`;
     $('farol').textContent = data.meta_dia.atingimento === null ? 'Defina a meta do dia' : 'realizado ÷ meta do dia';
+    const programacao=data.programacao||[];
+    $('programacao-painel').hidden=!programacao.length;
+    const previsao=s=>new Date(s).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const inicioProgramacao=(page % Math.max(1,Math.ceil(programacao.length/2)))*2;
+    $('programacao-itens').innerHTML=programacao.slice(inicioProgramacao,inicioProgramacao+2).map(p=>`<article><strong>OP ${escape(p.numero)} · ${escape(p.descricao||'')} · Meta ${n(p.meta)}</strong><span>Entrada ${escape(previsao(p.entrada))} · 1ª peça ${escape(previsao(p.primeira_peca))} · Saída ${escape(previsao(p.saida))}</span></article>`).join('');
     $('meta-mes').textContent = data.mes.meta === null ? '—' : n(data.mes.meta);
     $('produzido-mes').textContent = n(data.mes.produzido);
     $('eficiencia-mes').textContent = percent(data.mes.eficiencia);
@@ -202,7 +209,7 @@
       $('conexao').className = 'red';
     }
   }, 1000);
-  setInterval(() => { page++; hourPage++; periodPage++; renderOps(); renderPeriods(); }, 12000);
+  setInterval(() => { page++; hourPage++; periodPage++; if(data)render(); }, 12000);
   $('relogio').textContent = time(Date.now());
   refresh();
 })();

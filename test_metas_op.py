@@ -1,12 +1,13 @@
 import unittest
 from datetime import datetime, date
 from test_painel_tv import application, seed, connect
-from metas_op import calcular, intervalos
+from metas_op import calcular, intervalos, importar_planejamentos, planos_fila, calcular_fila, metas_programadas
 
 
 class MetasTest(unittest.TestCase):
     def setUp(self):
         c=connect()
+        c.execute('DELETE FROM sequencia_metas_op')
         c.execute('DELETE FROM planejamento_metas_op')
         c.execute('DELETE FROM jornada_calendario')
         c.execute('DELETE FROM turnos')
@@ -27,7 +28,7 @@ class MetasTest(unittest.TestCase):
         self.assertAlmostEqual(r['meta_dia'],1313.5135135)
         self.assertAlmostEqual(r['meta_hora'],145.9459459)
         self.assertEqual(r['primeira_peca'],'2026-10-05T10:00:00')
-        self.assertEqual(r['saida'],'2026-10-06T15:51:48')
+        self.assertTrue(r['saida'].startswith('2026-10-06T15:51:48'))
     def test_ciclo_por_op(self):
         r=calcular(self.c,self.op,self.turno,dict(self.d,ciclo='20'))
         self.assertEqual(r['primeira_peca'],'2026-10-05T11:00:00')
@@ -55,4 +56,102 @@ class MetasTest(unittest.TestCase):
         for chave,valor in [('ciclo','nan'),('operadores','1.5'),('tempo_padrao','0'),('eficiencia','101'),('inicio','2026-10-06T07:00')]:
             self.assertEqual(self.client.post('/api/metas-op',json=dict(self.d,**{chave:valor})).status_code,400)
 
-if __name__=='__main__':unittest.main()
+    def salvar(self, **campos):
+        r=self.client.post('/api/metas-op',json=dict(self.d,salvar=True,**campos))
+        self.assertEqual(r.status_code,200,r.json)
+        return r.json
+
+    def test_fila_datas_e_recalculo(self):
+        self.login(1)
+        primeiro=self.salvar()
+        segundo=self.salvar(op_id=2,ciclo='20')
+        fila=segundo['fila']
+        self.assertEqual(fila[1]['resultado']['entrada'],fila[0]['resultado']['saida'])
+        self.assertGreater(fila[1]['resultado']['primeira_peca'],fila[1]['resultado']['entrada'])
+        chave=segundo['data_original']
+        novo=self.salvar(data_original=primeiro['data_original'],data='2026-10-07',inicio='2026-10-07T07:00')
+        self.assertEqual(novo['fila'][1]['resultado']['entrada'],novo['fila'][0]['resultado']['saida'])
+        self.assertEqual(novo['fila'][1]['plano']['data'],chave)
+        self.salvar(op_id=2,data_original=chave,ciclo='25')
+        self.assertEqual(len(self.client.get('/api/metas-op/fila').json['fila']),2)
+
+    def test_fila_fim_turno_e_folga(self):
+        self.login(1)
+        self.c.execute('UPDATE ordens_producao SET quantidade_total=1 WHERE id=1')
+        self.c.execute("INSERT INTO jornada_calendario(fabrica_id,turno_id,data,tipo,minutos_disponiveis) VALUES(1,1,'2026-10-12','FERIADO',0)")
+        self.c.commit()
+        self.salvar(data='2026-10-09',inicio='2026-10-09T16:00',times='2',ciclo='15')
+        segundo=self.salvar(op_id=2)
+        self.assertEqual(segundo['resultado']['entrada'],'2026-10-13T07:00:00')
+
+    def test_gestao_planejado_sem_apontamentos(self):
+        self.login(1)
+        self.salvar()
+        self.salvar(op_id=2,ciclo='20')
+        fila=calcular_fila(self.c,planos_fila(self.c,1))
+        dias=metas_programadas(self.c,fila)
+        self.assertAlmostEqual(sum(p['meta'] for p in dias.values()),2500,places=5)
+        self.assertAlmostEqual(dias['2026-10-05']['meta'],1+360*45/18.5,places=5)
+        r=self.client.get('/api/painel-producao?data=2026-10-05').json
+        self.assertEqual(r['fonte_meta'],'programacao')
+        self.assertAlmostEqual(r['meta_dia']['quantidade'],dias['2026-10-05']['meta'])
+        self.assertAlmostEqual(sum(p['meta'] for p in r['periodos']),r['meta_dia']['quantidade'])
+        self.assertEqual(r['resumo']['produzido'],700)
+        self.assertFalse(r['pode_editar_meta'])
+        self.assertEqual(len(r['programacao']),1)
+        self.assertEqual(r['ops'][0]['numero'],'101')
+        # Dias posteriores à data escolhida não entram no acumulado mensal.
+        self.assertAlmostEqual(r['mes']['meta'],r['meta_dia']['quantidade'])
+        self.assertEqual(self.client.get('/api/painel-producao?data=2026-10-04').json['fonte_meta'],'lancamentos')
+
+    def test_importacao_preserva_ordem_e_planos(self):
+        self.login(1)
+        self.salvar()
+        self.salvar(op_id=2)
+        antes=[dict(r) for r in self.c.execute('SELECT * FROM planejamento_metas_op ORDER BY op_id')]
+        self.c.execute('DELETE FROM sequencia_metas_op')
+        importar_planejamentos(self.c)
+        importar_planejamentos(self.c)
+        self.assertEqual(len(planos_fila(self.c,1)),2)
+        self.assertEqual([dict(r) for r in self.c.execute('SELECT * FROM planejamento_metas_op ORDER BY op_id')],antes)
+        self.c.commit()
+
+    def test_previa_nao_salva_e_fila_isolada(self):
+        self.login(1)
+        self.salvar()
+        r=self.client.post('/api/metas-op',json=dict(self.d,op_id=2))
+        self.assertEqual(len(r.json['fila']),2)
+        self.assertEqual(len(self.client.get('/api/metas-op/fila').json['fila']),1)
+        self.login(2)
+        self.assertEqual(self.client.get('/api/metas-op/fila').json['fila'],[])
+        self.login(1)
+        r=self.client.post('/api/metas-op',json=dict(self.d,salvar=True,ciclo='0'))
+        self.assertEqual(r.status_code,400)
+        self.assertEqual(self.client.get('/api/metas-op/fila').json['fila'][0]['plano']['ciclo'],15)
+
+    def test_atravessamento_sem_meta_nao_divide_por_zero(self):
+        self.login(1)
+        self.c.execute('UPDATE ordens_producao SET quantidade_total=1 WHERE id=1')
+        self.c.commit()
+        self.salvar(data='2026-11-02',inicio='2026-11-02T07:00',times='50',ciclo='15')
+        r=self.client.get('/api/painel-producao?data=2026-11-02')
+        self.assertEqual(r.status_code,200,r.json)
+        self.assertEqual(r.json['meta_dia']['quantidade'],0)
+        self.assertIsNone(r.json['mes']['eficiencia'])
+        dias=metas_programadas(self.c,calcular_fila(self.c,planos_fila(self.c,1)))
+        self.assertAlmostEqual(sum(d['meta'] for d in dias.values()),1)
+
+if __name__=='__main__':
+    import sys
+    if '--serve' in sys.argv:
+        from flask import session, redirect
+        fixture=MetasTest()
+        fixture.setUp()
+        @application.app.get('/test-login')
+        def test_login():
+            session['uid']=1
+            session['perfil']='gestor'
+            return redirect('/metas-op')
+        application.app.run(host='127.0.0.1',port=5052,use_reloader=False,debug=False)
+    else:
+        unittest.main()
