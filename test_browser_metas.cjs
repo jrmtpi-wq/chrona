@@ -36,6 +36,9 @@ const assert=require('node:assert/strict');
  assert.equal(await page.locator('#meta').innerText(),'876,7');
  assert.equal(await page.locator('#programacao-painel').isVisible(),true);
  assert.equal(await page.locator('#definir-meta').isVisible(),false);
+ assert.equal(await page.locator('#periodos tr').count(),10);
+ assert.equal(await page.locator('#periodos tr').filter({has:page.getByRole('rowheader',{name:'08:00',exact:true})}).locator('td').first().innerText(),'0');
+ assert.equal(await page.locator('#periodos tr').filter({has:page.getByRole('rowheader',{name:'09:00',exact:true})}).locator('td').first().innerText(),'0');
  for(const [w,h]of [[1920,1080],[1366,768],[390,844]]){
   await page.setViewportSize({width:w,height:h});
   await page.screenshot({path:`test-results/metas-tv-${w}.png`,fullPage:true});

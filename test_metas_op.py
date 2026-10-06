@@ -99,6 +99,10 @@ class MetasTest(unittest.TestCase):
         self.assertEqual(r['resumo']['produzido'],700)
         self.assertFalse(r['pode_editar_meta'])
         self.assertEqual(len(r['programacao']),1)
+        por_hora={p['hora']:p for p in r['periodos']}
+        self.assertEqual(por_hora['08:00']['meta'],0)
+        self.assertEqual(por_hora['09:00']['meta'],0)
+        self.assertEqual(por_hora['10:00']['meta'],1)
         self.assertEqual(r['ops'][0]['numero'],'101')
         # Dias posteriores à data escolhida não entram no acumulado mensal.
         self.assertAlmostEqual(r['mes']['meta'],r['meta_dia']['quantidade'])
@@ -138,6 +142,8 @@ class MetasTest(unittest.TestCase):
         self.assertEqual(r.status_code,200,r.json)
         self.assertEqual(r.json['meta_dia']['quantidade'],0)
         self.assertIsNone(r.json['mes']['eficiencia'])
+        self.assertEqual(len(r.json['periodos']),10)
+        self.assertTrue(all(p['meta']==0 for p in r.json['periodos']))
         dias=metas_programadas(self.c,calcular_fila(self.c,planos_fila(self.c,1)))
         self.assertAlmostEqual(sum(d['meta'] for d in dias.values()),1)
 

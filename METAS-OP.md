@@ -16,6 +16,8 @@ O ciclo é comum aos times de uma OP, mas pode mudar entre OPs. Os dados são in
 
 As metas na TV correspondem às **peças prontas previstas em cada dia e horário**. Consideram atravessamento inicial, pausas, troca de OP, jornadas diferentes e quantidade restante no último dia. Por isso, a meta programada de um dia parcial pode ser inferior à capacidade diária. Os valores mantêm precisão interna; a exibição é arredondada. Períodos horários terminam em horas cheias; apontamentos com minutos são agrupados no período que termina na próxima hora cheia.
 
+A TV mostra todos os períodos de trabalho do turno nas datas programadas, inclusive antes da primeira peça e depois da conclusão da OP. Horários sem saída prevista de peças têm meta zero; o realizado continua mostrando os lançamentos daquele horário. Pausas sem trabalho não criam períodos produtivos.
+
 Produção realizada continua vindo exclusivamente da tela **Lançamento**. Não há soma com o contador da fila nem criação de apontamentos. Nas datas abrangidas pela programação, a TV usa as metas planejadas para horários, OPs, resumo diário e acumulado mensal. Metas manuais antigas permanecem armazenadas e continuam valendo fora dessas datas. O mês considera apenas datas até a selecionada. O botão de meta manual fica oculto em dias cobertos pela programação.
 
 Sem registro diário no calendário, usa a jornada normal de segunda a sexta e a saída especial de sexta. Cadastre exceções, feriados, folgas e trabalho no fim de semana no calendário.

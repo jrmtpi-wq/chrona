@@ -56,6 +56,13 @@ def metas_programadas(c, fila):
             # Presença no planejamento, mesmo durante o atravessamento sem peças prontas.
             dias.setdefault(dia.isoformat(), dict(meta=0.0, periodos={}, ops={}))
             for a,b in intervalos(c, turno, dia):
+                # Exibe a jornada inteira, incluindo períodos antes da primeira peça
+                # e depois da conclusão da OP, sem acrescentar peças à meta.
+                horario = a
+                while horario < b:
+                    fronteira = horario.replace(minute=0,second=0,microsecond=0)+timedelta(hours=1)
+                    adicionar(horario.date().isoformat(),fronteira.strftime('%H:%M'),0.0,p['op_id'])
+                    horario = min(b, fronteira)
                 atual, limite = max(a, primeira), min(b, fim)
                 while atual < limite:
                     fronteira = atual.replace(minute=0,second=0,microsecond=0)+timedelta(hours=1)
