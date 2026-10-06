@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Metas por OP{% endblock %}
+{% block page_title %}Metas por OP{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Planejamento das metas por OP</h1><p>Informe os dados de produção e o ciclo padrão para todos os times desta OP.</p></div></div>
+<form id="plano" class="card">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px">
+    <label>Número da OP<select name="op_id" id="op" class="form-control" required><option value="">Selecione</option>{% for op in ops %}<option value="{{ op.id }}">{{ op.numero }} — {{ op.descricao or 'Sem descrição' }}</option>{% endfor %}</select></label>
+    <label>Descrição do produto<input id="descricao" class="form-control" readonly></label>
+    <label>Quantidade da OP<input id="quantidade" class="form-control" readonly></label>
+    <label>Turno<select name="turno_id" id="turno" class="form-control" required><option value="">Selecione</option>{% for t in turnos %}<option value="{{ t.id }}" data-fabrica="{{ t.fabrica_id }}">{{ t.nome }}</option>{% endfor %}</select></label>
+    <label>Data<input name="data" id="data" type="date" class="form-control" required></label>
+    <label>Início previsto<input name="inicio" id="inicio" type="datetime-local" class="form-control" required></label>
+    <label>Tempo padrão (minutos por peça)<input name="tempo_padrao" type="number" min="0.0001" step="any" class="form-control" required></label>
+    <label>Operadores<input name="operadores" type="number" min="1" max="10000" step="1" class="form-control" required></label>
+    <label>Quantidade de times<input name="times" type="number" min="1" max="10000" step="1" class="form-control" required></label>
+    <label>Ciclo desta OP (minutos por time)<input name="ciclo" type="number" min="0.0001" step="any" class="form-control" required></label>
+    <label>Eficiência planejada (%)<input name="eficiencia" type="number" min="0.01" max="100" step="any" value="100" class="form-control" required></label>
+  </div>
+  <p>O ciclo informado vale para todos os times desta OP. Metas calculadas com a jornada do turno e as exceções do calendário. Sem cadastro diário, usa segunda a sexta; cadastre feriados e folgas no calendário.</p>
+  {% if user.perfil in ('admin','gestor') %}<button class="btn btn-primary" type="submit">Calcular</button><button class="btn btn-primary" type="submit" value="salvar">Salvar planejamento</button>{% else %}<p>O cálculo e a edição do planejamento estão disponíveis para gestores e administradores.</p>{% endif %}
+  <p id="mensagem" role="status" aria-live="polite"></p>
+</form>
+<div id="resultado" class="card" hidden><h2>Metas e previsões</h2><div id="valores" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px"></div><p>Meta diária = minutos úteis × operadores ÷ tempo padrão × eficiência. A capacidade diária não é limitada ao saldo da OP. Previsão da saída considera a primeira peça pronta e a produção das peças restantes.</p></div>
+<script>
+const ops={{ ops|tojson }}, turnos={{ turnos|tojson }};
+</script>
+<script src="{{ url_for('static', filename='metas_op.js') }}"></script>
+{% endblock %}

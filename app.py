@@ -2921,6 +2921,8 @@ def fix_icara():
 
 
 from painel_tv import registrar_painel
+from metas_op import registrar_metas
+registrar_metas(app, m, get_user, fab_ids, login_required)
 registrar_instalacao(app, m, get_user)
 registrar_painel(app, m, get_user, fab_ids, login_required)
 

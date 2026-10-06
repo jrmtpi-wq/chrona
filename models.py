@@ -99,6 +99,13 @@ def _pg_exec(c, sql):
 
 
 SCHEMA_SQLITE = """
+CREATE TABLE IF NOT EXISTS planejamento_metas_op (
+    op_id INTEGER NOT NULL, data TEXT NOT NULL, turno_id INTEGER NOT NULL,
+    tempo_padrao REAL NOT NULL, operadores INTEGER NOT NULL, times INTEGER NOT NULL,
+    ciclo REAL NOT NULL, eficiencia REAL NOT NULL, inicio TEXT NOT NULL,
+    atualizado_por INTEGER NOT NULL, PRIMARY KEY(op_id,data),
+    FOREIGN KEY(op_id) REFERENCES ordens_producao(id), FOREIGN KEY(turno_id) REFERENCES turnos(id)
+);
 CREATE TABLE IF NOT EXISTS configuracao_instalacao (chave TEXT PRIMARY KEY, valor TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS fabricas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -530,6 +537,7 @@ CREATE TABLE IF NOT EXISTS despesas_docs (
 """
 
 SCHEMA_PG = """
+
 CREATE TABLE IF NOT EXISTS configuracao_instalacao (chave TEXT PRIMARY KEY, valor TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS fabricas (
     id SERIAL PRIMARY KEY,
@@ -957,6 +965,13 @@ CREATE TABLE IF NOT EXISTS despesas_docs (
     valor REAL DEFAULT 0,
     obs TEXT,
     FOREIGN KEY(fabrica_id) REFERENCES fabricas(id)
+);
+CREATE TABLE IF NOT EXISTS planejamento_metas_op (
+    op_id INTEGER NOT NULL, data TEXT NOT NULL, turno_id INTEGER NOT NULL,
+    tempo_padrao REAL NOT NULL, operadores INTEGER NOT NULL, times INTEGER NOT NULL,
+    ciclo REAL NOT NULL, eficiencia REAL NOT NULL, inicio TEXT NOT NULL,
+    atualizado_por INTEGER NOT NULL, PRIMARY KEY(op_id,data),
+    FOREIGN KEY(op_id) REFERENCES ordens_producao(id), FOREIGN KEY(turno_id) REFERENCES turnos(id)
 );
 """
 
