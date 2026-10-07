@@ -417,6 +417,7 @@ CREATE TABLE IF NOT EXISTS balanceamento (
     meta_dia INTEGER DEFAULT 0,
     meta_ciclo REAL DEFAULT 0,
     total_times INTEGER DEFAULT 0,
+    montagem_json TEXT,
     criado_em TEXT DEFAULT (datetime('now','localtime')),
     FOREIGN KEY(op_id) REFERENCES ordens_producao(id)
 );
@@ -849,6 +850,7 @@ CREATE TABLE IF NOT EXISTS balanceamento (
     meta_dia INTEGER DEFAULT 0,
     meta_ciclo REAL DEFAULT 0,
     total_times INTEGER DEFAULT 0,
+    montagem_json TEXT,
     criado_em TEXT DEFAULT to_char(NOW(), 'YYYY-MM-DD HH24:MI:SS'),
     FOREIGN KEY(op_id) REFERENCES ordens_producao(id)
 );
@@ -1009,6 +1011,12 @@ def init():
     c = conn()
     schema = SCHEMA_PG if PG_MODE else SCHEMA_SQLITE
     _pg_exec(c, schema)
+    if PG_MODE:
+        c.execute('ALTER TABLE balanceamento ADD COLUMN IF NOT EXISTS montagem_json TEXT')
+    else:
+        colunas = {r['name'] for r in c.execute('PRAGMA table_info(balanceamento)').fetchall()}
+        if 'montagem_json' not in colunas:
+            c.execute('ALTER TABLE balanceamento ADD COLUMN montagem_json TEXT')
     from metas_op import importar_planejamentos
     importar_planejamentos(c)
     # Migrações: adicionar colunas que podem não existir em bancos antigos

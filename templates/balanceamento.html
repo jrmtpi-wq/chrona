@@ -60,7 +60,7 @@
     </div>
     <div class="form-group">
       <label>Nº Operadoras</label>
-      <input type="number" id="bal-operadoras" value="20" min="1" max="100" oninput="calcularMetas()">
+      <input type="number" id="bal-operadoras" value="20" min="2" step="2" max="100" oninput="sincronizarDuplas('operadoras')">
     </div>
     <div class="form-group">
       <label>Ciclo (minutos)</label>
@@ -75,9 +75,10 @@
     </div>
     <div class="form-group">
       <label>Nº de Times</label>
-      <input type="number" id="bal-times" value="10" min="1" max="50" oninput="calcularMetas()">
+      <input type="number" id="bal-times" value="10" min="1" max="50" oninput="sincronizarDuplas('times')">
     </div>
   </div>
+  <div class="hint" style="margin:10px 0">Duplas de duas operadoras · apoio até dois times antes ou depois · limite por pessoa: ciclo + 1 minuto, somando apoios. Os tempos já incluem os 18%.</div>
   <div class="form-row cols-3">
     <div class="form-group">
       <label>Grupo de Operadoras</label>
@@ -91,7 +92,7 @@
         {% if not grupos %}
         Nenhum grupo cadastrado — <a href="/grupos-operadoras">crie os grupos da sua fábrica</a> (ex: Preparação, Montagem, Acabamento) para filtrar operadoras na hora de montar.
         {% else %}
-        Filtra as operadoras mostradas na tela de montagem. Pode trocar de grupo lá dentro também.
+        Define as operadoras disponíveis para o automático e a montagem manual.
         {% endif %}
       </div>
     </div>
@@ -164,6 +165,12 @@ function atualizarMinutos() {
   calcularMetas();
 }
 
+function sincronizarDuplas(origem) {
+  const pessoas = document.getElementById('bal-operadoras'), times = document.getElementById('bal-times');
+  if (origem === 'times') pessoas.value = Number(times.value) * 2;
+  else if (Number(pessoas.value) % 2 === 0) times.value = Number(pessoas.value) / 2;
+  calcularMetas();
+}
 function calcularMetas() {
   estado.ciclo = parseInt(document.getElementById('bal-ciclo').value) || 15;
   estado.nOperadoras = parseInt(document.getElementById('bal-operadoras').value) || 1;
@@ -171,9 +178,9 @@ function calcularMetas() {
   estado.tempoPeca = estado.operacoes.reduce((s, o) => s + o.tempo_padrao, 0);
 
   const mins = estado.minutos, tp = estado.tempoPeca, ops = estado.nOperadoras, ciclo = estado.ciclo;
-  const metaDia = tp > 0 ? Math.floor((mins / tp) * ops) : 0;
   const numCiclos = Math.floor(mins / ciclo);
-  const metaCiclo = numCiclos > 0 ? Math.round(metaDia / numCiclos) : 0;
+  const metaCiclo = tp > 0 ? Math.floor(ciclo * ops / tp) : 0;
+  const metaDia = metaCiclo * numCiclos;
   const opsPorTime = estado.nTimes > 0 ? Math.ceil(estado.operacoes.length / estado.nTimes) : 0;
 
   estado.metaDia = metaDia; estado.metaCiclo = metaCiclo;
@@ -189,6 +196,7 @@ function calcularMetas() {
 function montarBalanceamento() {
   const opId = document.getElementById('bal-op').value;
   const turnoId = document.getElementById('bal-turno').value;
+  if (estado.nOperadoras !== estado.nTimes * 2) { toast('Informe duas operadoras por time', 'error'); return; }
   if (!opId) { toast('Selecione uma OP', 'error'); return; }
   if (!turnoId) { toast('Selecione o turno', 'error'); return; }
   const params = new URLSearchParams({

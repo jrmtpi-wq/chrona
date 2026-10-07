@@ -1,8 +1,9 @@
-﻿from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 from functools import wraps
 from datetime import datetime, date
 from werkzeug.utils import secure_filename
-import os, uuid
+import os, uuid, json
+from balanceamento_auto import gerar as gerar_balanceamento, validar as validar_balanceamento, consolidar_operacoes, numero
 import models as m
 from instalacao import fabrica_da_instalacao, registrar_instalacao, chave_da_instalacao
 
@@ -1179,12 +1180,34 @@ def balanceamento_montar():
         })
  
  
+def dados_balanceamento(c, op_id, user, grupo_id=None):
+    op = c.execute('SELECT * FROM ordens_producao WHERE id=?', (op_id,)).fetchone()
+    if op is None or op['fabrica_id'] not in fab_ids(user):
+        raise ValueError('OP não encontrada ou sem acesso')
+    seq = [dict(r) for r in c.execute("""SELECT sq.id, sq.operacao_id, sq.ordem, sq.tempo_padrao,
+                o.descricao, COALESCE(sq.equipamento_id, o.equipamento_id) op_equip_id
+                FROM sequencia_op sq JOIN operacoes o ON o.id=sq.operacao_id
+                WHERE sq.op_id=? ORDER BY sq.ordem, sq.id""", (op_id,)).fetchall()]
+    if not seq:
+        raise ValueError('OP sem sequência operacional cadastrada')
+    sql = "SELECT id, nome FROM funcionarios WHERE fabrica_id=? AND UPPER(situacao)='ATIVO'"
+    params = [op['fabrica_id']]
+    if grupo_id:
+        sql += ' AND grupo_id=?'
+        params.append(grupo_id)
+    pessoas = [dict(r) for r in c.execute(sql + ' ORDER BY nome, id', params).fetchall()]
+    return dict(op), seq, pessoas
+
+
 @app.route('/api/balanceamento/salvar', methods=['POST'])
 @login_required
 def api_balanceamento_salvar():
-    user = get_user(); d = request.json; c = m.conn()
-    fab_id = resolve_fab_id(d, user, c)
+    user = get_user(); d = request.json or {}; c = m.conn()
     try:
+        op, seq, pessoas = dados_balanceamento(c, d.get('op_id'), user, d.get('grupo_id'))
+        fab_id = op['fabrica_id']
+        validar_balanceamento(d, seq, pessoas)
+        consolidar_operacoes(d['times'], seq, d['meta_ciclo'])
         # Salva ou atualiza o balanceamento
         bal = c.execute("SELECT id FROM balanceamento WHERE op_id=?", (d['op_id'],)).fetchone()
         if bal:
@@ -1211,8 +1234,8 @@ def api_balanceamento_salvar():
             for op in time.get('ops', []):
                 if op.get('operacao_id'):
                     c.execute("""UPDATE sequencia_op SET time_numero=?
-                                 WHERE op_id=? AND operacao_id=?""",
-                              (time['num'], d['op_id'], op['operacao_id']))
+                                 WHERE id=? AND op_id=? AND time_numero IS NULL""",
+                              (time['num'], op['sequencia_id'], d['op_id']))
 
             for oper in time.get('operadoras', []):
                 if not oper.get('id'):
@@ -1231,6 +1254,10 @@ def api_balanceamento_salvar():
                               (d['op_id'], time['num'], oper['id'], atrib['operacao_id'],
                                atrib.get('qtd', 0), atrib.get('carga', 0)))
 
+        c.execute('UPDATE balanceamento SET montagem_json=? WHERE id=?',
+                  (json.dumps(dict(times=d['times'], turno_id=d.get('turno_id'), grupo_id=d.get('grupo_id'),
+                                   roteiro=[r['id'] for r in seq],
+                                   operacoes_roteiro=[r['operacao_id'] for r in seq]), ensure_ascii=False), bal_id))
         c.commit(); c.close()
         return jsonify({'ok': True, 'bal_id': bal_id})
     except Exception as e:
@@ -1248,6 +1275,8 @@ def api_balanceamento_get(op_id):
         return jsonify({})
 
     bd = dict(bal)
+    if bd.get('montagem_json'):
+        bd['montagem'] = json.loads(bd.pop('montagem_json'))
 
     opers = c.execute("""
         SELECT bo.time_numero, bo.funcionario_id, bo.apoio, bo.time_principal, f.nome
@@ -1377,6 +1406,11 @@ def api_balanceamento_exportar():
             })
         bd['operadoras_times'] = operadoras_times
 
+        if bd.get('montagem_json'):
+            bd['montagem'] = json.loads(bd.pop('montagem_json'))
+            bd['times'] = [{'numero': t['num'], 'operacoes': t['ops']}
+                           for t in bd['montagem']['times']]
+
         resultado.append(bd)
     c.close()
     return jsonify(resultado)
@@ -1385,196 +1419,39 @@ def api_balanceamento_exportar():
 @app.route('/api/balanceamento/automatico', methods=['POST'])
 @login_required
 def api_balanceamento_automatico():
-    d = request.json
-    op_id = d.get('op_id')
-    ciclo = float(d.get('ciclo', 15))
-    meta_ciclo = max(1, int(d.get('meta_ciclo') or 1))
-
+    d = request.json or {}
     c = m.conn()
     try:
-        # 1. Carregar sequência operacional na ordem correta
-        seq = c.execute("""
-            SELECT sq.operacao_id, sq.ordem, sq.tempo_padrao,
-                   o.descricao, o.equipamento_id op_equip_id, o.tipo
-            FROM sequencia_op sq
-            JOIN operacoes o ON sq.operacao_id = o.id
-            WHERE sq.op_id = ?
-            ORDER BY sq.ordem
-        """, (op_id,)).fetchall()
-
-        if not seq:
-            return jsonify({'ok': False, 'erro': 'OP sem sequência operacional cadastrada'})
-
-        seq = [dict(r) for r in seq]
-
-        # 2. Carregar habilidades (banco de tempos)
-        all_op_ids = list(set(r['operacao_id'] for r in seq))
-        ph = ','.join('?' * len(all_op_ids))
-        tempos_rows = c.execute(f"""
-            SELECT ot.operacao_id, ot.funcionario_id func_id, f.nome func_nome, ot.tempo
-            FROM operacao_tempos ot
-            JOIN funcionarios f ON ot.funcionario_id = f.id
-            WHERE ot.operacao_id IN ({ph})
-            ORDER BY ot.operacao_id, ot.tempo
-        """, all_op_ids).fetchall()
-
-        skills = {}
-        for t in tempos_rows:
-            td = dict(t)
-            skills.setdefault(td['operacao_id'], []).append(td)
-
-        # 3. Fallback: operadoras por equipamento
-        equip_ids = list(set(r['op_equip_id'] for r in seq if r.get('op_equip_id')))
-        equip_ops_map = {}
-        if equip_ids:
-            ph2 = ','.join('?' * len(equip_ids))
-            eq_rows = c.execute(f"""
-                SELECT o.equipamento_id, ot.funcionario_id func_id, f.nome func_nome, AVG(ot.tempo) tempo
-                FROM operacao_tempos ot
-                JOIN funcionarios f ON ot.funcionario_id = f.id
-                JOIN operacoes o ON ot.operacao_id = o.id
-                WHERE o.equipamento_id IN ({ph2})
-                GROUP BY o.equipamento_id, ot.funcionario_id, f.nome
-                ORDER BY o.equipamento_id, tempo
-            """, equip_ids).fetchall()
-            for r in eq_rows:
-                rd = dict(r)
-                equip_ops_map.setdefault(rd['equipamento_id'], []).append(rd)
-
-        # ── ALGORITMO ──────────────────────────────────────────────────────
-        MAX_OPS_POR_TIME = 2
-        times = []
-        op_time_principal = {}
-
-        def novo_time():
-            return {'num': len(times) + 1, 'ops': [], 'operadoras': []}
-
-        team = novo_time()
-
-        def get_slot(t, func_id):
-            for s in t['operadoras']:
-                if s['id'] == func_id:
-                    return s
-            return None
-
-        def fechar_time():
-            nonlocal team
-            if team['ops']:
-                team['carga_total'] = round(sum(o['carga'] for o in team['ops']), 3)
-                times.append(team)
-            team = novo_time()
-
-        def add_op(t, op_data, operadora, qtd, carga, dividida=False):
-            func_id = operadora['func_id'] if operadora else None
-            slot = get_slot(t, func_id) if func_id else None
-            if func_id and not slot:
-                is_apoio = func_id in op_time_principal and op_time_principal[func_id] != t['num']
-                t['operadoras'].append({'id': func_id, 'nome': operadora['func_nome'],
-                                        'carga': 0.0, 'apoio': is_apoio,
-                                        'time_principal': op_time_principal.get(func_id, t['num'])})
-                slot = t['operadoras'][-1]
-            if slot:
-                slot['carga'] = round(slot['carga'] + carga, 3)
-            t['ops'].append({
-                'operacao_id': op_data['operacao_id'],
-                'idx': op_data['ordem'],
-                'descricao': op_data['descricao'],
-                'equipamento_id': op_data.get('op_equip_id'),
-                'tempo_padrao': operadora['tempo'] if operadora else float(op_data.get('tempo_padrao') or 0),
-                'qtd': qtd,
-                'carga': round(carga, 3),
-                'operadora_id': func_id,
-                'operadora_nome': operadora['func_nome'] if operadora else None,
-                'alerta': op_data.get('alerta'),
-                'dividida': dividida,
-                'apoio': func_id in op_time_principal and op_time_principal.get(func_id) != t['num'],
-            })
-
-        def choose_op(op_data):
-            oid = op_data['operacao_id']
-            eid = op_data.get('op_equip_id')
-            candidates = list(skills.get(oid, []))
-            alerta = None
-            if not candidates:
-                candidates = list(equip_ops_map.get(eid, []))
-                alerta = 'sem_treino' if candidates else 'sem_operadora'
-
-            if not candidates:
-                return None, alerta
-
-            tnum = team['num']
-
-            def dist_ok(cand):
-                fid = cand['func_id']
-                if fid not in op_time_principal:
-                    return True
-                return abs(op_time_principal[fid] - tnum) <= 2
-
-            in_team = [cand for cand in candidates if get_slot(team, cand['func_id'])]
-            if in_team:
-                return in_team[0], alerta
-
-            valid = [cand for cand in candidates if dist_ok(cand)]
-            if valid:
-                return valid[0], alerta
-
-            return candidates[0], alerta
-
-        for op_data in seq:
-            op_data['alerta'] = None
-            best, alerta = choose_op(op_data)
-            op_data['alerta'] = alerta
-
-            tempo_op = best['tempo'] if best else float(op_data.get('tempo_padrao') or 0)
-            carga_op = tempo_op * meta_ciclo
-            func_id = best['func_id'] if best else None
-
-            if func_id and func_id not in op_time_principal:
-                op_time_principal[func_id] = team['num']
-
-            slot = get_slot(team, func_id) if func_id else None
-            carga_op_atual = slot['carga'] if slot else 0.0
-
-            if carga_op_atual + carga_op <= ciclo:
-                if not slot and func_id and len(team['operadoras']) >= MAX_OPS_POR_TIME:
-                    fechar_time()
-                    if func_id not in op_time_principal:
-                        op_time_principal[func_id] = team['num']
-                add_op(team, op_data, best, meta_ciclo, carga_op)
-            else:
-                restante = ciclo - carga_op_atual
-                pcs_aqui = int(restante / tempo_op) if tempo_op > 0 else 0
-                pcs_proximo = meta_ciclo - pcs_aqui
-
-                if pcs_aqui > 0:
-                    add_op(team, op_data, best, pcs_aqui, tempo_op * pcs_aqui, dividida='parte1')
-
-                fechar_time()
-
-                if func_id and func_id not in op_time_principal:
-                    op_time_principal[func_id] = team['num']
-
-                if pcs_proximo > 0:
-                    add_op(team, op_data, best, pcs_proximo, tempo_op * pcs_proximo,
-                           dividida='parte2' if pcs_aqui > 0 else False)
-
-        fechar_time()
-
-        alertas = []
-        for t in times:
-            for op in t['ops']:
-                if op.get('alerta') == 'sem_operadora':
-                    alertas.append(f"⚠️ Time {t['num']}: <b>{op['descricao']}</b> — sem operadora treinada nem equipamento compatível. Treine alguém para esta operação.")
-                elif op.get('alerta') == 'sem_treino':
-                    alertas.append(f"💡 Time {t['num']}: <b>{op['descricao']}</b> — atribuída por equipamento compatível (sem treino direto)")
-
-        return jsonify({'ok': True, 'times': times, 'alertas': alertas})
-
-    except Exception as e:
-        import traceback
-        return jsonify({'ok': False, 'erro': f'Erro interno: {str(e)}', 'detalhe': traceback.format_exc()})
+        op, seq, pessoas = dados_balanceamento(c, d.get('op_id'), get_user(), d.get('grupo_id'))
+        n_times = numero(d.get('times', 10), 'Número de times', 1)
+        if not n_times.is_integer():
+            raise ValueError('O número de times deve ser inteiro')
+        n_times = int(n_times)
+        if numero(d.get('operadoras', n_times * 2), 'Número de operadoras', 2) != n_times * 2:
+            raise ValueError('Configure duas operadoras por time: o número de operadoras deve ser o dobro dos times')
+        skills, equipamentos = {}, {}
+        rows = c.execute("""SELECT ot.operacao_id, ot.funcionario_id func_id, ot.tempo,
+                                   o.equipamento_id
+                            FROM operacao_tempos ot JOIN operacoes o ON o.id=ot.operacao_id
+                            JOIN funcionarios f ON f.id=ot.funcionario_id
+                            WHERE f.fabrica_id=? AND UPPER(f.situacao)='ATIVO'
+                            ORDER BY ot.tempo""", (op['fabrica_id'],)).fetchall()
+        for row in rows:
+            h = dict(row)
+            skills.setdefault(h['operacao_id'], []).append(h)
+            equipamentos.setdefault(h['equipamento_id'], []).append(h)
+        resultado = gerar_balanceamento(seq, pessoas, skills, equipamentos,
+                                        d.get('ciclo', 15), d.get('meta_ciclo', 1), n_times)
+        validar_balanceamento(dict(resultado, ciclo_minutos=d.get('ciclo', 15),
+                                   meta_ciclo=d.get('meta_ciclo', 1), total_times=n_times,
+                                   total_operadores=n_times * 2), seq, pessoas)
+        return jsonify(resultado)
+    except (ValueError, TypeError, KeyError) as e:
+        return jsonify(ok=False, erro=str(e))
     finally:
         c.close()
+
+
 # ── SEQUÊNCIA OP ───────────────────────────────────────────────
 @app.route('/sequencia-op')
 @login_required

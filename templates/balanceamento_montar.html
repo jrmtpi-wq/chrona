@@ -334,6 +334,7 @@
 <div id="area-impressao"></div>
 <div id="toast" class="toast"></div>
 
+<script src="/static/balanceamento.js?v=20261007-duplas"></script>
 <script>
 const FUNCIONARIOS = {{ funcionarios | tojson }};
 const GRUPOS = {{ grupos | tojson }};
@@ -379,7 +380,7 @@ async function init() {
   ]);
 
   estado.operacoes = seq.map((s, i) => ({
-    idx: i, operacao_id: s.operacao_id, descricao: s.descricao,
+    idx: i, sequencia_id: s.id, operacao_id: s.operacao_id, descricao: s.descricao,
     tempo_padrao: parseFloat(s.tempo_padrao) || 0, equipamento_id: s.equipamento_id,
     equip_nome: s.equip_nome || '',
   }));
@@ -400,7 +401,7 @@ async function init() {
         const tn = s.time_numero;
         if (!timesMap[tn]) timesMap[tn] = {num: tn, operadoras: [], ops: []};
         timesMap[tn].ops.push({
-          idx: i, operacao_id: s.operacao_id, descricao: s.descricao,
+          idx: i, sequencia_id: s.id, operacao_id: s.operacao_id, descricao: s.descricao,
           tempo_padrao: parseFloat(s.tempo_padrao) || 0,
           qtd: bal.meta_ciclo || 1,
           carga: (parseFloat(s.tempo_padrao) || 0) * (bal.meta_ciclo || 1),
@@ -436,7 +437,26 @@ async function init() {
     }
   }
 
-  calcularMetas();
+  if (bal && bal.montagem) {
+    const roteiroAtual = seq.map(s => s.id);
+    if (JSON.stringify(roteiroAtual) === JSON.stringify(bal.montagem.roteiro)
+        && JSON.stringify(seq.map(s => s.operacao_id)) === JSON.stringify(bal.montagem.operacoes_roteiro)) {
+      estado.times = bal.montagem.times;
+      estado.minutos = bal.minutos_disponiveis;
+      estado.metaDia = bal.meta_dia;
+      estado.metaCiclo = bal.meta_ciclo;
+      CFG.turno_id = bal.montagem.turno_id;
+      grupoAtivo = bal.montagem.grupo_id || '';
+      const turnoSalvo = (window.__turnos || []).find(t => String(t.id) === String(CFG.turno_id));
+      if (turnoSalvo) estado.turnoNome = turnoSalvo.nome;
+      restaurouTimes = true;
+    } else {
+      estado.times = [];
+      restaurouTimes = false;
+      toast('O roteiro mudou. Gere ou monte um novo balanceamento antes de salvar.', 'error');
+    }
+  }
+  if (!(bal && bal.montagem && restaurouTimes)) calcularMetas();
   if (!restaurouTimes) gerarTimes();
   renderAll();
 }
@@ -444,9 +464,9 @@ async function init() {
 function calcularMetas() {
   estado.tempoPeca = estado.operacoes.reduce((s, o) => s + o.tempo_padrao, 0);
   const mins = estado.minutos, tp = estado.tempoPeca, ops = estado.nOperadoras, ciclo = estado.ciclo;
-  const metaDia = tp > 0 ? Math.floor((mins / tp) * ops) : 0;
   const numCiclos = Math.floor(mins / ciclo);
-  const metaCiclo = numCiclos > 0 ? Math.round(metaDia / numCiclos) : 0;
+  const metaCiclo = estado.metaCiclo > 0 ? estado.metaCiclo : (tp > 0 ? Math.floor(ciclo * ops / tp) : 0);
+  const metaDia = metaCiclo * numCiclos;
   estado.metaDia = metaDia; estado.metaCiclo = metaCiclo;
 
   document.getElementById('metricas-mini').innerHTML = `
@@ -454,7 +474,7 @@ function calcularMetas() {
     <div class="metrica-mini"><b>${tp.toFixed(2)}</b><span>Tempo Peça</span></div>
     <div class="metrica-mini"><b>${metaDia.toLocaleString()}</b><span>Meta Dia</span></div>
     <div class="metrica-mini"><b>${numCiclos}</b><span>Ciclos/Dia</span></div>
-    <div class="metrica-mini"><b>${metaCiclo}</b><span>Meta/Ciclo</span></div>
+    <div class="metrica-mini"><input id="meta-ciclo-ajuste" aria-label="Meta por ciclo" type="number" min="1" step="1" value="${metaCiclo}" onchange="ajustarMetaCiclo(this.value)" style="width:65px;text-align:center;font-weight:700"><span>Meta/Ciclo</span></div>
     <div class="metrica-mini"><b>${estado.times.length}</b><span>Times</span></div>
   `;
 
@@ -467,10 +487,6 @@ function calcularMetas() {
 function statusOperacaoNoTime(ti, op) {
   const time = estado.times[ti];
   const alvo = op.qtd || 0;
-  // Assinalada diretamente pelo balanceamento automático (sem atribuições manuais)
-  if (op.operadora_id && !time.operadoras.some(o => (o.atribuicoes||[]).some(a => a.op_idx === op.idx))) {
-    return {completo: true, atribuido: alvo, alvo};
-  }
   let atribuido = 0;
   time.operadoras.forEach(o => (o.atribuicoes||[]).forEach(a => { if (a.op_idx === op.idx) atribuido += (a.qtd || 0); }));
   if (alvo > 0 && atribuido >= alvo) return {completo: true, atribuido, alvo};
@@ -494,10 +510,6 @@ function restanteGlobalOperacao(idx) {
   const meta = estado.metaCiclo || 0;
   let atribuido = 0;
   estado.times.forEach(t => {
-    const temAtribManual = t.operadoras.some(o => (o.atribuicoes||[]).some(a => a.op_idx === idx));
-    if (!temAtribManual) {
-      t.ops.forEach(o => { if (o.idx === idx && o.operadora_id) atribuido += (o.qtd || 0); });
-    }
     t.operadoras.forEach(o => (o.atribuicoes||[]).forEach(a => { if (a.op_idx === idx) atribuido += (a.qtd || 0); }));
   });
   return {atribuido, meta, restante: Math.max(0, meta - atribuido)};
@@ -556,7 +568,7 @@ function renderOperadorasDisponiveis() {
   div.innerHTML = lista.map(f => {
     const usada = usadas.has(f.id);
     const carga = usada ? cargaGlobalOperadora(f.id) : 0;
-    const restante = estado.ciclo - carga;
+    const restante = estado.ciclo + 1 - carga;
     // Livre = ainda não está em nenhum time · Parcial = já tem carga mas ainda sobra
     // tempo no ciclo (dá pra arrastar pra outro time, tipo apoio) · Completa = 15min ocupados
     let bg, borda, cor, icon, extra = '';
@@ -586,7 +598,8 @@ function renderTeamTabs() {
   const corDot = t => {
     const carga = t.ops.reduce((s,o)=>s+(o.carga||0),0);
     if (!t.ops.length) return '#c7cfdd';
-    return carga > estado.ciclo ? '#dc2626' : carga > estado.ciclo*0.9 ? '#d97706' : '#15803d';
+    const maior = Math.max(0, ...t.operadoras.map(o => cargaGlobalOperadora(o.id)));
+    return maior > estado.ciclo + 1 ? '#dc2626' : maior > estado.ciclo ? '#d97706' : '#15803d';
   };
 
   box.innerHTML = estado.times.map((t, i) => {
@@ -632,15 +645,16 @@ function renderActiveTeam() {
   if (!time) return;
   const totalCarga = time.ops.reduce((s, o) => s + (o.carga || 0), 0);
   const ciclo = estado.ciclo;
-  const pct = ciclo > 0 ? Math.min(100, (totalCarga / ciclo) * 100) : 0;
-  const cls = totalCarga > ciclo ? 'ciclo-over' : totalCarga > ciclo * 0.9 ? 'ciclo-warn' : 'ciclo-ok';
-  const cor = totalCarga > ciclo ? '#dc2626' : totalCarga > ciclo * 0.9 ? '#d97706' : '#15803d';
+  const maior = Math.max(0, ...time.operadoras.map(o => cargaGlobalOperadora(o.id)));
+  const pct = Math.min(100, maior / (ciclo + 1) * 100);
+  const cls = maior > ciclo + 1 ? 'ciclo-over' : maior > ciclo ? 'ciclo-warn' : 'ciclo-ok';
+  const cor = maior > ciclo + 1 ? '#dc2626' : maior > ciclo ? '#d97706' : '#15803d';
 
   const opsHtml = time.ops.map((op, oi) => {
     const alertaCor = op.alerta === 'sem_operadora' ? '#dc2626' : op.alerta === 'sem_treino' ? '#d97706' : null;
     const alertaIcon = op.alerta === 'sem_operadora' ? '🚨' : op.alerta === 'sem_treino' ? '💡' : '';
     const apoioBadge = op.apoio ? `<span style="background:#dbeafe;color:#1d4ed8;font-size:8px;padding:1px 4px;border-radius:4px;font-weight:700">↩apoio</span>` : '';
-    const divBadge = op.dividida ? `<span style="background:#f3e8ff;color:#7c3aed;font-size:8px;padding:1px 4px;border-radius:4px;font-weight:700">${op.dividida === 'parte1' ? '÷1' : '÷2'}</span>` : '';
+    const divBadge = op.dividida ? `<span style="background:#f3e8ff;color:#7c3aed;font-size:8px;padding:1px 4px;border-radius:4px;font-weight:700">Dividida</span>` : '';
     const bgCor = alertaCor ? `background:${alertaCor}18;border-color:${alertaCor}66` : '';
     const maq = maquinaDaOp(op.idx);
     const maqBadge = maq ? `<span style="background:#f0f2f5;color:#374151;padding:1px 5px;border-radius:4px;font-size:8px;font-weight:700">🔧 ${maq}</span>` : '';
@@ -678,8 +692,9 @@ function renderActiveTeam() {
   const distribHtml = time.operadoras.length ? time.operadoras.map((op, oi) => {
     const atribs = op.atribuicoes || [];
     const totalOp = atribs.reduce((s, a) => s + (a.carga || 0), 0);
-    const restante = ciclo - totalOp;
-    const corOp = totalOp > ciclo ? '#dc2626' : totalOp > ciclo * 0.9 ? '#d97706' : '#15803d';
+    const global = cargaGlobalOperadora(op.id);
+    const restante = ciclo + 1 - global;
+    const corOp = global > ciclo + 1 ? '#dc2626' : global > ciclo ? '#d97706' : '#15803d';
     const rowsHtml = atribs.map((a, ai) => {
       const solo = estado.metaCiclo > 0 && a.qtd >= estado.metaCiclo;
       return `
@@ -700,11 +715,11 @@ function renderActiveTeam() {
              ondragenter="this.classList.add('drag-over-op')" ondragleave="this.classList.remove('drag-over-op')"
              title="Arraste uma operação aqui para atribuir automaticamente">
           <span class="distrib-op-nome">👤 ${op.nome}</span>
-          <span class="distrib-op-total" style="color:${corOp}">${totalOp.toFixed(1)}/${ciclo}m</span>
+          <span class="distrib-op-total" style="color:${corOp}">${global.toFixed(1)}/${ciclo + 1}m global</span>
           <button class="distrib-add-btn" onclick="adicionarAtrib(${ti},${oi})">+</button>
         </div>
         ${rowsHtml || '<div class="distrib-op-vazia">Clique + ou arraste uma operação aqui</div>'}
-        ${atribs.length ? `<div class="distrib-restante" style="color:${corOp}">Restante: <strong>${restante.toFixed(1)} min</strong></div>` : ''}
+        ${atribs.length ? `<div class="distrib-restante" style="color:${corOp}">Neste time: ${totalOp.toFixed(1)} min · Livre global: <strong>${restante.toFixed(1)} min</strong></div>` : ''}
       </div>`;
   }).join('') : '<div style="font-size:10.5px;color:#9ca3af;padding:4px">Adicione operadoras a este time</div>';
 
@@ -714,7 +729,7 @@ function renderActiveTeam() {
          ondragenter="this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')">
       <div class="time-header">
         <span class="time-num">Time ${time.num}</span>
-        <span class="time-ciclo ${cls}">${totalCarga.toFixed(1)}/${ciclo}min</span>
+        <span class="time-ciclo ${cls}">${totalCarga.toFixed(1)} min somados</span>
       </div>
       <div class="time-body">
         <div class="time-operadoras">
@@ -769,12 +784,12 @@ async function balancearAutomatico() {
   try {
     const r = await fetch('/api/balanceamento/automatico', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({op_id: parseInt(CFG.op_id), ciclo: estado.ciclo, meta_ciclo: estado.metaCiclo})
+      body: JSON.stringify({op_id: parseInt(CFG.op_id), ciclo: estado.ciclo, meta_ciclo: estado.metaCiclo, operadoras: estado.nOperadoras, times: estado.nTimes, grupo_id: grupoAtivo})
     }).then(r => r.json());
     if (!r.ok) { toast(r.erro || 'Erro no balanceamento', 'error'); return; }
     estado.times = r.times.map(t => ({
       num: t.num,
-      operadoras: t.operadoras.map(o => ({id: o.id, nome: o.nome, atribuicoes: [], apoio: o.apoio || false, time_principal: o.time_principal})),
+      operadoras: t.operadoras.map(o => ({id: o.id, nome: o.nome, atribuicoes: o.atribuicoes || [], apoio: o.apoio || false, time_principal: o.time_principal})),
       ops: t.ops.map(op => ({
         idx: (op.idx || 1) - 1, operacao_id: op.operacao_id, descricao: op.descricao, tempo_padrao: op.tempo_padrao,
         qtd: op.qtd, carga: op.carga, operadora_id: op.operadora_id, operadora_nome: op.operadora_nome,
@@ -816,7 +831,16 @@ function dropOperadoraNoTime(e, ti) {
   e.preventDefault(); e.stopPropagation();
   if (dragType !== 'operadora' || !dragItem) return;
   if (estado.times[ti].operadoras.find(o => o.id === dragItem.id)) { toast('Operadora já está neste time', 'error'); return; }
-  estado.times[ti].operadoras.push({...dragItem, atribuicoes: []});
+  const time = estado.times[ti];
+  const principal = estado.times.find(t => t.operadoras.some(o => o.id === dragItem.id && !o.apoio));
+  if (principal && Math.abs(principal.num - time.num) > 2) {
+    toast('Apoio permitido somente até dois times do principal', 'error'); return;
+  }
+  if (!principal && time.operadoras.filter(o => !o.apoio).length >= 2) {
+    toast('Este time já tem sua dupla principal', 'error'); return;
+  }
+  time.operadoras.push({...dragItem, atribuicoes: [], apoio: !!principal,
+                        time_principal: principal ? principal.num : time.num});
   dragItem = null; dragType = null; renderAll();
 }
 
@@ -834,7 +858,7 @@ function dropOpNaOperadora(ti, oi, e) {
   if (!estado.times[ti].operadoras[oi].atribuicoes) estado.times[ti].operadoras[oi].atribuicoes = [];
   // Restante considera TODOS os times em que a operadora está (apoio inclusive),
   // pra não deixar passar de 15min de trabalho dela no ciclo somando tudo.
-  const restanteCiclo = estado.ciclo - cargaGlobalOperadora(estado.times[ti].operadoras[oi].id);
+  const restanteCiclo = estado.ciclo + 1 - cargaGlobalOperadora(estado.times[ti].operadoras[oi].id);
   const opNoTime = estado.times[ti].ops.find(o => o.idx === op_idx || o.descricao === op.descricao);
   const qtdTotal = opNoTime ? (opNoTime.qtd || 0) : 0;
   const qtdJaAtrib = estado.times[ti].operadoras.reduce((s, oper) => s + (oper.atribuicoes||[]).filter(a => a.op_idx === op_idx).reduce((ss, a) => ss + a.qtd, 0), 0);
@@ -864,8 +888,9 @@ function recalcConfirm() {
 function confirmarAtrib() {
   if (!_pendingAtrib) return;
   const {ti, oi, op_idx, op} = _pendingAtrib;
-  const qtd = parseInt(document.getElementById('ca-qtd').value) || 1;
+  const qtd = Number(document.getElementById('ca-qtd').value);
   const carga = op.tempo_padrao * qtd;
+  if (!podeAtribuir(ti, oi, op_idx, qtd, carga)) return;
   estado.times[ti].operadoras[oi].atribuicoes.push({op_idx, descricao: op.descricao, tempo_padrao: op.tempo_padrao, qtd, carga});
   _pendingAtrib = null;
   fecharModal('modal-confirmar-atrib');
@@ -875,22 +900,27 @@ function cancelarAtribModal() { _pendingAtrib = null; fecharModal('modal-confirm
 
 // ── DISTRIBUIÇÃO POR OPERADORA ────────────────────
 function adicionarAtrib(ti, oi) {
-  if (!estado.operacoes.length) { toast('OP sem operações', 'error'); return; }
-  if (!estado.times[ti].operadoras[oi].atribuicoes) estado.times[ti].operadoras[oi].atribuicoes = [];
-  const op = estado.operacoes[0];
-  estado.times[ti].operadoras[oi].atribuicoes.push({op_idx: 0, descricao: op.descricao, tempo_padrao: op.tempo_padrao, qtd: 1, carga: op.tempo_padrao});
+  const idx = estado.operacoes.findIndex((op, idx) => restanteGlobalOperacao(idx).restante > 0
+    && op.tempo_padrao <= estado.ciclo + 1 - cargaGlobalOperadora(estado.times[ti].operadoras[oi].id));
+  if (idx < 0) { toast('Não há operação pendente que caiba no tempo livre', 'error'); return; }
+  const op = estado.operacoes[idx];
+  estado.times[ti].operadoras[oi].atribuicoes.push({op_idx: idx, descricao: op.descricao, tempo_padrao: op.tempo_padrao, qtd: 1, carga: op.tempo_padrao});
   renderAll();
 }
 function removerAtrib(ti, oi, ai) { estado.times[ti].operadoras[oi].atribuicoes.splice(ai, 1); renderAll(); }
 function atualizarAtribOp(ti, oi, ai, val) {
-  const idx = parseInt(val); const op = estado.operacoes[idx]; if (!op) return;
+  const idx = Number(val); const op = estado.operacoes[idx]; if (!op) return;
   const a = estado.times[ti].operadoras[oi].atribuicoes[ai];
-  a.op_idx = idx; a.descricao = op.descricao; a.tempo_padrao = op.tempo_padrao; a.carga = op.tempo_padrao * a.qtd;
+  const carga = op.tempo_padrao * a.qtd;
+  if (!podeAtribuir(ti, oi, idx, a.qtd, carga, a)) { renderAll(); return; }
+  a.op_idx = idx; a.descricao = op.descricao; a.tempo_padrao = op.tempo_padrao; a.carga = carga;
   renderAll();
 }
 function atualizarAtribQtd(ti, oi, ai, val) {
   const a = estado.times[ti].operadoras[oi].atribuicoes[ai];
-  a.qtd = parseInt(val) || 1; a.carga = a.tempo_padrao * a.qtd; renderAll();
+  const qtd = Number(val), carga = a.tempo_padrao * qtd;
+  if (!podeAtribuir(ti, oi, a.op_idx, qtd, carga, a)) { renderAll(); return; }
+  a.qtd = qtd; a.carga = carga; renderAll();
 }
 function removerOperadoraDoTime(ti, oi) {
   const op = estado.times[ti].operadoras[oi];
@@ -1048,9 +1078,10 @@ function imprimirBalanceamento() {
 
   const timesHtml = estado.times.map(time => {
     const totalCarga = time.ops.reduce((s, o) => s + (o.carga || 0), 0);
-    const pct = ciclo > 0 ? Math.min(100, (totalCarga / ciclo) * 100) : 0;
-    const cls = totalCarga > ciclo ? 'over' : totalCarga > ciclo * 0.9 ? 'warn' : 'ok';
-    const cor = totalCarga > ciclo ? '#dc2626' : totalCarga > ciclo * 0.9 ? '#d97706' : '#15803d';
+    const maior = Math.max(0, ...time.operadoras.map(o => cargaGlobalOperadora(o.id)));
+    const pct = Math.min(100, maior / (ciclo + 1) * 100);
+    const cls = maior > ciclo + 1 ? 'over' : maior > ciclo ? 'warn' : 'ok';
+    const cor = maior > ciclo + 1 ? '#dc2626' : maior > ciclo ? '#d97706' : '#15803d';
     const opTagsHtml = time.operadoras.length ? time.operadoras.map(o => `<span class="imp-op-tag">${o.nome}</span>`).join('') : '<span class="imp-vazio">Sem operadoras</span>';
     const opsHtml = time.ops.length ? time.ops.map((op) => {
       const maq = maquinaDaOp(op.idx);
@@ -1059,7 +1090,7 @@ function imprimirBalanceamento() {
       }).join('') : '<div class="imp-vazio" style="padding:4px 0">Sem operações</div>';
     return `
       <div class="imp-time">
-        <div class="imp-time-header ${cls}"><span class="imp-time-num">Time ${time.num}</span><span class="imp-time-ciclo">${totalCarga.toFixed(1)}/${ciclo}min</span></div>
+        <div class="imp-time-header ${cls}"><span class="imp-time-num">Time ${time.num}</span><span class="imp-time-ciclo">${totalCarga.toFixed(1)} min somados</span></div>
         <div class="imp-operadoras"><div class="imp-operadoras-lbl">Operadoras</div><div class="imp-op-tags">${opTagsHtml}</div></div>
         <div class="imp-ops"><div class="imp-ops-lbl">Operações</div>${opsHtml}</div>
         <div class="imp-time-footer"><span class="imp-total-lbl">Carga total</span><span class="imp-total-val" style="color:${cor}">${totalCarga.toFixed(2)} min</span></div>
@@ -1089,7 +1120,7 @@ function imprimirBalanceamento() {
     const opsTxt = Object.keys(r.opsMap).length
       ? Object.entries(r.opsMap).map(([desc, qtd]) => `${desc} (${qtd}pç)`).join(', ')
       : '<span class="imp-vazio">Sem operações atribuídas</span>';
-    const corCarga = r.carga > ciclo ? '#dc2626' : r.carga >= ciclo * 0.95 ? '#15803d' : '#b45309';
+    const corCarga = r.carga > ciclo + 1 ? '#dc2626' : r.carga >= ciclo * 0.95 ? '#15803d' : '#b45309';
     return `
       <tr>
         <td class="imp-res-nome">${r.nome}</td>
@@ -1222,7 +1253,7 @@ function timesComOperacaoIdResolvido() {
 }
 function montarPayloadBalanceamento(opId) {
   return {
-    op_id: opId, turno_id: CFG.turno_id, ciclo_minutos: estado.ciclo, total_operadores: estado.nOperadoras,
+    op_id: opId, turno_id: CFG.turno_id, grupo_id: grupoAtivo, ciclo_minutos: estado.ciclo, total_operadores: estado.nOperadoras,
     minutos_disponiveis: estado.minutos, meta_dia: estado.metaDia, meta_ciclo: estado.metaCiclo,
     total_times: estado.nTimes, times: timesComOperacaoIdResolvido(),
   };
