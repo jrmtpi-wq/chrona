@@ -189,6 +189,34 @@ class MetasTest(unittest.TestCase):
             self.assertTrue(all(not p['pendente'] for p in historico['periodos']))
             self.assertEqual(historico['meta_dia']['quantidade'], dados['meta_dia']['quantidade'])
 
+    def test_daily_actual_and_forecast_ignore_future_reports_from_screenshot(self):
+        self.login(1)
+        self.salvar()
+        self.c.execute('DELETE FROM producao WHERE fabrica_id=1')
+        pontos = [('08:00',120),('09:00',260),('10:00',120),('11:00',120),('12:00',60),
+                  ('16:00',120),('17:00',120),('18:00',145)]
+        self.c.executemany('INSERT INTO producao(fabrica_id,op_id,data,hora,qtd_produzida) VALUES(1,1,?,?,?)',
+                           [('2026-10-05',hora,qtd) for hora,qtd in pontos])
+        self.c.commit()
+        with patch('painel_tv.datetime') as clock:
+            clock.now.return_value = datetime.fromisoformat('2026-10-05T14:22:31-03:00')
+            dados = self.client.get('/api/painel-producao?data=2026-10-05').json
+            self.assertEqual(dados['resumo']['produzido'], 1065)
+            self.assertEqual(dados['acompanhamento']['produzido'], 680)
+            self.assertEqual(dados['meta_dia']['atingimento'], round(680/dados['meta_dia']['quantidade']*100,1))
+            clock.now.return_value = datetime.fromisoformat('2026-10-05T18:00:00-03:00')
+            encerrado = self.client.get('/api/painel-producao?data=2026-10-05').json
+            self.assertEqual(encerrado['acompanhamento']['produzido'], 1065)
+            clock.now.return_value = datetime.fromisoformat('2026-10-05T14:22:31-03:00')
+            self.c.execute("DELETE FROM producao WHERE hora IN ('16:00','17:00','18:00')")
+            self.c.commit()
+            sem_futuros = self.client.get('/api/painel-producao?data=2026-10-05').json
+            self.assertEqual(dados['previsao_dia'], sem_futuros['previsao_dia'])
+        with patch('painel_tv.datetime') as clock:
+            clock.now.return_value = datetime.fromisoformat('2026-10-06T08:00:00-03:00')
+            historico = self.client.get('/api/painel-producao?data=2026-10-05').json
+            self.assertEqual(historico['acompanhamento']['produzido'], 680)
+
     def test_previsao_por_lancamento_preserva_meta_e_recalcula_seguinte(self):
         self.login(1)
         self.salvar()

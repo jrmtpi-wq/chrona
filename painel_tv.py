@@ -196,18 +196,19 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                 encerrados = [p for p in periodos_planejados if not p['pendente']]
                 acompanhamento = resumo([dict(qtd_produzida=p['produzido'], qtd_projetada=p['meta'])
                                          for p in encerrados])
+            realizado_dia = acompanhamento['produzido'] if acompanhamento is not None else totais['produzido']
             result = dict(data=dia, atualizado_em=agora.isoformat(), fabrica_id=fid,
                           entrada=painel_entrada(c, fid, dia, agora, entrada_planejada.get(dia)),
                           acompanhamento=acompanhamento,
-                          previsao_dia=(dict(quantidade=dias_previstos.get(dia, {}).get('meta', 0) + totais['produzido'])
+                          previsao_dia=(dict(quantidade=dias_previstos.get(dia, {}).get('meta', 0) + realizado_dia)
                                         if fila and dia == agora.date().isoformat() else None),
                           fabricas=fabricas, resumo=totais, ops=ordens,
                           pode_editar_meta=user['perfil'] in ('gestor', 'admin') and plano_dia is None,
                           fonte_meta='programacao' if plano_dia is not None else 'lancamentos',
                           programacao=programacao,
                           meta_dia=dict(quantidade=meta_dia,
-                                        atingimento=round(totais['produzido'] / meta_dia * 100, 1) if meta_dia else None,
-                                        faltam=max(0, meta_dia - totais['produzido']) if meta_dia else None),
+                                        atingimento=round(realizado_dia / meta_dia * 100, 1) if meta_dia else None,
+                                        faltam=max(0, meta_dia - realizado_dia) if meta_dia else None),
                           mes=dict(inicio=inicio_mes, fim=dia, meta=metas_mes,
                                    produzido=mensal['produzido'], dias_sem_meta=mensal['dias_sem_meta'],
                                    eficiencia=round(mensal['produzido'] / metas_mes * 100, 1) if mes_completo else None),

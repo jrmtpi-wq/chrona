@@ -58,7 +58,7 @@
     }).join(''));
     const atual = entrada.acompanhamento;
     setText('entrada-meta', n(entrada.resumo.meta));
-    setText('entrada-produzido', n(entrada.resumo.produzido));
+    setText('entrada-produzido', n(atual.produzido));
     setText('entrada-saldo', signed(atual.saldo));
     setText('entrada-eficiencia', percent(atual.eficiencia));
     setClass('entrada-ef-card', `metric ${color(atual.eficiencia)}`);
@@ -119,7 +119,7 @@
     $('data').value = data.data;
     const day = new Date(`${data.data}T12:00:00-03:00`).toLocaleDateString('pt-BR', {timeZone:'America/Sao_Paulo',weekday:'long',day:'2-digit',month:'long',year:'numeric'});
     setText('dia-legenda', day);
-    setText('produzido', n(data.resumo.produzido));
+    setText('produzido', n(data.acompanhamento ? data.acompanhamento.produzido : data.resumo.produzido));
     setText('meta', data.meta_dia.quantidade === null ? '—' : n(data.meta_dia.quantidade));
     setText('atingimento', data.meta_dia.quantidade === null ? 'Meta ainda não definida' : `${percent(data.meta_dia.atingimento)} da meta atingida`);
     setText('previsao-dia', data.previsao_dia ? `Previsão atualizada: ${n(data.previsao_dia.quantidade)} peças no dia` : '');

@@ -16,6 +16,11 @@ const assert=require('node:assert/strict');
     assert.equal(await cadastro.locator('#lan-hora').inputValue(),'08:00');
     const resposta=await cadastro.request.get('http://127.0.0.1:5052/api/painel-producao?data=2026-10-07');
     const payload=await resposta.json();
+    // Os futuros estão salvos, mas ainda não entram no realizado do dia.
+    payload.resumo.produzido=1065;
+    payload.acompanhamento.produzido=680;
+    payload.entrada.resumo.produzido=980;
+    payload.entrada.acompanhamento.produzido=840;
     for(const alvo of [payload.periodos,payload.entrada.periodos]){
       for(const hora of ['19:00','20:00'])alvo.push({hora,meta:0,produzido:0,saldo:null,eficiencia:null,lancamentos:0,pendente:true});
     }
@@ -29,6 +34,9 @@ const assert=require('node:assert/strict');
     });
     await tv.goto('http://127.0.0.1:5052/painel-producao?data=2026-10-07');
     await tv.waitForFunction(()=>document.querySelectorAll('#periodos tr').length===12);
+    assert.equal(await tv.locator('#produzido').innerText(),'680');
+    assert.equal(await tv.locator('#total-realizado').innerText(),'680');
+    assert.equal(await tv.locator('#entrada-produzido').innerText(),'840');
     await tv.evaluate(()=>{
       window.mudancas=0;
       window.primeiraLinha=document.querySelector('#entrada-periodos tr');
@@ -59,7 +67,7 @@ const assert=require('node:assert/strict');
     await tv.waitForFunction(()=>document.getElementById('entrada-produzido').textContent==='180');
     assert(await tv.evaluate(()=>window.primeiraLinha===document.querySelector('#entrada-periodos tr')));
     assert(await tv.evaluate(()=>window.celula===document.querySelector('#entrada-periodos tr td:nth-child(3)')));
-    assert.equal(await tv.locator('#produzido').innerText(),'0');
+    assert.equal(await tv.locator('#produzido').innerText(),'680');
     falha=true;
     const respostaFalha=tv.waitForResponse(r=>r.url().includes('/api/painel-producao?'));
     await tv.clock.runFor(16000);
