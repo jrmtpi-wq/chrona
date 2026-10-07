@@ -41,3 +41,14 @@ dialog{background:var(--panel);color:var(--text);border:1px solid var(--border);
 /* Mantém o rodapé após o conteúdo quando a TV precisa rolar. */
 @media(min-width:1001px){body{height:auto;min-height:100vh}main{flex:none}.flow-pane{display:grid;grid-template-rows:minmax(0,1fr) 120px}.flow-pane .metrics{min-height:120px}}
 @media(min-width:1001px) and (max-height:850px){.flow-pane .board-table{font-size:16px}.flow-pane .board-table th,.flow-pane .board-table td{padding:3px 7px}.flow-pane .board-table tfoot{font-size:15px}.flow-pane .section-title h1{font-size:18px}.flow-pane .metric>strong,.has-program .flow-pane .metric>strong{font-size:28px}.flow-pane{grid-template-rows:minmax(0,1fr) 108px}.flow-pane .metrics{min-height:108px}}
+/* Contraste visual: entrada branca e saída com o tema atual. */
+#entrada-painel{color-scheme:light;--panel:#fff;--border:#dce2eb;--text:#152036;--muted:#526070;--orange:#b45309;--green:#067647;--red:#b42318;--amber:#a15c00;--blue:#175cd3;background:#fff;color:var(--text);border-radius:14px}
+#entrada-painel .panel,#entrada-painel .metric,#entrada-painel .metric.featured{background:#fff;color:var(--text)}
+#entrada-painel .section-title h1{color:var(--text)}
+#entrada-painel .board-table thead{background:#eef2f6;color:var(--muted)}
+#entrada-painel .board-table tbody tr:not(.pending):nth-child(even){background:#f8fafc}
+#entrada-painel .board-table .pending{color:#64748b}
+#entrada-painel .metric.red{color:var(--red)}
+#entrada-painel .metric.amber{color:var(--amber)}
+#entrada-painel .metric.green{color:var(--green)}
+#entrada-painel .metric.blue{color:var(--blue)}
