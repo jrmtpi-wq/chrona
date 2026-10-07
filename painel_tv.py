@@ -2,7 +2,7 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from flask import jsonify, render_template, request
-from metas_op import planos_fila, calcular_fila, metas_programadas
+from metas_op import planos_fila, calcular_fila, metas_programadas, atualizar_previsoes
 
 
 def resumo(rows):
@@ -128,6 +128,9 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                                  (fid, inicio_mes, dia)).fetchone()['quantidade']
             fila = calcular_fila(c, planos_fila(c, fid)) if fid is not None else []
             planejados = metas_programadas(c, fila)
+            previsoes = atualizar_previsoes(c, fila, agora)
+            dias_previstos = metas_programadas(c, previsoes)
+            previsao_por_op = {(i['plano']['op_id'], i['plano']['data']): i for i in previsoes}
             plano_dia = planejados.get(dia)
             programacao = []
             if plano_dia is not None:
@@ -160,6 +163,10 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                     if r['entrada'][:10] <= dia <= r['saida'][:10]:
                         programacao.append(dict(op_id=p['op_id'],numero=p['numero'],descricao=p['descricao'],
                                                 quantidade=p['quantidade_total'],meta=plano_dia['ops'].get(p['op_id'],0),**r))
+                        revisao = previsao_por_op[(p['op_id'], p['data'])]
+                        programacao[-1]['previsao'] = revisao['resultado']
+                        programacao[-1]['restante_atual'] = revisao['restante']
+                        programacao[-1]['ultimo_apontamento'] = revisao['ultimo_apontamento']
                         if p['op_id'] not in por_op:
                             total = c.execute('SELECT COALESCE(SUM(qtd_produzida),0) total FROM producao WHERE fabrica_id=? AND op_id=? AND data<=?',(fid,p['op_id'],dia)).fetchone()['total']
                             por_op[p['op_id']] = dict(op_id=p['op_id'],numero=p['numero'],descricao=p['descricao'] or '',referencia='',
@@ -188,6 +195,8 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                                          for p in encerrados])
             result = dict(data=dia, atualizado_em=agora.isoformat(), fabrica_id=fid,
                           acompanhamento=acompanhamento,
+                          previsao_dia=(dict(quantidade=dias_previstos.get(dia, {}).get('meta', 0) + totais['produzido'])
+                                        if fila and dia == agora.date().isoformat() else None),
                           fabricas=fabricas, resumo=totais, ops=ordens,
                           pode_editar_meta=user['perfil'] in ('gestor', 'admin') and plano_dia is None,
                           fonte_meta='programacao' if plano_dia is not None else 'lancamentos',

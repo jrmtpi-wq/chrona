@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 from datetime import datetime, date
 from test_painel_tv import application, seed, connect
-from metas_op import calcular, intervalos, importar_planejamentos, planos_fila, calcular_fila, metas_programadas
+from metas_op import calcular, intervalos, importar_planejamentos, planos_fila, calcular_fila, metas_programadas, atualizar_previsoes, avancar
 
 
 class MetasTest(unittest.TestCase):
@@ -67,11 +67,13 @@ class MetasTest(unittest.TestCase):
         primeiro=self.salvar()
         segundo=self.salvar(op_id=2,ciclo='20')
         fila=segundo['fila']
-        self.assertEqual(fila[1]['resultado']['entrada'],fila[0]['resultado']['saida'])
+        self.assertEqual(fila[1]['resultado']['entrada'],fila[0]['resultado']['fim_entrada'])
+        self.assertGreaterEqual(datetime.fromisoformat(fila[1]['resultado']['primeira_peca']),
+                         avancar(self.c, self.turno, datetime.fromisoformat(fila[0]['resultado']['saida']), 20))
         self.assertGreater(fila[1]['resultado']['primeira_peca'],fila[1]['resultado']['entrada'])
         chave=segundo['data_original']
         novo=self.salvar(data_original=primeiro['data_original'],data='2026-10-07',inicio='2026-10-07T07:00')
-        self.assertEqual(novo['fila'][1]['resultado']['entrada'],novo['fila'][0]['resultado']['saida'])
+        self.assertEqual(novo['fila'][1]['resultado']['entrada'],novo['fila'][0]['resultado']['fim_entrada'])
         self.assertEqual(novo['fila'][1]['plano']['data'],chave)
         self.salvar(op_id=2,data_original=chave,ciclo='25')
         self.assertEqual(len(self.client.get('/api/metas-op/fila').json['fila']),2)
@@ -83,7 +85,8 @@ class MetasTest(unittest.TestCase):
         self.c.commit()
         self.salvar(data='2026-10-09',inicio='2026-10-09T16:00',times='2',ciclo='15')
         segundo=self.salvar(op_id=2)
-        self.assertEqual(segundo['resultado']['entrada'],'2026-10-13T07:00:00')
+        self.assertEqual(segundo['resultado']['entrada'],'2026-10-09T16:15:00')
+        self.assertEqual(segundo['resultado']['primeira_peca'],'2026-10-13T09:45:00')
 
     def test_gestao_planejado_sem_apontamentos(self):
         self.login(1)
@@ -108,6 +111,32 @@ class MetasTest(unittest.TestCase):
         # Dias posteriores à data escolhida não entram no acumulado mensal.
         self.assertAlmostEqual(r['mes']['meta'],r['meta_dia']['quantidade'])
         self.assertEqual(self.client.get('/api/painel-producao?data=2026-10-04').json['fonte_meta'],'lancamentos')
+
+    def test_troca_continua_ultimo_pacote_1630_proximo_1645(self):
+        self.login(1)
+        self.c.execute('UPDATE ordens_producao SET quantidade_total=961 WHERE id=1')
+        self.c.commit()
+        self.salvar(tempo_padrao='15')
+        fila = self.salvar(op_id=2, tempo_padrao='15')['fila']
+        self.assertEqual(fila[0]['resultado']['saida'], '2026-10-05T16:30:00')
+        self.assertEqual(fila[1]['resultado']['entrada'], '2026-10-05T13:45:00')
+        self.assertEqual(fila[1]['resultado']['primeira_peca'], '2026-10-05T16:45:00')
+        dias = metas_programadas(self.c, fila)
+        self.assertAlmostEqual(dias['2026-10-05']['ops'][2], 76)
+        self.assertAlmostEqual(dias['2026-10-05']['meta'], 1037)
+        self.assertAlmostEqual(sum(d['meta'] for d in dias.values()), 1461)
+
+    def test_troca_no_primeiro_time_0730_proximo_pacote_0745(self):
+        self.login(1)
+        self.c.execute('UPDATE ordens_producao SET quantidade_total=46 WHERE id=1')
+        self.c.commit()
+        self.salvar(tempo_padrao='15', times='2')
+        fila = self.salvar(op_id=2, tempo_padrao='15', times='2')['fila']
+        self.assertEqual(fila[0]['resultado']['fim_entrada'], '2026-10-05T07:30:00')
+        self.assertEqual(fila[1]['resultado']['entrada'], '2026-10-05T07:30:00')
+        self.assertEqual(avancar(self.c, self.turno, datetime.fromisoformat(fila[1]['resultado']['entrada']), 15),
+                         datetime.fromisoformat('2026-10-05T07:45:00'))
+        self.assertEqual(fila[1]['resultado']['primeira_peca'], '2026-10-05T08:00:00')
 
     def test_tv_nao_antecipa_perda_dos_periodos_futuros(self):
         self.login(1)
@@ -138,6 +167,50 @@ class MetasTest(unittest.TestCase):
             historico = self.client.get('/api/painel-producao?data=2026-10-05').json
             self.assertTrue(all(not p['pendente'] for p in historico['periodos']))
             self.assertEqual(historico['meta_dia']['quantidade'], dados['meta_dia']['quantidade'])
+
+    def test_previsao_por_lancamento_preserva_meta_e_recalcula_seguinte(self):
+        self.login(1)
+        self.salvar()
+        self.salvar(op_id=2)
+        self.c.execute("DELETE FROM producao WHERE fabrica_id=1")
+        self.c.execute("INSERT INTO producao(fabrica_id,op_id,data,hora,qtd_produzida) VALUES(1,1,'2026-10-05','11:00',50)")
+        self.c.commit()
+        fila = calcular_fila(self.c, planos_fila(self.c, 1))
+        original = metas_programadas(self.c, fila)
+        agora = datetime.fromisoformat('2026-10-05T11:01:00-03:00')
+        revisao = atualizar_previsoes(self.c, fila, agora)
+        self.assertEqual(revisao[0]['restante'], 1950)
+        self.assertGreater(revisao[0]['resultado']['saida'], fila[0]['resultado']['saida'])
+        self.assertEqual(revisao[1]['resultado']['entrada'], revisao[0]['resultado']['fim_entrada'])
+        self.assertEqual(metas_programadas(self.c, fila), original)
+        self.assertAlmostEqual(sum(d['meta'] for d in metas_programadas(self.c, revisao).values()), 2450)
+        with patch('painel_tv.datetime') as clock:
+            clock.now.return_value = agora
+            dados = self.client.get('/api/painel-producao?data=2026-10-05').json
+        self.assertEqual(dados['meta_dia']['quantidade'], original['2026-10-05']['meta'])
+        self.assertLess(dados['previsao_dia']['quantidade'], dados['meta_dia']['quantidade'])
+        # Editar ou excluir apontamento muda a previsão sem mexer no plano.
+        self.c.execute('UPDATE producao SET qtd_produzida=200 WHERE fabrica_id=1')
+        self.c.commit()
+        adiantada = atualizar_previsoes(self.c, fila, agora)
+        self.assertLess(adiantada[0]['resultado']['saida'], fila[0]['resultado']['saida'])
+        self.c.execute('DELETE FROM producao WHERE fabrica_id=1')
+        self.c.commit()
+        sem_pontos = atualizar_previsoes(self.c, fila, agora)
+        self.assertEqual(sem_pontos[0]['resultado'], fila[0]['resultado'])
+
+    def test_previsao_ignora_periodo_futuro_e_outra_fabrica(self):
+        self.login(1)
+        self.salvar()
+        self.c.execute("DELETE FROM producao WHERE fabrica_id=1")
+        self.c.execute("INSERT INTO producao(fabrica_id,op_id,data,hora,qtd_produzida) VALUES(1,1,'2026-10-05','11:30',100)")
+        self.c.execute("INSERT INTO producao(fabrica_id,op_id,data,hora,qtd_produzida) VALUES(2,1,'2026-10-05','10:00',999)")
+        self.c.commit()
+        fila = calcular_fila(self.c, planos_fila(self.c, 1))
+        antes = atualizar_previsoes(self.c, fila, datetime.fromisoformat('2026-10-05T11:59:59-03:00'))
+        self.assertEqual(antes[0]['produzido'], 0)
+        depois = atualizar_previsoes(self.c, fila, datetime.fromisoformat('2026-10-05T12:00:00-03:00'))
+        self.assertEqual(depois[0]['produzido'], 100)
 
     def test_importacao_preserva_ordem_e_planos(self):
         self.login(1)

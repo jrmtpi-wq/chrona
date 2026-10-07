@@ -11,8 +11,8 @@ function filaDaOp(){const op=ops.find(o=>String(o.id)===opSelect.value);return f
 function ajustarInicio(){
  const lista=filaDaOp();const indice=original?lista.findIndex(i=>i.plano.op_id===Number(opSelect.value)&&i.plano.data===original):lista.length;
  const automatico=indice>0;dia.readOnly=automatico;inicio.readOnly=automatico;
- document.getElementById('sequencia-nota').textContent=automatico?'Início automático após a saída da OP anterior. Para mudar as datas da fila, edite a primeira OP.':'Esta é a primeira OP: informe o início da programação.';
- if(automatico){const anterior=lista[indice-1];if(anterior)preencherInicio(anterior.resultado.saida);}
+ document.getElementById('sequencia-nota').textContent=automatico?'Entrada automática quando a OP anterior termina no primeiro time. A próxima já atravessa os times antes da última peça da anterior sair.':'Esta é a primeira OP: informe o início da programação.';
+ if(automatico){const item=lista[indice];const anterior=lista[indice-1];if(item)preencherInicio(item.resultado.entrada);else if(anterior)preencherInicio(anterior.resultado.fim_entrada);}
  else if(!original){const t=turnos.find(t=>String(t.id)===turno.value);if(t&&dia.value)inicio.value=dia.value+'T'+t.hora_entrada;}
 }
 function mostrarResultado(v){const itens=[['Minutos úteis do dia',fmt(v.minutos_dia)],['Capacidade diária (peças)',fmt(v.meta_dia)],['Meta por hora (peças)',fmt(v.meta_hora)],['Atravessamento (minutos úteis)',fmt(v.atravessamento)],['Entrada prevista',data(v.entrada)],['Primeira peça prevista',data(v.primeira_peca)],['Saída prevista',data(v.saida)]];

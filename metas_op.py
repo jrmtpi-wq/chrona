@@ -1,6 +1,6 @@
 """Metas independentes do balanceamento, com ciclos por OP."""
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import jsonify, request, render_template
 
 
@@ -26,15 +26,54 @@ def calcular_fila(c, planos):
         if not turno or turno['fabrica_id'] != plano['fabrica_id']:
             raise ValueError('Turno da programação não encontrado.')
         dados = dict(plano)
-        if anterior:
-            entrada = avancar(c, dict(turno), datetime.fromisoformat(anterior), 0)
-            dados.update(inicio=entrada.isoformat(), data=entrada.date().isoformat())
-        else:
-            dados['data'] = datetime.fromisoformat(dados['inicio']).date().isoformat()
-        resultado = calcular(c, plano, dict(turno), dados)
+        dados['data'] = datetime.fromisoformat(dados['inicio']).date().isoformat()
+        resultado = calcular_encadeado(c, plano, dict(turno), dados, anterior)
         fila.append(dict(plano=plano, ordem=ordem, resultado=resultado))
-        anterior = resultado['saida']
+        anterior = resultado
     return fila
+
+
+def atualizar_previsoes(c, fila, agora):
+    """Reestima a fila pelo último período apontado, preservando o plano original."""
+    agora = agora.replace(tzinfo=None)
+    atualizada, anterior = [], None
+    for item in fila:
+        p, original = item['plano'], item['resultado']
+        turno = dict(c.execute('SELECT * FROM turnos WHERE id=?', (p['turno_id'],)).fetchone())
+        dados = dict(p)
+        inicio = datetime.fromisoformat(original['entrada'])
+        dados.update(inicio=inicio.isoformat(), data=inicio.date().isoformat())
+        previsto = calcular_encadeado(c, p, turno, dados, anterior)
+        pontos = []
+        for row in c.execute('''SELECT data,hora,qtd_produzida FROM producao
+                                WHERE fabrica_id=? AND op_id=? AND data>=? ORDER BY data,hora,id''',
+                             (p['fabrica_id'], p['op_id'], original['entrada'][:10])).fetchall():
+            instante = datetime.fromisoformat(row['data'] + 'T' + row['hora'][:5])
+            if instante.minute:
+                instante = instante.replace(minute=0) + timedelta(hours=1)
+            if datetime.fromisoformat(original['entrada']) <= instante <= agora:
+                pontos.append((instante, row['qtd_produzida'] or 0))
+        produzido = sum(q for _, q in pontos)
+        restante = max(0, p['quantidade_total'] - produzido)
+        futuro = dict(p)
+        if pontos:
+            ultimo = pontos[-1][0]
+            taxa = float(p['operadores']) / float(p['tempo_padrao']) * float(p['eficiencia']) / 100
+            # Produção já registrada é evidência de que o atravessamento terminou.
+            base = ultimo if produzido > 0 else max(ultimo, datetime.fromisoformat(previsto['primeira_peca']))
+            previsto['saida'] = (avancar(c, turno, base, restante / taxa)
+                                 if restante else ultimo).isoformat()
+            futuro['quantidade_total'] = restante
+            previsto['primeira_peca'] = (avancar(c, turno, base, 1 / taxa)
+                                        if restante else ultimo).isoformat()
+        previsto['fim_entrada'] = recuar(c, turno, datetime.fromisoformat(previsto['saida']),
+                                         (int(p['times']) - 1) * float(p['ciclo'])).isoformat()
+        anterior = previsto
+        atualizada.append(dict(item, plano=futuro, resultado=previsto,
+                               produzido=produzido, restante=restante,
+                               ultimo_apontamento=pontos[-1][0].isoformat() if pontos else None,
+                               original=original))
+    return atualizada
 
 
 def metas_programadas(c, fila):
@@ -47,6 +86,8 @@ def metas_programadas(c, fila):
         item['ops'][oid] = item['ops'].get(oid, 0.0) + qtd
     for item in fila:
         p, r = item['plano'], item['resultado']
+        if p['quantidade_total'] <= 0:
+            continue
         turno = dict(c.execute('SELECT * FROM turnos WHERE id=?', (p['turno_id'],)).fetchone())
         inicio, primeira, fim = (datetime.fromisoformat(r[k]) for k in ('entrada','primeira_peca','saida'))
         taxa = float(p['operadores']) / float(p['tempo_padrao']) * float(p['eficiencia']) / 100
@@ -153,7 +194,35 @@ def calcular(c, op, turno, dados):
     saida = avancar(c, turno, primeira, (op['quantidade_total']-1)/taxa)
     return dict(minutos_dia=minutos, meta_dia=taxa*minutos, meta_hora=taxa*60,
                 atravessamento=times*ciclo, entrada=entrada.isoformat(),
-                primeira_peca=primeira.isoformat(), saida=saida.isoformat())
+                primeira_peca=primeira.isoformat(), saida=saida.isoformat(),
+                fim_entrada=recuar(c, turno, saida, (times-1)*ciclo).isoformat())
+
+
+def recuar(c, turno, fim, minutos):
+    dia = fim.date()
+    for _ in range(3660):
+        for entrada, saida in reversed(intervalos(c, turno, dia)):
+            atual = min(fim, saida)
+            disponivel = (atual - entrada).total_seconds() / 60
+            if disponivel < 0:
+                continue
+            if minutos <= disponivel:
+                return atual - timedelta(minutes=minutos)
+            minutos -= disponivel
+        dia -= timedelta(days=1)
+    raise ValueError('Não há jornada suficiente para localizar a entrada da OP.')
+
+
+def calcular_encadeado(c, op, turno, dados, anterior=None):
+    dados = dict(dados)
+    if anterior:
+        entrada = avancar(c, turno, datetime.fromisoformat(anterior['fim_entrada']), 0)
+        # A próxima OP já atravessa os times; no último time a troca leva um ciclo.
+        primeira_minima = avancar(c, turno, datetime.fromisoformat(anterior['saida']), float(dados['ciclo']))
+        entrada = max(entrada, recuar(c, turno, primeira_minima,
+                                      int(dados['times']) * float(dados['ciclo'])))
+        dados.update(inicio=entrada.isoformat(), data=entrada.date().isoformat())
+    return calcular(c, op, turno, dados)
 
 
 def registrar_metas(app, m, get_user, fab_ids, login_required):
@@ -167,7 +236,11 @@ def registrar_metas(app, m, get_user, fab_ids, login_required):
             filas = []
             for fid in fab_ids(user):
                 filas.extend(calcular_fila(c, planos_fila(c, fid)))
-            return jsonify(fila=filas)
+            previsoes = []
+            agora = datetime.now(timezone(timedelta(hours=-3)))
+            for fid in fab_ids(user):
+                previsoes.extend(atualizar_previsoes(c, [i for i in filas if i['plano']['fabrica_id'] == fid], agora))
+            return jsonify(fila=filas, previsoes=previsoes)
         except (ValueError, TypeError, KeyError, OverflowError):
             return jsonify(erro='Confira os horários e quantidades das OPs já programadas.'), 400
         finally:

@@ -1,6 +1,6 @@
 # Programação e metas por OP
 
-Acesse **Metas por OP**. Cadastre a primeira OP com turno, data/hora de início, tempo padrão em minutos por peça, operadores, times, ciclo por time e eficiência. Salve a programação. Para cada OP seguinte, informe seus próprios parâmetros: o sistema calcula o início a partir da saída da anterior, respeitando os horários de seu turno e as exceções do calendário.
+Acesse **Metas por OP**. Cadastre a primeira OP com turno, data/hora de início, tempo padrão em minutos por peça, operadores, times, ciclo por time e eficiência. Salve a programação. Para cada OP seguinte, informe seus próprios parâmetros: o sistema calcula a entrada a partir do término da anterior no primeiro time, respeitando o atravessamento, os horários de seu turno e as exceções do calendário.
 
 O ciclo é comum aos times de uma OP, mas pode mudar entre OPs. Os dados são independentes do balanceamento. A fila é compartilhada por fábrica, na ordem em que as OPs são programadas. Use **Editar** na tabela para alterar uma OP. Alterações na primeira ou nas intermediárias recalculam as previsões seguintes, sem mudar a ordem nem duplicar os planejamentos existentes.
 
@@ -26,7 +26,9 @@ Sem registro diário no calendário, usa a jornada normal de segunda a sexta e a
 
 A atualização cria a tabela aditiva `sequencia_metas_op`. Planejamentos antigos são incluídos uma única vez, ordenados pelo início originalmente salvo, com desempate por OP/data; a versão anterior não registrava a ordem dos salvamentos. Os cadastros antigos são preservados. A chave OP/data do cadastro permanece estável quando as datas previstas são recalculadas.
 
-O encadeamento é sequencial, sem sobreposição de OPs, com uma fila por fábrica. Atrasos e adiantamentos nos lançamentos ainda não recalculam automaticamente as previsões. Não há movimentação manual de posição, remoção de OP da fila nem histórico imutável de revisões nesta entrega.
+O encadeamento permite que a próxima OP atravesse os primeiros times enquanto a anterior termina nos últimos. A entrada seguinte parte do fim da entrada da anterior no primeiro time. A primeira saída seguinte respeita pelo menos um ciclo da próxima OP após a última saída anterior; turnos, pausas e diferenças de atravessamento também são considerados. Com times e ciclos iguais, a última saída às 16:30 é seguida pela primeira da próxima às 16:45 para ciclo de 15 minutos.
+
+Lançamentos recalculam automaticamente a previsão usando a quantidade realizada até o último período encerrado. A taxa padrão e a meta original são preservadas. A TV mostra a previsão atualizada do dia e entrada/saída atualizadas das OPs; períodos futuros não geram perda antecipada. Edição e exclusão de lançamentos também são refletidas na consulta seguinte. Sem apontamentos, permanece a previsão planejada; ausência de lançamento não é tratada como parada confirmada. Não há movimentação manual de posição, remoção de OP da fila nem histórico imutável de revisões nesta entrega.
 
 ## Verificação
 

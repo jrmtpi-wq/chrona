@@ -69,6 +69,7 @@
     $('produzido').textContent = n(data.resumo.produzido);
     $('meta').textContent = data.meta_dia.quantidade === null ? '—' : n(data.meta_dia.quantidade);
     $('atingimento').textContent = data.meta_dia.quantidade === null ? 'Meta ainda não definida' : `${percent(data.meta_dia.atingimento)} da meta atingida`;
+    $('previsao-dia').textContent = data.previsao_dia ? `Previsão atualizada: ${n(data.previsao_dia.quantidade)} peças no dia` : '';
     $('definir-meta').hidden = !data.pode_editar_meta || data.fabrica_id === null;
     $('definir-meta').textContent = data.meta_dia.quantidade === null ? 'Definir meta do dia' : 'Editar meta do dia';
     $('eficiencia').textContent = percent(data.meta_dia.atingimento);
@@ -88,7 +89,7 @@
     $('programacao-painel').hidden=!programacao.length;
     const previsao=s=>new Date(s).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     const inicioProgramacao=(page % Math.max(1,Math.ceil(programacao.length/2)))*2;
-    $('programacao-itens').innerHTML=programacao.slice(inicioProgramacao,inicioProgramacao+2).map(p=>`<article><strong>OP ${escape(p.numero)} · ${escape(p.descricao||'')} · Meta ${n(p.meta)}</strong><span>Entrada ${escape(previsao(p.entrada))} · 1ª peça ${escape(previsao(p.primeira_peca))} · Saída ${escape(previsao(p.saida))}</span></article>`).join('');
+    $('programacao-itens').innerHTML=programacao.slice(inicioProgramacao,inicioProgramacao+2).map(p=>`<article><strong>OP ${escape(p.numero)} · ${escape(p.descricao||'')} · Meta ${n(p.meta)}</strong><span>Planejado: entrada ${escape(previsao(p.entrada))} · 1ª peça ${escape(previsao(p.primeira_peca))} · saída ${escape(previsao(p.saida))}</span>${p.previsao ? `<span>Previsão atual: entrada ${escape(previsao(p.previsao.entrada))} · saída ${escape(previsao(p.previsao.saida))} · ${n(p.restante_atual)} peças restantes</span>` : ''}</article>`).join('');
     $('meta-mes').textContent = data.mes.meta === null ? '—' : n(data.mes.meta);
     $('produzido-mes').textContent = n(data.mes.produzido);
     $('eficiencia-mes').textContent = percent(data.mes.eficiencia);
@@ -161,6 +162,7 @@
     $('atualizacao').textContent = 'Última consulta: —';
     lastSuccess = null;
     $('atingimento').textContent = 'Consultando meta do dia';
+    $('previsao-dia').textContent = '';
     $('meta-apontada').textContent = 'peças para atingir a meta';
     $('definir-meta').hidden = true;
     $('ops').innerHTML = '<div class="empty">Consultando produção…</div>';
