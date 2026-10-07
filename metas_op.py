@@ -296,6 +296,14 @@ def registrar_metas(app, m, get_user, fab_ids, login_required):
                 indice = len(planos)
             if indice == 0:
                 calcular(c, op, dict(turno), dados)
+                if dados.get('referencia_inicio') == 'primeira_peca':
+                    primeira = datetime.fromisoformat(dados['inicio'])
+                    if avancar(c, dict(turno), primeira, 0) != primeira:
+                        raise ValueError('A primeira peça deve estar dentro da jornada.')
+                    entrada = recuar(c, dict(turno), primeira, int(dados['times']) * float(dados['ciclo']))
+                    dados = dict(dados, inicio=entrada.isoformat(), data=entrada.date().isoformat())
+                    if datetime.fromisoformat(calcular(c, op, dict(turno), dados)['primeira_peca']) != primeira:
+                        raise ValueError('Horário de primeira peça inválido.')
             candidato = dict(dados, op_id=op['id'], turno_id=turno['id'], fabrica_id=op['fabrica_id'],
                              numero=op['numero'], descricao=op['descricao'], quantidade_total=op['quantidade_total'])
             if indice < len(planos):

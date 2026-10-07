@@ -1750,12 +1750,12 @@ def api_lancamento_salvar():
     fab_id = resolve_fab_id(d, user, c)
     try:
         if d.get('id'):
-            c.execute("""UPDATE producao SET hora=?,operadores=?,qtd_produzida=?,
+            c.execute("""UPDATE producao SET data=?,hora=?,operadores=?,qtd_produzida=?,
                          qtd_projetada=?,eficiencia=?,faturamento_hora=?,
-                         resultado_hora=?,obs=? WHERE id=?""",
-                      (d['hora'], d['operadores'], d['qtd_produzida'],
+                         resultado_hora=?,obs=? WHERE id=? AND fabrica_id=?""",
+                      (d['data'], d['hora'], d['operadores'], d['qtd_produzida'],
                        d['qtd_projetada'], d['eficiencia'], d['faturamento_hora'],
-                       d['resultado_hora'], d.get('obs',''), d['id']))
+                       d['resultado_hora'], d.get('obs',''), d['id'], fab_id))
         else:
             c.execute("""INSERT INTO producao (fabrica_id,op_id,data,hora,ciclo_minutos,
                          operadores,qtd_produzida,qtd_projetada,eficiencia,

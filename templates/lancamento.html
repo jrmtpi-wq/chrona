@@ -297,6 +297,11 @@ tbody td{padding:9px 14px;font-size:13px;vertical-align:middle}
     </div>
     <div class="modal-body">
       <input type="hidden" id="lan-edit-id">
+      <div class="form-group" style="margin-bottom:12px">
+        <label for="lan-data">Data da produção *</label>
+        <input type="date" id="lan-data" required>
+        <small>Confira a data e o horário antes de salvar.</small>
+      </div>
       <div class="form-row cols-2" style="margin-bottom:12px">
         <div class="form-group">
           <label>Fim do período *</label>
@@ -342,7 +347,7 @@ tbody td{padding:9px 14px;font-size:13px;vertical-align:middle}
     </div>
     <div class="modal-footer">
       <button class="btn btn-light" onclick="fecharModal('modal-lancar')">Cancelar</button>
-      <button class="btn btn-success" onclick="salvarLancamento()">💾 Salvar Lançamento</button>
+      <button id="lan-salvar" class="btn btn-success" onclick="salvarLancamento()">💾 Salvar Lançamento</button>
     </div>
   </div>
 </div>
@@ -542,6 +547,7 @@ function atualizarMetricas() {
 function abrirModalLancar() {
   if (!estado.opId) { toast('Selecione uma OP primeiro', 'error'); return; }
   document.getElementById('lan-edit-id').value = '';
+  document.getElementById('lan-data').value = estado.data;
   const turno = document.querySelector(`#sel-turno option[value="${estado.turnoId}"]`);
   const horaEntrada = turno?.dataset.he || '07:00';
   const horaAtual = Number(new Intl.DateTimeFormat('pt-BR', {timeZone:'America/Sao_Paulo',hour:'2-digit',hourCycle:'h23'}).format(new Date()));
@@ -567,12 +573,15 @@ function calcularPreview() {
   document.getElementById('prev-farol').textContent = farolEmoji(ef > 0 ? ef : 0);
 }
 
+let salvandoLancamento = false;
 async function salvarLancamento() {
+  if (salvandoLancamento) return;
+  const data = document.getElementById('lan-data').value;
   const hora = document.getElementById('lan-hora').value;
   const operadores = parseInt(document.getElementById('lan-operadores').value) || 0;
   const qtd = parseInt(document.getElementById('lan-qtd').value) || 0;
   const meta = parseInt(document.getElementById('lan-meta').value) || estado.metaHora;
-  if (!hora || !qtd) { toast('Preencha hora e quantidade', 'error'); return; }
+  if (!data || !hora || !qtd) { toast('Preencha data, hora e quantidade', 'error'); return; }
 
   const ef = meta > 0 ? (qtd/meta)*100 : 0;
   const fat = qtd * estado.valorUnit;
@@ -582,7 +591,7 @@ async function salvarLancamento() {
     id: id || null,
     op_id: estado.opId,
     fabrica_id: null,
-    data: estado.data,
+    data,
     hora,
     ciclo_minutos: 60,
     operadores,
@@ -595,21 +604,36 @@ async function salvarLancamento() {
     obs: document.getElementById('lan-obs').value,
   };
 
+  salvandoLancamento = true;
+  const botao = document.getElementById('lan-salvar');
+  botao.disabled = true;
+  try {
   const r = await fetch('/api/lancamento/salvar', {
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d)
   }).then(r=>r.json());
 
   if (r.ok) {
+    estado.data = data;
+    document.getElementById('sel-data').value = data;
+    document.getElementById('m-sel-data').value = data;
+    document.getElementById('info-op-sub').textContent = `${estado.opDesc || ''} • ${estado.turnoNome} • ${data}`;
     fecharModal('modal-lancar');
     await carregarLancamentos();
     toast(id ? 'Lançamento atualizado!' : 'Lançamento salvo!');
   } else toast(r.erro || 'Erro ao salvar', 'error');
+  } catch(e) {
+    toast('Não foi possível confirmar a gravação. Confira a lista antes de tentar novamente.', 'error');
+  } finally {
+    salvandoLancamento = false;
+    botao.disabled = false;
+  }
 }
 
 async function editarLancamento(id) {
   const l = estado.lancamentos.find(x=>x.id===id);
   if (!l) return;
   document.getElementById('lan-edit-id').value = id;
+  document.getElementById('lan-data').value = l.data || estado.data;
   document.getElementById('lan-hora').value = l.hora;
   document.getElementById('lan-operadores').value = l.operadores;
   document.getElementById('lan-qtd').value = l.qtd_produzida;

@@ -30,6 +30,27 @@ class MetasTest(unittest.TestCase):
         self.assertAlmostEqual(r['meta_hora'],145.9459459)
         self.assertEqual(r['primeira_peca'],'2026-10-05T10:00:00')
         self.assertTrue(r['saida'].startswith('2026-10-06T15:51:48'))
+    def test_first_finished_piece_anchor_persists_and_supplies_next_day_target(self):
+        self.login(1)
+        self.c.execute('UPDATE ordens_producao SET quantidade_total=892 WHERE id=1')
+        self.c.commit()
+        payload = dict(self.d, data='2026-10-06', inicio='2026-10-06T15:30',
+                       referencia_inicio='primeira_peca', tempo_padrao='30', operadores='60', salvar=True)
+        response = self.client.post('/api/metas-op', json=payload)
+        self.assertEqual(response.status_code, 200, response.json)
+        self.assertEqual(response.json['resultado']['primeira_peca'], '2026-10-06T15:30:00')
+        fila = calcular_fila(self.c, planos_fila(self.c, 1))
+        self.assertEqual(fila[0]['resultado']['primeira_peca'], '2026-10-06T15:30:00')
+        metas = metas_programadas(self.c, fila)
+        self.assertGreater(metas['2026-10-07']['meta'], 0)
+        self.assertAlmostEqual(sum(d['meta'] for d in metas.values()), 892)
+        for hora in ('08:00', '09:00', '10:00', '11:00', '12:00'):
+            self.client.post('/api/lancamento/salvar', json=dict(op_id=1,data='2026-10-07',hora=hora,
+                operadores=60,qtd_produzida=120,qtd_projetada=0,eficiencia=0,faturamento_hora=0,resultado_hora=0))
+        dados = self.client.get('/api/painel-producao?data=2026-10-07').json
+        self.assertGreater(dados['meta_dia']['quantidade'], 0)
+        self.assertEqual(next(p['produzido'] for p in dados['periodos'] if p['hora']=='11:00'), 120)
+
     def test_ciclo_por_op(self):
         r=calcular(self.c,self.op,self.turno,dict(self.d,ciclo='20'))
         self.assertEqual(r['primeira_peca'],'2026-10-05T11:00:00')

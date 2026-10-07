@@ -142,6 +142,18 @@ class PainelTVTests(unittest.TestCase):
         self.assertTrue(self.client.delete('/api/lancamento/excluir/' + str(payload['id'])).get_json()['ok'])
         self.assertEqual(self.get().get_json()['resumo']['produzido'], 300)
 
+    def test_edit_can_correct_production_date_without_duplicating(self):
+        c = connect()
+        row = dict(c.execute("SELECT * FROM producao WHERE fabrica_id=1 AND data='2026-10-04' ORDER BY id LIMIT 1").fetchone())
+        c.close()
+        row.update(data='2026-10-03', hora='15:30')
+        self.assertTrue(self.client.post('/api/lancamento/salvar', json=row).json['ok'])
+        c = connect()
+        saved = dict(c.execute('SELECT * FROM producao WHERE id=?', (row['id'],)).fetchone())
+        self.assertEqual((saved['data'], saved['hora']), ('2026-10-03', '15:30'))
+        self.assertEqual(c.execute('SELECT COUNT(*) FROM producao WHERE id=?', (row['id'],)).fetchone()[0], 1)
+        c.close()
+
     def test_corrupted_cross_factory_record_does_not_leak(self):
         c = connect()
         c.execute("INSERT INTO producao(fabrica_id,op_id,data,hora,qtd_produzida) VALUES (1,3,'2026-10-04','10:00',555)")

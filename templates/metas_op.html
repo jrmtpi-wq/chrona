@@ -10,7 +10,8 @@
     <label>Quantidade da OP<input id="quantidade" class="form-control" readonly></label>
     <label>Turno<select name="turno_id" id="turno" class="form-control" required><option value="">Selecione</option>{% for t in turnos %}<option value="{{ t.id }}" data-fabrica="{{ t.fabrica_id }}">{{ t.nome }}</option>{% endfor %}</select></label>
     <label>Data de início<input name="data" id="data" type="date" class="form-control" required></label>
-    <label>Início previsto<input name="inicio" id="inicio" type="datetime-local" step="any" class="form-control" required></label>
+    <label>Horário informado<select name="referencia_inicio" id="referencia-inicio" class="form-control"><option value="entrada">Entrada no primeiro time</option><option value="primeira_peca">Primeira peça pronta na saída</option></select></label>
+    <label><span id="inicio-label">Entrada no primeiro time</span><input name="inicio" id="inicio" type="datetime-local" step="any" class="form-control" required></label>
     <label>Tempo padrão (minutos por peça)<input name="tempo_padrao" type="number" min="0.0001" step="any" class="form-control" required></label>
     <label>Operadores<input name="operadores" type="number" min="1" max="10000" step="1" class="form-control" required></label>
     <label>Quantidade de times<input name="times" type="number" min="1" max="10000" step="1" class="form-control" required></label>
