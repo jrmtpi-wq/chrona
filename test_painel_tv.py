@@ -14,8 +14,13 @@ TEMP = tempfile.TemporaryDirectory(prefix='chrona-painel-test-')
 DB = str(Path(TEMP.name) / 'test.db')
 
 
+class TestConnection(sqlite3.Connection):
+    def insert_id(self, sql, params=()):
+        return self.execute(sql, params).lastrowid
+
+
 def connect():
-    c = sqlite3.connect(DB)
+    c = sqlite3.connect(DB, factory=TestConnection)
     c.row_factory = sqlite3.Row
     return c
 
@@ -26,6 +31,9 @@ schema = next(ast.literal_eval(node.value) for node in tree.body
               if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'SCHEMA_SQLITE' for t in node.targets))
 c = connect()
 c.executescript(schema)
+# Migração real usada pelo cadastro por referência; o app importado usa conexão isolada.
+c.execute('ALTER TABLE referencias ADD COLUMN fabrica_id INTEGER')
+c.commit()
 c.close()
 model = types.ModuleType('models')
 model.conn = connect

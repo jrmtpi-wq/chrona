@@ -898,9 +898,19 @@ def api_op_salvar():
     user = get_user(); d = request.json; c = m.conn()
     fab_id = resolve_fab_id(d, user, c)
     try:
+        if fab_id not in fab_ids(user):
+            return jsonify(ok=False, erro='Fábrica não autorizada.'), 403
+        existente = None
+        if d.get('id'):
+            existente = c.execute('SELECT * FROM ordens_producao WHERE id=?', (d['id'],)).fetchone()
+            if existente is None or existente['fabrica_id'] not in fab_ids(user):
+                return jsonify(ok=False, erro='OP não autorizada.'), 403
         qtd = int(d.get('quantidade_total') or 0)
         unit = float(d.get('valor_unitario') or 0)
         total = qtd * unit
+        import math
+        if qtd <= 0 or not math.isfinite(unit) or unit < 0 or d.get('situacao', 'ABERTA') not in ('ABERTA','PRODUCAO','ENCERRADA','CANCELADA'):
+            return jsonify(ok=False, erro='Informe quantidade, valor e situação válidos.'), 400
 
         # Resolver referencia_id a partir do código digitado
         ref_codigo = (d.get('ref_codigo') or '').strip().upper()
@@ -921,11 +931,11 @@ def api_op_salvar():
         if d.get('id'):
             c.execute("""UPDATE ordens_producao SET numero=?,fabrica_id=?,referencia_id=?,
                          descricao=?,quantidade_total=?,valor_unitario=?,valor_total=?,
-                         data_entrada=?,data_entrega=?,data_entrega_costura=?,obs=? WHERE id=?""",
+                         data_entrada=?,data_entrega=?,data_entrega_costura=?,obs=?,situacao=? WHERE id=?""",
                       (d['numero'], fab_id, ref_id, d.get('descricao',''),
-                       qtd, unit, total, d.get('data_entrada'), d.get('data_entrega'),
-                       d.get('data_entrega_costura'),
-                       d.get('obs',''), d['id']))
+                       qtd, unit, total, d.get('data_entrada', existente['data_entrada']), d.get('data_entrega', existente['data_entrega']),
+                       d.get('data_entrega_costura', existente['data_entrega_costura']),
+                       d.get('obs', existente['obs']), d.get('situacao', existente['situacao']), d['id']))
             op_id = d['id']
         else:
             op_id = c.insert_id("""INSERT INTO ordens_producao (numero,fabrica_id,referencia_id,descricao,
@@ -950,10 +960,14 @@ def api_op_salvar():
                               (op_id, s['operacao_id'], s['ordem'],
                                s['equipamento_id'], s['funcionario_id'], s['tempo_padrao']))
  
-        c.commit(); c.close(); return jsonify({'ok': True, 'op_id': op_id})
+        if not d.get('id') and d.get('situacao'):
+            c.execute('UPDATE ordens_producao SET situacao=? WHERE id=?', (d['situacao'], op_id))
+        c.commit(); return jsonify({'ok': True, 'op_id': op_id})
     except Exception as e:
         import traceback; traceback.print_exc()
-        c.close(); return jsonify({'ok': False, 'erro': str(e)})
+        c.rollback(); return jsonify({'ok': False, 'erro': str(e)})
+    finally:
+        c.close()
 
 @app.route('/api/op/<int:oid>')
 @login_required
@@ -2921,10 +2935,12 @@ def fix_icara():
 
 
 from painel_tv import registrar_painel
+from exclusao_ops import registrar_exclusao
 from metas_op import registrar_metas
 registrar_metas(app, m, get_user, fab_ids, login_required)
 registrar_instalacao(app, m, get_user)
 registrar_painel(app, m, get_user, fab_ids, login_required)
+registrar_exclusao(app, m, get_user, fab_ids)
 
 if __name__ == '__main__':
     app.run(debug=False, use_reloader=False, host='0.0.0.0', port=5050)

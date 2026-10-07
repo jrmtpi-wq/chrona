@@ -9,6 +9,7 @@
     <p>Cadastro de OPs: referência, quantidade, datas de entrega e preço por peça</p>
   </div>
   <div class="btn-group">
+    {% if user.perfil in ('admin', 'gestor') %}<button class="btn btn-danger" id="excluir-todas-ops" onclick="excluirTodasOPs()">Excluir todas as OPs</button>{% endif %}
     <button class="btn btn-primary" onclick="novaOP()">＋ Nova OP</button>
   </div>
 </div>
@@ -157,6 +158,9 @@
 
 <script>
 let delOpId = null;
+let opsAtuais = [];
+const podeExcluirOP = {{ (user.perfil in ('admin','gestor'))|tojson }};
+const escaparOP = valor => String(valor ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 function calcularTotalOP(){
   const qtd = parseFloat(document.getElementById('op-quantidade').value) || 0;
@@ -260,6 +264,7 @@ async function carregarLista(){
     return;
   }
   document.getElementById('count-ops').textContent = `${rows.length} OP(s)`;
+  opsAtuais = rows;
 
   const totQtd = rows.reduce((s,r)=>s+(parseInt(r.quantidade_total)||0),0);
   const totValor = rows.reduce((s,r)=>s+(parseFloat(r.valor_total)||0),0);
@@ -275,18 +280,19 @@ async function carregarLista(){
   }
   tb.innerHTML = rows.map(r=>`
     <tr>
-      <td><strong style="color:var(--azul)">${r.numero}</strong>${r.situacao==='CANCELADA'?' <span class="tag tag-inativo">CANCELADA</span>':''}</td>
-      <td>${r.ref_codigo||'—'}</td>
-      <td style="font-size:11px;color:#6b7280">${r.tipo_nome||'—'}</td>
-      <td style="color:#374151;font-size:12px">${r.descricao||'—'}</td>
+      <td><strong style="color:var(--azul)">${escaparOP(r.numero)}</strong>${r.situacao==='CANCELADA'?' <span class="tag tag-inativo">CANCELADA</span>':''}</td>
+      <td>${escaparOP(r.ref_codigo||'—')}</td>
+      <td style="font-size:11px;color:#6b7280">${escaparOP(r.tipo_nome||'—')}</td>
+      <td style="color:#374151;font-size:12px">${escaparOP(r.descricao||'—')}</td>
       <td>${(r.quantidade_total||0).toLocaleString('pt-BR')}</td>
-      <td>${r.data_entrega||'—'}</td>
-      <td style="color:#1d4ed8;font-weight:600">${r.data_entrega_costura||'<span style="color:#9ca3af;font-weight:400;font-size:11px">Aguardando fila</span>'}</td>
+      <td>${escaparOP(r.data_entrega||'—')}</td>
+      <td style="color:#1d4ed8;font-weight:600">${r.data_entrega_costura ? escaparOP(r.data_entrega_costura) : '<span style="color:#9ca3af;font-weight:400;font-size:11px">Aguardando fila</span>'}</td>
       <td>${fmtR(r.valor_unitario)}</td>
       <td>
         <div class="btn-group">
-          <button class="btn btn-sm btn-primary" onclick="editarOPCad(${r.id})" title="Editar">✏️</button>
-          <button class="btn btn-sm btn-danger" onclick="pedirCancelOP(${r.id},'${r.numero.replace(/'/g,"\\'")}')" title="Cancelar">🗑</button>
+          <button class="btn btn-sm btn-primary" onclick="editarOPCad(${r.id})">Editar</button>
+          ${podeExcluirOP ? `<button class="btn btn-sm btn-danger" onclick="excluirOPCad(${r.id})">Excluir</button>` : ''}
+          <button class="btn btn-sm btn-light" onclick="pedirCancelOP(${r.id}, opsAtuais.find(o=>o.id===${r.id}).numero)">Cancelar</button>
         </div>
       </td>
     </tr>`).join('');
@@ -297,4 +303,5 @@ document.addEventListener('DOMContentLoaded', carregarLista);
 // Permite que outras abas do sistema avisem esta tela quando uma OP mudar em outro lugar.
 window.chronaRefresh = carregarLista;
 </script>
+<script src="{{ url_for('static', filename='exclusao-ops.js') }}"></script>
 {% endblock %}

@@ -1494,6 +1494,8 @@ def inicializar_instalacao():
         if trava:
             trava.execute('SELECT pg_advisory_lock(74201952)')
         init()
+        from exclusao_ops import limpar_testes_autorizados
+        limpar_testes_autorizados(conn, PG_MODE)
         consolidar_fabricas(conn, os.environ.get('CHRONA_EMPRESA_NOME', 'JTMTPI CONFECÇÕES'), PG_MODE)
         seed()
     finally:
