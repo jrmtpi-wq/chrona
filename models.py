@@ -1498,6 +1498,8 @@ def inicializar_instalacao():
         limpar_testes_autorizados(conn, PG_MODE)
         consolidar_fabricas(conn, os.environ.get('CHRONA_EMPRESA_NOME', 'JTMTPI CONFECÇÕES'), PG_MODE)
         seed()
+        from recuperacao_admin import recuperar_admin
+        recuperar_admin(conn, PG_MODE)
     finally:
         if trava:
             try:
