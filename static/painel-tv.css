@@ -52,3 +52,67 @@ dialog{background:var(--panel);color:var(--text);border:1px solid var(--border);
 #entrada-painel .metric.amber{color:var(--amber)}
 #entrada-painel .metric.green{color:var(--green)}
 #entrada-painel .metric.blue{color:var(--blue)}
+
+/* Visão completa da TV: comandos recolhidos e indicadores compactos. */
+header{position:relative;padding:7px 16px;gap:14px;min-height:52px}
+.brand{gap:7px}.brand-mark{width:28px;height:28px;font-size:20px;border-radius:7px}
+.brand strong{font-size:17px;letter-spacing:1px}.brand small{font-size:8px;letter-spacing:.5px;margin-top:1px}
+.context{gap:2px;min-width:0}.context strong{font-size:18px}.context span{font-size:11px}.context .board-label{display:none}
+.clock{gap:1px;margin-left:auto}.clock strong{font-size:23px}.clock span{font-size:10px}
+.clock strong,.clock span,.context strong,.context span{line-height:1.1}
+.tv-controls{flex-shrink:0}.tv-controls summary{cursor:pointer;list-style:none;border:1px solid var(--border);border-radius:7px;background:var(--panel);padding:7px 10px;font-size:12px}
+.tv-controls summary::-webkit-details-marker{display:none}.tv-controls summary::after{content:' ▾';color:var(--orange)}
+.tv-controls[open] summary::after{content:' ▴'}
+.tv-controls nav{position:absolute;z-index:10;top:100%;left:12px;right:12px;display:flex;flex-wrap:wrap;gap:10px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px;box-shadow:0 12px 30px #0008}
+.tv-controls nav label{flex-wrap:wrap}.tv-controls nav input{color-scheme:dark}
+@media(min-width:1001px){
+ body:not(.op-mode){height:100dvh;min-height:0;display:flex;flex-direction:column}
+ body:not(.op-mode) header{flex:none}
+ body:not(.op-mode) main{flex:1;min-height:0;display:flex;flex-direction:column;gap:8px;padding:8px 16px}
+ body:not(.op-mode) .board-layout{flex:1;min-height:0;gap:12px;flex-shrink:1}
+ body:not(.op-mode) .flow-pane{display:grid;grid-template-rows:minmax(0,1fr) 88px;gap:6px;min-height:0}
+ body:not(.op-mode) .flow-pane .board-hourly{display:grid;grid-template-rows:auto minmax(0,1fr);padding:8px 10px;min-height:0}
+ body:not(.op-mode) .flow-pane .section-title{margin-bottom:4px}
+ body:not(.op-mode) .flow-pane .section-title h1{font-size:clamp(16px,2.2vh,22px);margin:0}
+ body:not(.op-mode) .flow-pane .section-title .muted{font-size:10px}
+ body:not(.op-mode) .flow-pane .board-table{height:100%;font-size:clamp(14px,2.4vh,25px);line-height:1.15}
+ body:not(.op-mode) .flow-pane .board-table th,body:not(.op-mode) .flow-pane .board-table td{padding:clamp(1px,.3vh,3px) 6px}
+ body:not(.op-mode) .flow-pane .board-table thead{font-size:10px;letter-spacing:0}
+ body:not(.op-mode) .flow-pane .board-table thead th{padding:4px 6px}
+ body:not(.op-mode) .flow-pane .board-table tfoot{font-size:clamp(14px,2.2vh,22px)}
+ body:not(.op-mode) .flow-pane .board-table tfoot th{font-size:10px}
+ body:not(.op-mode) .flow-pane .metrics{min-height:0;gap:6px;grid-template-rows:88px}
+ body:not(.op-mode) .flow-pane .metric{padding:7px 8px;border-radius:9px}
+ body:not(.op-mode) .flow-pane .metric>span{font-size:11px;line-height:1.1}
+ body:not(.op-mode) .flow-pane .metric>strong{font-size:clamp(24px,3.5vh,38px);line-height:1;margin:4px 0}
+ body:not(.op-mode) .flow-pane .metric small{font-size:10px;line-height:1.15}
+ body:not(.op-mode) #programacao-painel{margin:0;padding:6px 10px}
+ body:not(.op-mode) #programacao-painel .section-title{display:none}
+ body:not(.op-mode) #programacao-itens strong{font-size:12px}
+ body:not(.op-mode) #programacao-itens span{font-size:11px;line-height:1.2}
+ body:not(.op-mode) .monthly{display:grid;grid-template-columns:130px minmax(0,1fr);align-items:center;gap:10px;margin:0;padding:7px 10px}
+ body:not(.op-mode) .monthly .section-title{display:block;margin:0}
+ body:not(.op-mode) .monthly h2{font-size:13px;margin:0 0 3px}
+ body:not(.op-mode) .monthly .muted{font-size:10px}
+ body:not(.op-mode) .month-grid{gap:16px}
+ body:not(.op-mode) .month-grid article{padding-left:10px}
+ body:not(.op-mode) .month-grid span{font-size:11px;letter-spacing:.3px}
+ body:not(.op-mode) .month-grid strong{font-size:clamp(24px,3.4vh,38px);line-height:1;margin:3px 0}
+ body:not(.op-mode) .month-grid small{font-size:10px;line-height:1.1}
+ body:not(.op-mode) footer{flex:none;padding:2px 16px 5px;font-size:9px}
+}
+@media(max-width:1000px){header{padding:7px 10px;gap:8px}.context strong{font-size:15px}.context span{font-size:10px}.clock strong{font-size:20px}}
+@media(min-width:1001px) and (max-height:650px){
+ body:not(.op-mode) .flow-pane{grid-template-rows:minmax(0,1fr) 80px}
+ body:not(.op-mode) .flow-pane .metrics{grid-template-rows:80px}
+ body:not(.op-mode) .flow-pane .board-hourly{padding:6px 8px}
+ body:not(.op-mode) .flow-pane .board-table{font-size:13px;line-height:1}
+ body:not(.op-mode) .flow-pane .board-table th,body:not(.op-mode) .flow-pane .board-table td{padding:1px 5px}
+ body:not(.op-mode) .flow-pane .board-table thead th{padding:3px 5px}
+ body:not(.op-mode) .flow-pane .board-table tfoot{font-size:13px}
+ body:not(.op-mode) .flow-pane .metric small{font-size:9px;line-height:1.1}
+ body:not(.op-mode) #programacao-itens span{font-size:10px}
+ body:not(.op-mode) .month-grid article{font-size:10px;line-height:1.1}
+ body:not(.op-mode) .month-grid span,body:not(.op-mode) .month-grid small{font-size:10px}
+}
+@media(max-width:600px){.brand small,.clock span{display:none}.brand strong{font-size:15px}.tv-controls summary{font-size:11px;padding:6px}.tv-controls nav{left:6px;right:6px}.tv-controls nav .refresh-note{display:none}}

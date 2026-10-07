@@ -123,13 +123,13 @@
     setText('produzido', n(data.acompanhamento ? data.acompanhamento.produzido : data.resumo.produzido));
     setText('meta', data.meta_dia.quantidade === null ? '—' : n(data.meta_dia.quantidade));
     setText('atingimento', data.meta_dia.quantidade === null ? 'Meta ainda não definida' : `${percent(data.meta_dia.atingimento)} da meta atingida`);
-    setText('previsao-dia', data.previsao_dia ? `Previsão atualizada: ${n(data.previsao_dia.quantidade)} peças no dia` : '');
+    setText('previsao-dia', data.previsao_dia ? `Previsão: ${n(data.previsao_dia.quantidade)} peças` : '');
     $('definir-meta').hidden = !data.pode_editar_meta || data.fabrica_id === null;
     setText('definir-meta', data.meta_dia.quantidade === null ? 'Definir meta do dia' : 'Editar meta do dia');
     if (data.acompanhamento) {
       const atual = data.acompanhamento;
       setText('saldo', signed(atual.saldo));
-      setText('meta-apontada', `realizado − meta até o horário (${n(atual.meta)} peças)`);
+      setText('meta-apontada', `Meta até agora: ${n(atual.meta)} peças`);
       setText('eficiencia', percent(atual.eficiencia));
       setClass('ef-card', `metric ${color(atual.eficiencia)}`);
       setText('farol', 'realizado ÷ meta até o horário');
