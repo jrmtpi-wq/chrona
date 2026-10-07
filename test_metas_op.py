@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 from datetime import datetime, date
 from test_painel_tv import application, seed, connect
 from metas_op import calcular, intervalos, importar_planejamentos, planos_fila, calcular_fila, metas_programadas
@@ -107,6 +108,30 @@ class MetasTest(unittest.TestCase):
         # Dias posteriores à data escolhida não entram no acumulado mensal.
         self.assertAlmostEqual(r['mes']['meta'],r['meta_dia']['quantidade'])
         self.assertEqual(self.client.get('/api/painel-producao?data=2026-10-04').json['fonte_meta'],'lancamentos')
+
+    def test_tv_nao_antecipa_perda_dos_periodos_futuros(self):
+        self.login(1)
+        self.salvar()
+        for relogio, pendente in [('10:59:59', True), ('11:00:00', False)]:
+            with patch('painel_tv.datetime') as clock:
+                clock.now.return_value = datetime.fromisoformat('2026-10-05T' + relogio + '-03:00')
+                dados = self.client.get('/api/painel-producao?data=2026-10-05').json
+                periodo = next(p for p in dados['periodos'] if p['hora'] == '11:00')
+                self.assertGreater(periodo['meta'], 0)
+                self.assertEqual(periodo['pendente'], pendente)
+                if pendente:
+                    self.assertIsNone(periodo['saldo'])
+                    self.assertIsNone(periodo['eficiencia'])
+                else:
+                    self.assertEqual(periodo['saldo'], -periodo['meta'])
+                    self.assertEqual(periodo['eficiencia'], 0)
+                futuro = self.client.get('/api/painel-producao?data=2026-10-06').json
+                self.assertTrue(all(p['pendente'] for p in futuro['periodos']))
+        with patch('painel_tv.datetime') as clock:
+            clock.now.return_value = datetime.fromisoformat('2026-10-07T07:00:00-03:00')
+            historico = self.client.get('/api/painel-producao?data=2026-10-05').json
+            self.assertTrue(all(not p['pendente'] for p in historico['periodos']))
+            self.assertEqual(historico['meta_dia']['quantidade'], dados['meta_dia']['quantidade'])
 
     def test_importacao_preserva_ordem_e_planos(self):
         self.login(1)

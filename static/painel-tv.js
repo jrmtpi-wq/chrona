@@ -22,7 +22,8 @@
     $('periodos-pagina').textContent = `${n(data.resumo.lancamentos)} apontamentos${data.fonte_meta === 'programacao' ? ' · jornada completa' : ''}${pages > 1 ? ` · página ${periodPage + 1}/${pages}` : ''}`;
     $('periodos').innerHTML = times.slice(periodPage * 10, periodPage * 10 + 10).map(h => {
       const p = periods.get(h);
-      return `<tr class="${p ? '' : 'pending'}"><th scope="row">${escape(h)}</th><td>${p ? n(p.meta) : '—'}</td><td>${p ? n(p.produzido) : '—'}</td><td class="${p ? p.saldo < 0 ? 'red' : 'green' : ''}">${p ? signed(p.saldo) : '—'}</td><td class="${p ? color(p.eficiencia) : ''}">${p ? percent(p.eficiencia) : '—'}</td></tr>`;
+      const pending = !p || p.pendente;
+      return `<tr class="${pending ? 'pending' : ''}"><th scope="row">${escape(h)}</th><td>${p ? n(p.meta) : '—'}</td><td>${p && (!pending || p.lancamentos) ? n(p.produzido) : '—'}</td><td class="${pending ? '' : p.saldo < 0 ? 'red' : 'green'}">${pending ? '—' : signed(p.saldo)}</td><td class="${pending ? '' : color(p.eficiencia)}">${pending ? '—' : percent(p.eficiencia)}</td></tr>`;
     }).join('');
     $('total-meta').textContent = n(data.resumo.meta);
     $('total-legenda').textContent = data.fonte_meta === 'programacao' ? 'Total planejado' : 'Total apontado';

@@ -148,6 +148,11 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                     meta = plano_dia['periodos'].get(horario,0)
                     r.update(meta=meta,saldo=r['produzido']-meta,
                              eficiencia=round(r['produzido']/meta*100,1) if meta else None)
+                    pendente = dia > agora.date().isoformat() or (
+                        dia == agora.date().isoformat() and horario > agora.strftime('%H:%M'))
+                    r['pendente'] = pendente
+                    if pendente:
+                        r.update(saldo=None, eficiencia=None)
                     periodos_planejados.append(dict(hora=horario,**r))
                 por_op = {o['op_id']:o for o in ordens}
                 for item in fila:
