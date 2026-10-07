@@ -4,6 +4,10 @@
 
 A TV apresenta **Entrada do grupo** à esquerda e **Saída do grupo** à direita. Cada lado tem tabela por horário, meta do dia, realizado, saldo e eficiência dos períodos encerrados. No celular, a entrada aparece acima da saída. Horários futuros mostram a meta e aguardam o fim do período para calcular perda e eficiência.
 
+As tabelas de entrada e saída mantêm todos os horários visíveis, sem rodízio. Consultas automáticas preservam os números e as células existentes; somente textos e cores alterados são atualizados. Uma falha de consulta mantém a última leitura identificada como desatualizada. O rodízio fica restrito às OPs e ao gráfico da visão detalhada quando houver mais itens do que cabe em uma página.
+
+O horário do lançamento representa o **fim do período**: produção de 07h às 08h deve ser informada às 08h. O formulário de saída sugere pelo menos o primeiro fechamento após a entrada do turno, usando o horário de Brasília, e preserva a hora digitada. Um lançamento das 08h permanece no período das 08h na TV.
+
 Na tela **Lançamento**, abra **Entrada do grupo · apontar produção do primeiro time**. Informe OP, data, fim do período e quantidade em peças; entradas podem ser editadas ou excluídas. O lançamento de produção existente continua registrando peças prontas na saída. Os dois lados atualizam automaticamente a cada 15 segundos.
 
 A meta de entrada usa a programação do primeiro time: primeira produção após um ciclo, término da entrada antes do término da saída pelos ciclos dos demais times. A meta de saída usa o atravessamento completo. Cada lado soma suas OPs previstas para a jornada. Sem programação, o apontamento de entrada permite informar sua própria meta do período.
@@ -16,7 +20,7 @@ Verificação: `python -m unittest test_entrada_grupo test_metas_op test_painel_
 
 A visão padrão segue o modelo de referência: tabela **Hora / Meta / Realizado / Saldo / Efic. %**, resumo diário à direita e acumulado mensal abaixo. **Ver OPs** abre a visão de acompanhamento anterior.
 
-- Horários iniciais: 08:00, 09:00, 10:00, 11:00, 13:30, 14:30, 15:30, 16:30 e 17:30. Horários adicionais registrados são incluídos automaticamente, preservando os minutos (09:00 e 09:30 são distintos). Mais de dez horários têm rodízio automático.
+- Horários iniciais sem programação: 08:00, 09:00, 10:00, 11:00, 13:30, 14:30, 15:30, 16:30 e 17:30. Horários adicionais registrados são incluídos automaticamente. Todos os horários das tabelas permanecem visíveis, inclusive quando há mais de dez períodos.
 - Metas e realizados por horário vêm dos lançamentos. Horários sem apontamento aparecem em cinza com “—”, sem distribuir artificialmente a meta diária entre horas.
 - Saldo horário e diário = realizado menos meta, com valores negativos quando a produção ainda não alcançou a meta.
 - Eficiência do dia = realizado dividido pela meta diária cadastrada. Eficiência dos horários e do total apontado = realizado dividido pelas metas dos lançamentos.

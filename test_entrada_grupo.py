@@ -90,6 +90,17 @@ class EntradaGrupoTests(unittest.TestCase):
         finally:
             c.close()
 
+    def test_apontamentos_08_permanecem_08_sem_voltar_para_entrada_07(self):
+        self.assertEqual(self.client.post('/api/entrada-grupo', json=self.d).status_code, 200)
+        self.assertEqual(self.client.post('/api/lancamento/salvar', json=dict(op_id=1,data='2026-10-04',hora='08:00',
+                         operadores=45,qtd_produzida=150,qtd_projetada=180,eficiencia=83.3,
+                         faturamento_hora=0,resultado_hora=0)).status_code, 200)
+        dados = self.painel()
+        for periodos in (dados['entrada']['periodos'], dados['periodos']):
+            self.assertNotIn('07:00', [p['hora'] for p in periodos])
+            self.assertGreater(next(p['produzido'] for p in periodos if p['hora'] == '08:00'), 0)
+        self.assertEqual(self.client.get('/api/entrada-grupo?data=2026-10-04').json[0]['hora'], '08:00')
+
 
 if __name__ == '__main__':
     unittest.main()
