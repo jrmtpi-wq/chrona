@@ -181,7 +181,13 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                 mensal=dict(mensal)
                 mensal['dias_sem_meta']=sum(d not in metas_por_dia for d in datas_apontadas)
             mes_completo = metas_mes is not None and metas_mes > 0 and mensal['dias_sem_meta'] == 0
+            acompanhamento = None
+            if plano_dia is not None:
+                encerrados = [p for p in periodos_planejados if not p['pendente']]
+                acompanhamento = resumo([dict(qtd_produzida=p['produzido'], qtd_projetada=p['meta'])
+                                         for p in encerrados])
             result = dict(data=dia, atualizado_em=agora.isoformat(), fabrica_id=fid,
+                          acompanhamento=acompanhamento,
                           fabricas=fabricas, resumo=totais, ops=ordens,
                           pode_editar_meta=user['perfil'] in ('gestor', 'admin') and plano_dia is None,
                           fonte_meta='programacao' if plano_dia is not None else 'lancamentos',

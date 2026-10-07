@@ -119,6 +119,10 @@ class MetasTest(unittest.TestCase):
                 periodo = next(p for p in dados['periodos'] if p['hora'] == '11:00')
                 self.assertGreater(periodo['meta'], 0)
                 self.assertEqual(periodo['pendente'], pendente)
+                encerrados = [p for p in dados['periodos'] if not p['pendente']]
+                self.assertAlmostEqual(dados['acompanhamento']['meta'], sum(p['meta'] for p in encerrados))
+                self.assertAlmostEqual(dados['acompanhamento']['saldo'],
+                                       sum(p['produzido'] - p['meta'] for p in encerrados))
                 if pendente:
                     self.assertIsNone(periodo['saldo'])
                     self.assertIsNone(periodo['eficiencia'])
@@ -127,6 +131,8 @@ class MetasTest(unittest.TestCase):
                     self.assertEqual(periodo['eficiencia'], 0)
                 futuro = self.client.get('/api/painel-producao?data=2026-10-06').json
                 self.assertTrue(all(p['pendente'] for p in futuro['periodos']))
+                self.assertEqual(futuro['acompanhamento']['saldo'], 0)
+                self.assertIsNone(futuro['acompanhamento']['eficiencia'])
         with patch('painel_tv.datetime') as clock:
             clock.now.return_value = datetime.fromisoformat('2026-10-07T07:00:00-03:00')
             historico = self.client.get('/api/painel-producao?data=2026-10-05').json

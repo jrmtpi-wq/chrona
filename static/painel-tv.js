@@ -25,11 +25,12 @@
       const pending = !p || p.pendente;
       return `<tr class="${pending ? 'pending' : ''}"><th scope="row">${escape(h)}</th><td>${p ? n(p.meta) : '—'}</td><td>${p && (!pending || p.lancamentos) ? n(p.produzido) : '—'}</td><td class="${pending ? '' : p.saldo < 0 ? 'red' : 'green'}">${pending ? '—' : signed(p.saldo)}</td><td class="${pending ? '' : color(p.eficiencia)}">${pending ? '—' : percent(p.eficiencia)}</td></tr>`;
     }).join('');
-    $('total-meta').textContent = n(data.resumo.meta);
-    $('total-legenda').textContent = data.fonte_meta === 'programacao' ? 'Total planejado' : 'Total apontado';
-    $('total-realizado').textContent = n(data.resumo.produzido);
-    $('total-saldo').textContent = signed(data.resumo.saldo);
-    $('total-eficiencia').textContent = percent(data.resumo.eficiencia);
+    const total = data.acompanhamento || data.resumo;
+    $('total-meta').textContent = n(total.meta);
+    $('total-legenda').textContent = data.acompanhamento ? 'Total até o horário' : 'Total apontado';
+    $('total-realizado').textContent = n(total.produzido);
+    $('total-saldo').textContent = signed(total.saldo);
+    $('total-eficiencia').textContent = percent(total.eficiencia);
   }
 
   function renderOps() {
@@ -75,6 +76,14 @@
     $('saldo').textContent = data.meta_dia.quantidade === null ? '—' : signed(data.resumo.produzido - data.meta_dia.quantidade);
     $('meta-apontada').textContent = data.meta_dia.faltam === null ? 'realizado − meta do dia' : data.meta_dia.faltam === 0 ? 'Meta do dia atingida!' : `Faltam ${n(data.meta_dia.faltam)} peças`;
     $('farol').textContent = data.meta_dia.atingimento === null ? 'Defina a meta do dia' : 'realizado ÷ meta do dia';
+    if (data.acompanhamento) {
+      const atual = data.acompanhamento;
+      $('saldo').textContent = signed(atual.saldo);
+      $('meta-apontada').textContent = `realizado − meta até o horário (${n(atual.meta)} peças)`;
+      $('eficiencia').textContent = percent(atual.eficiencia);
+      $('ef-card').className = `metric ${color(atual.eficiencia)}`;
+      $('farol').textContent = 'realizado ÷ meta até o horário';
+    }
     const programacao=data.programacao||[];
     $('programacao-painel').hidden=!programacao.length;
     const previsao=s=>new Date(s).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
