@@ -116,3 +116,8 @@ header{position:relative;padding:7px 16px;gap:14px;min-height:52px}
  body:not(.op-mode) .month-grid span,body:not(.op-mode) .month-grid small{font-size:10px}
 }
 @media(max-width:600px){.brand small,.clock span{display:none}.brand strong{font-size:15px}.tv-controls summary{font-size:11px;padding:6px}.tv-controls nav{left:6px;right:6px}.tv-controls nav .refresh-note{display:none}}
+.board-table .realizado-detalhe{padding:0;border:0;background:none;border-radius:0;color:inherit;font:inherit;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px}
+#modal-realizado{width:640px;max-height:90dvh;overflow:auto}
+.origem-table{width:100%;border-collapse:collapse;text-align:left}
+.origem-table th,.origem-table td{padding:9px 6px;border-bottom:1px solid var(--border)}
+.origem-table a{color:var(--orange)}

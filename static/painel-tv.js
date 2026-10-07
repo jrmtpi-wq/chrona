@@ -77,7 +77,8 @@
     setHtml('periodos', times.map(h => {
       const p = periods.get(h);
       const pending = !p || p.pendente;
-      return `<tr class="${pending ? 'pending' : ''}"><th scope="row">${escape(h)}</th><td>${p ? n(p.meta) : '—'}</td><td>${p && (!pending || p.lancamentos) ? n(p.produzido) : '—'}</td><td class="${pending ? '' : p.saldo < 0 ? 'red' : 'green'}">${pending ? '—' : signed(p.saldo)}</td><td class="${pending ? '' : color(p.eficiencia)}">${pending ? '—' : percent(p.eficiencia)}</td></tr>`;
+      const realizado = p && (!pending || p.lancamentos) ? (p.apontamentos?.length ? `<button class="realizado-detalhe" data-hora="${escape(h)}" title="Ver lançamentos somados às ${escape(h)}">${n(p.produzido)}</button>` : n(p.produzido)) : '—';
+      return `<tr class="${pending ? 'pending' : ''}"><th scope="row">${escape(h)}</th><td>${p ? n(p.meta) : '—'}</td><td>${realizado}</td><td class="${pending ? '' : p.saldo < 0 ? 'red' : 'green'}">${pending ? '—' : signed(p.saldo)}</td><td class="${pending ? '' : color(p.eficiencia)}">${pending ? '—' : percent(p.eficiencia)}</td></tr>`;
     }).join(''));
     const total = data.acompanhamento || data.resumo;
     setText('total-meta', n(total.meta));
@@ -250,6 +251,21 @@
     $('meta-quantidade').focus();
   });
   $('cancelar-meta').addEventListener('click', () => $('modal-meta').close());
+  $('periodos').addEventListener('click', event => {
+    const botao = event.target.closest('[data-hora]');
+    if (!botao || !data) return;
+    const periodo = data.periodos.find(p => p.hora === botao.dataset.hora);
+    if (!periodo) return;
+    setText('realizado-titulo', `Saída realizada · ${periodo.hora}`);
+    setText('realizado-contexto', `${data.data.split('-').reverse().join('/')} · Registros que formam o total deste período`);
+    setHtml('realizado-registros', periodo.apontamentos.map(a => {
+      const link = '/lancamento?' + new URLSearchParams({op_id:a.op_id,data:data.data,editar:a.id});
+      return `<tr><td>OP ${escape(a.numero)}</td><td>${escape(a.hora)}</td><td>${n(a.quantidade)}</td><td><a href="${escape(link)}" target="_blank" rel="noopener">Editar</a></td></tr>`;
+    }).join(''));
+    setText('realizado-soma', `Total: ${n(periodo.produzido)} peças · ${periodo.apontamentos.length} lançamento(s)`);
+    $('modal-realizado').showModal();
+  });
+  $('fechar-realizado').addEventListener('click', () => $('modal-realizado').close());
   $('form-meta').addEventListener('submit', async event => {
     event.preventDefault();
     if ($('salvar-meta').disabled) return;

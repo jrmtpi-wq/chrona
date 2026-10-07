@@ -50,7 +50,7 @@
     <section class="panel board-hourly">
       <div class="section-title"><h1>Saída do grupo</h1><span class="muted" id="periodos-pagina"></span></div>
       <table class="board-table">
-        <thead><tr><th>Hora</th><th>Meta</th><th>Realizado</th><th>Saldo</th><th>Efic. %</th></tr></thead>
+        <thead><tr><th>Hora</th><th>Meta</th><th title="Clique no realizado para conferir os lançamentos somados">Realizado ⓘ</th><th>Saldo</th><th>Efic. %</th></tr></thead>
         <tbody id="periodos"></tbody>
         <tfoot><tr><th id="total-legenda">Total apontado</th><td id="total-meta">—</td><td id="total-realizado">—</td><td id="total-saldo">—</td><td id="total-eficiencia">—</td></tr></tfoot>
       </table>
@@ -99,6 +99,14 @@
       <p id="meta-erro" role="alert" class="red"></p>
       <div class="dialog-actions"><button id="cancelar-meta" type="button">Cancelar</button><button id="salvar-meta" type="submit">Salvar meta</button></div>
     </form>
+  </dialog>
+  <dialog id="modal-realizado" aria-labelledby="realizado-titulo">
+    <h2 id="realizado-titulo">Lançamentos de saída</h2>
+    <p id="realizado-contexto"></p>
+    <p>A TV soma todas as OPs do grupo. Horários com minutos entram no período que fecha na próxima hora cheia.</p>
+    <table class="origem-table"><thead><tr><th>OP</th><th>Horário lançado</th><th>Peças</th><th></th></tr></thead><tbody id="realizado-registros"></tbody></table>
+    <p id="realizado-soma"></p>
+    <div class="dialog-actions"><button id="fechar-realizado" type="button">Fechar</button></div>
   </dialog>
 </body>
 </html>

@@ -659,6 +659,21 @@ async function excluirLancamento(id) {
 document.addEventListener('DOMContentLoaded', () => {
   const hoje = '{{ hoje }}';
   document.getElementById('sel-data').value = hoje;
+  const consulta = new URLSearchParams(location.search);
+  const opId = consulta.get('op_id'), data = consulta.get('data');
+  if (opId && /^\d{4}-\d{2}-\d{2}$/.test(data || '')) {
+    const selecao = document.getElementById('sel-op');
+    selecao.value = opId;
+    if (selecao.value) {
+      selecionarOP(); estado.data = data;
+      document.getElementById('sel-data').value = data;
+      document.getElementById('m-sel-data').value = data;
+      ativarOP().then(() => {
+        const id = Number(consulta.get('editar'));
+        if (id) editarLancamento(id);
+      }).catch(() => toast('Não foi possível abrir o lançamento.', 'error'));
+    }
+  }
 });
 </script>
 {% endblock %}

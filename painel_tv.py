@@ -159,7 +159,8 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                     r['pendente'] = pendente
                     if pendente:
                         r.update(saldo=None, eficiencia=None)
-                    periodos_planejados.append(dict(hora=horario,**r))
+                    periodos_planejados.append(dict(hora=horario,**r,
+                        apontamentos=[dict(id=i['id'],op_id=i['op_id'],numero=i['numero'],hora=i['hora'],quantidade=i['qtd_produzida']) for i in items]))
                 por_op = {o['op_id']:o for o in ordens}
                 for item in fila:
                     p,r = item['plano'],item['resultado']
@@ -212,7 +213,8 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                           mes=dict(inicio=inicio_mes, fim=dia, meta=metas_mes,
                                    produzido=mensal['produzido'], dias_sem_meta=mensal['dias_sem_meta'],
                                    eficiencia=round(mensal['produzido'] / metas_mes * 100, 1) if mes_completo else None),
-                          periodos=periodos_planejados if plano_dia is not None else [dict(hora=h, **resumo(items)) for h, items in sorted(periodos.items())],
+                          periodos=periodos_planejados if plano_dia is not None else [dict(hora=h, **resumo(items),
+                              apontamentos=[dict(id=i['id'],op_id=i['op_id'],numero=i['numero'],hora=i['hora'],quantidade=i['qtd_produzida']) for i in items]) for h, items in sorted(periodos.items())],
                           horas=periodos_planejados if plano_dia is not None else [dict(hora=h, **resumo(items)) for h, items in sorted(horas.items())],
                           recentes=[dict(id=r['id'], numero=r['numero'], referencia=r['referencia'] or '',
                                          hora=r['hora'], operadores=r['operadores'], **resumo([r]))

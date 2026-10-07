@@ -217,6 +217,22 @@ class MetasTest(unittest.TestCase):
             historico = self.client.get('/api/painel-producao?data=2026-10-05').json
             self.assertEqual(historico['acompanhamento']['produzido'], 680)
 
+    def test_period_source_explains_sum_across_ops_and_original_minutes(self):
+        self.login(1)
+        self.salvar()
+        self.c.execute('DELETE FROM producao WHERE fabrica_id=1')
+        self.c.executemany('INSERT INTO producao(fabrica_id,op_id,data,hora,qtd_produzida) VALUES(1,?,?,?,?)',
+                           [(1,'2026-10-05','09:00',120),(2,'2026-10-05','08:30',140)])
+        self.c.commit()
+        dados = self.client.get('/api/painel-producao?data=2026-10-05').json
+        nove = next(p for p in dados['periodos'] if p['hora']=='09:00')
+        self.assertEqual(nove['produzido'],260)
+        self.assertEqual({(a['op_id'],a['hora'],a['quantidade']) for a in nove['apontamentos']},
+                         {(1,'09:00',120),(2,'08:30',140)})
+        registros = self.client.get('/api/lancamentos?op_id=1&data=2026-10-05').json
+        self.assertEqual(sum(r['qtd_produzida'] for r in registros),120)
+        self.assertEqual(sum(a['quantidade'] for a in nove['apontamentos']),nove['produzido'])
+
     def test_previsao_por_lancamento_preserva_meta_e_recalcula_seguinte(self):
         self.login(1)
         self.salvar()
