@@ -34,9 +34,10 @@
     atualizarFilhos(element, range.createContextualFragment(html));
     htmlAtual.set(element, html);
   }
-  const n = value => Number(value || 0).toLocaleString('pt-BR', {maximumFractionDigits: 1});
+  const arredondarPecas = value => Math.sign(Number(value || 0)) * Math.round(Math.abs(Number(value || 0))) || 0;
+  const n = value => arredondarPecas(value).toLocaleString('pt-BR', {maximumFractionDigits: 0});
   const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const percent = value => value === null ? '—' : `${n(value)}%`;
+  const percent = value => value === null ? '—' : `${Number(value || 0).toLocaleString('pt-BR', {maximumFractionDigits: 1})}%`;
   const color = ef => ef === null ? '' : ef < 85 ? 'red' : ef < 92 ? 'amber' : ef <= 100 ? 'green' : 'blue';
   const time = value => new Date(value).toLocaleTimeString('pt-BR', {timeZone:'America/Sao_Paulo',hour:'2-digit',minute:'2-digit',second:'2-digit'});
   let data = null, page = 0, hourPage = 0, timer, busy = false, again = false;
@@ -44,7 +45,7 @@
   let selectedFactory = new URLSearchParams(location.search).get('fabrica_id') || '';
   let lastSuccess = null;
   let metaContext = null;
-  const signed = value => value === null ? '—' : `${value > 0 ? '+' : ''}${n(value)}`;
+  const signed = value => value === null ? '—' : `${arredondarPecas(value) > 0 ? '+' : ''}${n(value)}`;
   function renderEntrada() {
     const entrada = data.entrada;
     if (!entrada) return;
