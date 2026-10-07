@@ -38,7 +38,7 @@ application.app.config['FABRICA_UNICA'] = False
 def seed():
     c = connect()
     c.execute('DROP TABLE IF EXISTS consolidacao_fabricas_backup')
-    for table in ('sequencia_metas_op', 'planejamento_metas_op', 'metas_producao_dia', 'producao', 'ordens_producao', 'referencias', 'usuarios', 'fabricas'):
+    for table in ('entradas_producao', 'sequencia_metas_op', 'planejamento_metas_op', 'metas_producao_dia', 'producao', 'ordens_producao', 'referencias', 'usuarios', 'fabricas'):
         c.execute(f'DELETE FROM {table}')
     c.executemany('INSERT INTO fabricas(id,nome) VALUES (?,?)', [(1,'Fábrica Centro'),(2,'Fábrica Norte')])
     c.executemany('INSERT INTO usuarios(id,nome,login,senha_hash,perfil,fabrica_id) VALUES (?,?,?,?,?,?)',

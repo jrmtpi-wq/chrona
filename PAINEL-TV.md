@@ -1,5 +1,17 @@
 # Gestão à vista da produção
 
+## Entrada e saída do grupo
+
+A TV apresenta **Entrada do grupo** à esquerda e **Saída do grupo** à direita. Cada lado tem tabela por horário, meta do dia, realizado, saldo e eficiência dos períodos encerrados. No celular, a entrada aparece acima da saída. Horários futuros mostram a meta e aguardam o fim do período para calcular perda e eficiência.
+
+Na tela **Lançamento**, abra **Entrada do grupo · apontar produção do primeiro time**. Informe OP, data, fim do período e quantidade em peças; entradas podem ser editadas ou excluídas. O lançamento de produção existente continua registrando peças prontas na saída. Os dois lados atualizam automaticamente a cada 15 segundos.
+
+A meta de entrada usa a programação do primeiro time: primeira produção após um ciclo, término da entrada antes do término da saída pelos ciclos dos demais times. A meta de saída usa o atravessamento completo. Cada lado soma suas OPs previstas para a jornada. Sem programação, o apontamento de entrada permite informar sua própria meta do período.
+
+Entradas são guardadas na tabela aditiva `entradas_producao`, criada em SQLite e PostgreSQL. Não se somam à saída, ao faturamento, ao acumulado mensal de peças prontas ou à produção concluída da OP. Os lançamentos antigos continuam como saída; nenhum realizado de entrada é inferido desses registros. A previsão de conclusão continua baseada nos lançamentos de saída.
+
+Verificação: `python -m unittest test_entrada_grupo test_metas_op test_painel_tv test_fabrica_unica -q`. O teste `node test_browser_entrada.cjs` usa o servidor temporário de `test_metas_op.py --serve`, após `test_browser_metas.cjs`, para verificar o apontamento e a atualização da TV.
+
 ## Painel de bordo
 
 A visão padrão segue o modelo de referência: tabela **Hora / Meta / Realizado / Saldo / Efic. %**, resumo diário à direita e acumulado mensal abaixo. **Ver OPs** abre a visão de acompanhamento anterior.

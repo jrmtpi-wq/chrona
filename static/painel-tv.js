@@ -12,6 +12,30 @@
   let lastSuccess = null;
   let metaContext = null;
   const signed = value => value === null ? '—' : `${value > 0 ? '+' : ''}${n(value)}`;
+  function renderEntrada() {
+    const entrada = data.entrada;
+    if (!entrada) return;
+    const periods = new Map(entrada.periodos.map(p => [p.hora, p]));
+    const defaults = ['08:00','09:00','10:00','11:00','13:30','14:30','15:30','16:30','17:30'];
+    const times = [...new Set([...(entrada.fonte_meta === 'programacao' ? [] : defaults), ...periods.keys()])].sort();
+    const pages = Math.max(1, Math.ceil(times.length / 10));
+    const index = periodPage % pages;
+    $('entrada-contagem').textContent = `${n(entrada.resumo.lancamentos)} apontamentos${pages > 1 ? ` · página ${index + 1}/${pages}` : ''}`;
+    $('entrada-periodos').innerHTML = times.slice(index * 10, index * 10 + 10).map(h => {
+      const p = periods.get(h), pending = !p || p.pendente;
+      return `<tr class="${pending ? 'pending' : ''}"><th scope="row">${escape(h)}</th><td>${p ? n(p.meta) : '—'}</td><td>${p && (!pending || p.lancamentos) ? n(p.produzido) : '—'}</td><td class="${pending ? '' : p.saldo < 0 ? 'red' : 'green'}">${pending ? '—' : signed(p.saldo)}</td><td class="${pending ? '' : color(p.eficiencia)}">${pending ? '—' : percent(p.eficiencia)}</td></tr>`;
+    }).join('');
+    const atual = entrada.acompanhamento;
+    $('entrada-meta').textContent = n(entrada.resumo.meta);
+    $('entrada-produzido').textContent = n(entrada.resumo.produzido);
+    $('entrada-saldo').textContent = signed(atual.saldo);
+    $('entrada-eficiencia').textContent = percent(atual.eficiencia);
+    $('entrada-ef-card').className = `metric ${color(atual.eficiencia)}`;
+    $('entrada-total-meta').textContent = n(atual.meta);
+    $('entrada-total-realizado').textContent = n(atual.produzido);
+    $('entrada-total-saldo').textContent = signed(atual.saldo);
+    $('entrada-total-eficiencia').textContent = percent(atual.eficiencia);
+  }
   function renderPeriods() {
     if (!data) return;
     const defaults = ['08:00','09:00','10:00','11:00','13:30','14:30','15:30','16:30','17:30'];
@@ -102,6 +126,7 @@
     ).join('') : '<div class="empty">Nenhum período apontado</div>';
     renderOps();
     renderPeriods();
+    renderEntrada();
   }
 
   async function refresh() {
@@ -148,6 +173,10 @@
   function changeFilter() {
     page = 0; hourPage = 0; periodPage = 0;
     data = null;
+    for (const id of ['entrada-meta','entrada-produzido','entrada-saldo','entrada-eficiencia','entrada-total-meta','entrada-total-realizado','entrada-total-saldo','entrada-total-eficiencia']) $(id).textContent = '—';
+    $('entrada-periodos').innerHTML = '';
+    $('entrada-contagem').textContent = '';
+    $('entrada-ef-card').className = 'metric';
     for (const id of ['produzido','meta','eficiencia','saldo']) $(id).textContent = '—';
     for (const id of ['meta-mes','produzido-mes','eficiencia-mes','total-meta','total-realizado','total-saldo','total-eficiencia']) $(id).textContent = '—';
     $('periodos').innerHTML = '';

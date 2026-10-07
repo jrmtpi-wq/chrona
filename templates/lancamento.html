@@ -99,6 +99,28 @@ tbody td{padding:9px 14px;font-size:13px;vertical-align:middle}
 </div>
 
 <!-- SELEÇÃO DE OP -->
+<details class="card" id="entrada-lancamento">
+  <summary class="card-title" style="cursor:pointer">Entrada do grupo · apontar produção do primeiro time</summary>
+  <p>Informe as peças que passaram pelo primeiro time. A saída pronta continua no lançamento de produção.</p>
+  <form id="form-entrada">
+    <input type="hidden" id="entrada-id">
+    <div class="form-row cols-3">
+      <div class="form-group"><label for="entrada-op">OP de entrada</label><select id="entrada-op" required><option value="">Selecione...</option>{% for op in ops %}<option value="{{ op.id }}">OP {{ op.numero }} — {{ op.descricao or '' }}</option>{% endfor %}</select></div>
+      <div class="form-group"><label for="entrada-data">Data</label><input id="entrada-data" type="date" value="{{ hoje }}" required></div>
+      <div class="form-group"><label for="entrada-hora">Fim do período</label><input id="entrada-hora" type="time" required></div>
+      <div class="form-group"><label for="entrada-qtd">Entrada realizada (peças)</label><input id="entrada-qtd" type="number" min="0" max="10000000" step="1" required></div>
+      <div class="form-group"><label for="entrada-meta-manual">Meta do período sem programação</label><input id="entrada-meta-manual" type="number" min="0" max="10000000" step="any" value="0"></div>
+    </div>
+    <p>A TV usa a meta programada quando houver planejamento para a data. Apontamentos com minutos pertencem ao período que termina na próxima hora cheia.</p>
+    <button class="btn btn-primary" id="entrada-salvar" type="submit">Salvar entrada</button>
+    <button class="btn btn-light" id="entrada-cancelar" type="button" hidden>Cancelar edição</button>
+    <p id="entrada-mensagem" role="status"></p>
+  </form>
+  <div style="overflow-x:auto"><table class="table"><thead><tr><th>Hora</th><th>OP</th><th>Entrada (peças)</th><th>Ações</th></tr></thead><tbody id="entrada-registros"></tbody></table></div>
+</details>
+<script src="{{ url_for('static', filename='entrada-grupo.js') }}" defer></script>
+
+<!-- SELEÇÃO DE OP -->
 <div class="card" id="card-sem-op" {% if op_atual %}style="display:none"{% endif %}>
   <div class="card-title">📋 Selecione uma OP para Lançar</div>
   <div class="form-row cols-3">

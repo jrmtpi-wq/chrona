@@ -3,6 +3,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from flask import jsonify, render_template, request
 from metas_op import planos_fila, calcular_fila, metas_programadas, atualizar_previsoes
+from entrada_grupo import registrar_entrada, metas_entrada, painel_entrada
 
 
 def resumo(rows):
@@ -14,6 +15,7 @@ def resumo(rows):
 
 
 def registrar_painel(app, m, get_user, fab_ids, login_required):
+    registrar_entrada(app, m, get_user, fab_ids)
     @app.get('/painel-producao')
     @login_required
     def painel_producao():
@@ -128,6 +130,7 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                                  (fid, inicio_mes, dia)).fetchone()['quantidade']
             fila = calcular_fila(c, planos_fila(c, fid)) if fid is not None else []
             planejados = metas_programadas(c, fila)
+            entrada_planejada = metas_entrada(c, fila)
             previsoes = atualizar_previsoes(c, fila, agora)
             dias_previstos = metas_programadas(c, previsoes)
             previsao_por_op = {(i['plano']['op_id'], i['plano']['data']): i for i in previsoes}
@@ -194,6 +197,7 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                 acompanhamento = resumo([dict(qtd_produzida=p['produzido'], qtd_projetada=p['meta'])
                                          for p in encerrados])
             result = dict(data=dia, atualizado_em=agora.isoformat(), fabrica_id=fid,
+                          entrada=painel_entrada(c, fid, dia, agora, entrada_planejada.get(dia)),
                           acompanhamento=acompanhamento,
                           previsao_dia=(dict(quantidade=dias_previstos.get(dia, {}).get('meta', 0) + totais['produzido'])
                                         if fila and dia == agora.date().isoformat() else None),

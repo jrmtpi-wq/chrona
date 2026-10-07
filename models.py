@@ -99,6 +99,15 @@ def _pg_exec(c, sql):
 
 
 SCHEMA_SQLITE = """
+CREATE TABLE IF NOT EXISTS entradas_producao (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fabrica_id INTEGER NOT NULL, op_id INTEGER NOT NULL,
+    data TEXT NOT NULL, hora TEXT NOT NULL,
+    qtd_produzida INTEGER NOT NULL CHECK (qtd_produzida >= 0),
+    qtd_projetada REAL NOT NULL DEFAULT 0 CHECK (qtd_projetada >= 0),
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
+    FOREIGN KEY(op_id) REFERENCES ordens_producao(id)
+);
 CREATE TABLE IF NOT EXISTS sequencia_metas_op (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     op_id INTEGER NOT NULL, data TEXT NOT NULL,
@@ -983,6 +992,15 @@ CREATE TABLE IF NOT EXISTS sequencia_metas_op (
     id SERIAL PRIMARY KEY, op_id INTEGER NOT NULL, data TEXT NOT NULL,
     UNIQUE(op_id,data),
     FOREIGN KEY(op_id,data) REFERENCES planejamento_metas_op(op_id,data)
+);
+CREATE TABLE IF NOT EXISTS entradas_producao (
+    id SERIAL PRIMARY KEY,
+    fabrica_id INTEGER NOT NULL, op_id INTEGER NOT NULL,
+    data TEXT NOT NULL, hora TEXT NOT NULL,
+    qtd_produzida INTEGER NOT NULL CHECK (qtd_produzida >= 0),
+    qtd_projetada REAL NOT NULL DEFAULT 0 CHECK (qtd_projetada >= 0),
+    FOREIGN KEY(fabrica_id) REFERENCES fabricas(id),
+    FOREIGN KEY(op_id) REFERENCES ordens_producao(id)
 );
 """
 

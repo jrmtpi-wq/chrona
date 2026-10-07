@@ -27,8 +27,25 @@
   <main>
     <div id="aviso" role="alert" hidden></div>
     <div class="board-layout">
+    <div class="flow-pane" id="entrada-painel">
     <section class="panel board-hourly">
-      <div class="section-title"><h1>Produção por horário</h1><span class="muted" id="periodos-pagina"></span></div>
+      <div class="section-title"><h1>Entrada do grupo</h1><span class="muted" id="entrada-contagem"></span></div>
+      <table class="board-table">
+        <thead><tr><th>Hora</th><th>Meta</th><th>Realizado</th><th>Saldo</th><th>Efic. %</th></tr></thead>
+        <tbody id="entrada-periodos"></tbody>
+        <tfoot><tr><th>Total até o horário</th><td id="entrada-total-meta">—</td><td id="entrada-total-realizado">—</td><td id="entrada-total-saldo">—</td><td id="entrada-total-eficiencia">—</td></tr></tfoot>
+      </table>
+    </section>
+    <section class="metrics" aria-label="Resumo da entrada">
+      <article class="metric"><span>Meta do dia</span><strong id="entrada-meta">—</strong><small>prevista no primeiro time</small></article>
+      <article class="metric featured"><span>Entrada realizada</span><strong id="entrada-produzido">—</strong><small>peças apontadas</small></article>
+      <article class="metric"><span>Saldo até o horário</span><strong id="entrada-saldo">—</strong><small>entrada realizada − meta</small></article>
+      <article class="metric" id="entrada-ef-card"><span>Eficiência</span><strong id="entrada-eficiencia">—</strong><small>até o horário encerrado</small></article>
+    </section>
+    </div>
+    <div class="flow-pane" id="saida-painel">
+    <section class="panel board-hourly">
+      <div class="section-title"><h1>Saída do grupo</h1><span class="muted" id="periodos-pagina"></span></div>
       <table class="board-table">
         <thead><tr><th>Hora</th><th>Meta</th><th>Realizado</th><th>Saldo</th><th>Efic. %</th></tr></thead>
         <tbody id="periodos"></tbody>
@@ -42,9 +59,10 @@
       <article class="metric" id="ef-card"><span>Eficiência dia</span><strong id="eficiencia">—</strong><small id="farol">Aguardando apontamentos</small></article>
     </section>
     </div>
+    </div>
     <section id="programacao-painel" class="panel" hidden><div class="section-title"><h2>OPs programadas</h2><span class="muted">Previsões conforme planejamento</span></div><div id="programacao-itens" class="recent-grid"></div></section>
     <section class="panel monthly">
-      <div class="section-title"><h2>Acumulado mês</h2><span class="muted" id="mes-legenda">Até a data selecionada</span></div>
+      <div class="section-title"><h2>Acumulado mês · Saída</h2><span class="muted" id="mes-legenda">Até a data selecionada</span></div>
       <div class="month-grid">
         <article><span>Meta mês</span><strong id="meta-mes">—</strong><small>metas diárias cadastradas</small></article>
         <article><span>Realizado mês</span><strong id="produzido-mes">—</strong><small>peças apontadas no mês</small></article>
