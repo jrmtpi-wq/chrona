@@ -36,12 +36,15 @@
   }
   function editar(item) {
     $('entrada-id').value = item.id;
+    $('entrada-data').value = item.data;
     $('entrada-op').value = item.op_id;
     $('entrada-hora').value = item.hora;
     $('entrada-qtd').value = item.qtd_produzida;
     $('entrada-meta-manual').value = item.qtd_projetada;
     $('entrada-cancelar').hidden = false;
     $('entrada-salvar').textContent = 'Salvar alteração';
+    $('form-entrada').scrollIntoView({behavior:'smooth', block:'center'});
+    $('entrada-qtd').focus({preventScroll:true});
   }
   async function excluir(item) {
     if (!confirm(`Excluir a entrada da OP ${item.numero} às ${item.hora}?`)) return;

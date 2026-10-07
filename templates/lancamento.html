@@ -224,6 +224,7 @@ tbody td{padding:9px 14px;font-size:13px;vertical-align:middle}
 
     <!-- HISTÓRICO DO DIA -->
     <div>
+      <p style="font-size:13px;color:#374151;margin:0 0 10px"><strong>Lançamentos de saída do grupo</strong> — clique em Editar para corrigir. Para consultar outro dia ou outra OP, use Trocar OP.</p>
       <div class="table-wrap">
         <table>
           <thead>
@@ -292,7 +293,7 @@ tbody td{padding:9px 14px;font-size:13px;vertical-align:middle}
 <div class="modal-overlay" id="modal-lancar">
   <div class="modal">
     <div class="modal-header">
-      <div class="modal-title">➕ Novo Lançamento</div>
+      <div class="modal-title" id="lan-titulo">Novo lançamento de saída</div>
       <button class="modal-close" onclick="fecharModal('modal-lancar')">✕</button>
     </div>
     <div class="modal-body">
@@ -502,8 +503,8 @@ function renderLancamentos() {
       <td>${semTag(l.eficiencia)}</td>
       <td>${fmtR(l.faturamento_hora)}</td>
       <td>
-        <button class="btn btn-light btn-sm" onclick="editarLancamento(${l.id})" style="padding:3px 8px;font-size:10px">✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="excluirLancamento(${l.id})" style="padding:3px 8px;font-size:10px">✕</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="editarLancamento(${l.id})">Editar</button>
+        <button type="button" class="btn btn-danger btn-sm" onclick="excluirLancamento(${l.id})">Excluir</button>
       </td>
     </tr>
   `).join('');
@@ -547,6 +548,8 @@ function atualizarMetricas() {
 function abrirModalLancar() {
   if (!estado.opId) { toast('Selecione uma OP primeiro', 'error'); return; }
   document.getElementById('lan-edit-id').value = '';
+  document.getElementById('lan-titulo').textContent = `Novo lançamento de saída · OP ${estado.opNumero}`;
+  document.getElementById('lan-salvar').textContent = 'Salvar lançamento';
   document.getElementById('lan-data').value = estado.data;
   const turno = document.querySelector(`#sel-turno option[value="${estado.turnoId}"]`);
   const horaEntrada = turno?.dataset.he || '07:00';
@@ -633,6 +636,8 @@ async function editarLancamento(id) {
   const l = estado.lancamentos.find(x=>x.id===id);
   if (!l) return;
   document.getElementById('lan-edit-id').value = id;
+  document.getElementById('lan-titulo').textContent = `Editar lançamento de saída · OP ${estado.opNumero}`;
+  document.getElementById('lan-salvar').textContent = 'Salvar alterações';
   document.getElementById('lan-data').value = l.data || estado.data;
   document.getElementById('lan-hora').value = l.hora;
   document.getElementById('lan-operadores').value = l.operadores;
