@@ -3,7 +3,7 @@ import math
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from flask import jsonify, request
-from metas_op import avancar, metas_programadas, intervalos
+from metas_op import avancar, metas_programadas, intervalos, hora_periodo_painel
 
 
 def meta_por_op_apontada(c, dia, grupos, planejado, fila):
@@ -31,7 +31,7 @@ def meta_por_op_apontada(c, dia, grupos, planejado, fila):
         p = ativa['plano']
         turno = dict(c.execute('SELECT * FROM turnos WHERE id=?', (p['turno_id'],)).fetchone())
         fim = datetime.fromisoformat(dia + 'T' + hora)
-        inicio = fim - timedelta(hours=1)
+        inicio = fim.replace(minute=0) if fim.minute else fim - timedelta(hours=1)
         minutos = sum(max(0, (min(b, fim) - max(a, inicio)).total_seconds() / 60)
                       for a, b in intervalos(c, turno, date.fromisoformat(dia)))
         metas[hora] = minutos * float(p['operadores']) / float(p['tempo_padrao']) * float(p['eficiencia']) / 100
@@ -57,8 +57,7 @@ def painel_entrada(c, fid, dia, agora, planejado, fila=()):
         WHERE e.fabrica_id=? AND e.data=? ORDER BY e.hora,e.id''', (fid, dia)).fetchall()]
     grupos = defaultdict(list)
     for row in rows:
-        h, minuto = map(int, row['hora'].split(':'))
-        grupos[f'{(h + bool(minuto)) % 24:02d}:00'].append(row)
+        grupos[hora_periodo_painel(row['hora'], (planejado or {}).get('periodos', {}))].append(row)
     planejado = meta_por_op_apontada(c, dia, grupos, planejado, fila)
     if planejado is not None:
         for hora in planejado['periodos']:

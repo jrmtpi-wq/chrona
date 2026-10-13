@@ -2,7 +2,7 @@
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from flask import jsonify, render_template, request
-from metas_op import planos_fila, calcular_fila, metas_programadas, atualizar_previsoes
+from metas_op import planos_fila, calcular_fila, metas_programadas, atualizar_previsoes, hora_periodo_painel
 from entrada_grupo import registrar_entrada, metas_entrada, painel_entrada
 
 
@@ -143,8 +143,7 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                 # Apontamentos pertencem ao período horário que termina no próximo relógio cheio.
                 periodos = defaultdict(list)
                 for row in rows:
-                    h, minuto = map(int,row['hora'][:5].split(':'))
-                    horario = f'{(h + (1 if minuto else 0)) % 24:02d}:00'
+                    horario = hora_periodo_painel(row['hora'], plano_dia['periodos'])
                     periodos[horario].append(row)
                 for horario in plano_dia['periodos']:
                     periodos[horario]  # Inclui metas ainda sem apontamento.

@@ -76,6 +76,18 @@ def atualizar_previsoes(c, fila, agora):
     return atualizada
 
 
+def hora_periodo_painel(hora, periodos):
+    """Mantém o último fechamento parcial da jornada, inclusive apontamentos legados."""
+    instante = datetime.strptime(hora[:5], '%H:%M')
+    teto = instante.replace(minute=0)
+    if instante.minute:
+        teto += timedelta(hours=1)
+    chave = teto.strftime('%H:%M')
+    parciais = [h for h in periodos if h[3:] != '00' and
+                (datetime.strptime(h, '%H:%M').replace(minute=0) + timedelta(hours=1)).strftime('%H:%M') == chave]
+    return max(parciais) if parciais else chave
+
+
 def metas_programadas(c, fila):
     """Distribui peças prontas, incluindo atravessamento, pausas e saldo final."""
     dias = {}
@@ -92,17 +104,24 @@ def metas_programadas(c, fila):
         inicio, primeira, fim = (datetime.fromisoformat(r[k]) for k in ('entrada','primeira_peca','saida'))
         taxa = float(p['operadores']) / float(p['tempo_padrao']) * float(p['eficiencia']) / 100
         emitidas = 1.0
+        def fechamento(instante):
+            teto = instante.replace(minute=0, second=0, microsecond=0)
+            if instante != teto:
+                teto += timedelta(hours=1)
+            jornada = intervalos(c, turno, instante.date())
+            return min(teto, jornada[-1][1]) if jornada else teto
         dia = inicio.date()
         while dia <= fim.date():
             # Presença no planejamento, mesmo durante o atravessamento sem peças prontas.
             dias.setdefault(dia.isoformat(), dict(meta=0.0, periodos={}, ops={}))
-            for a,b in intervalos(c, turno, dia):
+            jornada = intervalos(c, turno, dia)
+            for a,b in jornada:
                 # Exibe a jornada inteira, incluindo períodos antes da primeira peça
                 # e depois da conclusão da OP, sem acrescentar peças à meta.
                 horario = a
                 while horario < b:
                     fronteira = horario.replace(minute=0,second=0,microsecond=0)+timedelta(hours=1)
-                    adicionar(horario.date().isoformat(),fronteira.strftime('%H:%M'),0.0,p['op_id'])
+                    adicionar(horario.date().isoformat(),min(fronteira, jornada[-1][1]).strftime('%H:%M'),0.0,p['op_id'])
                     horario = min(b, fronteira)
                 atual, limite = max(a, primeira), min(b, fim)
                 while atual < limite:
@@ -110,19 +129,15 @@ def metas_programadas(c, fila):
                     final = min(limite, fronteira)
                     quantidade = (final-atual).total_seconds()/60*taxa
                     emitidas += quantidade
-                    adicionar(atual.date().isoformat(), fronteira.strftime('%H:%M'),quantidade, p['op_id'])
+                    adicionar(atual.date().isoformat(), min(fronteira, jornada[-1][1]).strftime('%H:%M'),quantidade, p['op_id'])
                     atual = final
             dia += timedelta(days=1)
-        hora = primeira.replace(minute=0,second=0,microsecond=0)
-        if primeira != hora:
-            hora += timedelta(hours=1)
+        hora = fechamento(primeira)
         adicionar(primeira.date().isoformat(),hora.strftime('%H:%M'),1.0,p['op_id'])
         # Remove apenas o resíduo numérico do arredondamento de microssegundos.
         ajuste = p['quantidade_total'] - emitidas
         if ajuste:
-            ultimo = fim.replace(minute=0,second=0,microsecond=0)
-            if ultimo != fim:
-                ultimo += timedelta(hours=1)
+            ultimo = fechamento(fim)
             adicionar(fim.date().isoformat(),ultimo.strftime('%H:%M'),ajuste,p['op_id'])
     return dias
 

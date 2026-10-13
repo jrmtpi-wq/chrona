@@ -1,4 +1,5 @@
 'use strict';
+// Jornada: o servidor informa o último fechamento no horário exato de saída do turno.
 (() => {
   const $ = id => document.getElementById(id);
   const htmlAtual = new WeakMap();

@@ -1,12 +1,56 @@
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import patch
 from test_painel_tv import application, seed, connect
-from metas_op import calcular_fila, planos_fila
+from metas_op import calcular_fila, planos_fila, calcular, metas_programadas
 from entrada_grupo import metas_entrada, painel_entrada
 
 
 class EntradaGrupoTests(unittest.TestCase):
+    def test_ultimo_periodo_respeita_saida_sexta_e_excecoes(self):
+        c = connect()
+        try:
+            c.execute('DELETE FROM jornada_calendario')
+            c.execute('DELETE FROM turnos')
+            c.execute("INSERT INTO turnos(id,fabrica_id,nome,hora_entrada,hora_saida_almoco,hora_entrada_almoco,hora_saida,hora_saida_sexta) VALUES(1,1,'Dia','07:00','12:00','13:30','17:30','16:30')")
+            c.execute('UPDATE ordens_producao SET quantidade_total=10000 WHERE id=1')
+            c.commit()
+            turno = dict(c.execute('SELECT * FROM turnos WHERE id=1').fetchone())
+            op = dict(c.execute('SELECT * FROM ordens_producao WHERE id=1').fetchone())
+            for dia, fechamento in [('2026-10-13','17:30'), ('2026-10-16','16:30')]:
+                p=dict(op,op_id=1,turno_id=1,data=dia,inicio=dia+'T07:00',tempo_padrao='60',
+                       operadores='122',times='1',ciclo='15',eficiencia='100')
+                fila=[dict(plano=p,resultado=calcular(c,op,turno,p))]
+                saida=metas_programadas(c,fila)[dia]
+                entrada=metas_entrada(c,fila)[dia]
+                self.assertEqual(max(saida['periodos']),fechamento)
+                self.assertEqual(max(entrada['periodos']),fechamento)
+                self.assertAlmostEqual(saida['periodos'][fechamento],61)
+                self.assertAlmostEqual(entrada['periodos'][fechamento],61)
+                for horario in [fechamento, fechamento[:2]+':15', str(int(fechamento[:2])+1)+':00']:
+                    self.client.post('/api/entrada-grupo',json=dict(self.d,data=dia,hora=horario,quantidade=10))
+                antes=painel_entrada(c,1,dia,datetime.fromisoformat(dia+'T'+fechamento)-timedelta(seconds=1),entrada,fila)
+                ultimo=antes['periodos'][-1]
+                self.assertEqual(ultimo['hora'],fechamento)
+                self.assertEqual(ultimo['produzido'],30)
+                self.assertEqual(ultimo['meta'],61)
+                self.assertTrue(ultimo['pendente'])
+                depois=painel_entrada(c,1,dia,datetime.fromisoformat(dia+'T'+fechamento),entrada,fila)
+                self.assertFalse(depois['periodos'][-1]['pendente'])
+                self.assertEqual(depois['acompanhamento']['produzido'],30)
+            c.execute("UPDATE turnos SET hora_saida='18:20' WHERE id=1")
+            c.commit()
+            turno=dict(c.execute('SELECT * FROM turnos WHERE id=1').fetchone())
+            p.update(data='2026-10-19',inicio='2026-10-19T07:00')
+            fila=[dict(plano=p,resultado=calcular(c,op,turno,p))]
+            self.assertEqual(max(metas_entrada(c,fila)['2026-10-19']['periodos']),'18:20')
+            c.execute("INSERT INTO jornada_calendario(fabrica_id,turno_id,data,tipo,hora_entrada,hora_saida,minutos_disponiveis) VALUES(1,1,'2026-10-19','NORMAL','07:00','15:45',525)")
+            c.commit()
+            fila=[dict(plano=p,resultado=calcular(c,op,turno,p))]
+            self.assertEqual(max(metas_entrada(c,fila)['2026-10-19']['periodos']),'15:45')
+        finally:
+            c.close()
+
     def test_meta_da_op_em_entrada_independente_da_op_prevista(self):
         c = connect()
         try:
