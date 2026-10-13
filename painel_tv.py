@@ -199,7 +199,7 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                                          for p in encerrados])
             realizado_dia = acompanhamento['produzido'] if acompanhamento is not None else totais['produzido']
             result = dict(data=dia, atualizado_em=agora.isoformat(), fabrica_id=fid,
-                          entrada=painel_entrada(c, fid, dia, agora, entrada_planejada.get(dia)),
+                          entrada=painel_entrada(c, fid, dia, agora, entrada_planejada.get(dia), fila),
                           acompanhamento=acompanhamento,
                           previsao_dia=(dict(quantidade=dias_previstos.get(dia, {}).get('meta', 0) + realizado_dia)
                                         if fila and dia == agora.date().isoformat() else None),

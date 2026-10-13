@@ -1,9 +1,42 @@
 """Apontamentos e metas do primeiro time, independentes da saída pronta."""
 import math
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from flask import jsonify, request
-from metas_op import avancar, metas_programadas
+from metas_op import avancar, metas_programadas, intervalos
+
+
+def meta_por_op_apontada(c, dia, grupos, planejado, fila):
+    """A OP registrada no primeiro time define a meta de entrada a partir daquele período."""
+    planos = {}
+    for item in fila:
+        p = item['plano']
+        anterior = planos.get(p['op_id'])
+        if anterior is None or (p['data'] <= dia and
+                               (anterior['plano']['data'] > dia or p['data'] >= anterior['plano']['data'])):
+            planos[p['op_id']] = item
+    if planejado is None or not planos:
+        return planejado
+    metas = dict(planejado['periodos'])
+    identificadas = {}
+    ativa = None
+    for hora in sorted(set(metas) | set(grupos)):
+        ops = {r['op_id'] for r in grupos.get(hora, [])}
+        if ops:
+            # Uma troca dentro do mesmo período não informa a duração de cada OP.
+            # Nesse caso preserva a distribuição planejada, sem duplicar uma hora.
+            ativa = planos.get(next(iter(ops))) if len(ops) == 1 else None
+        if ativa is None:
+            continue
+        p = ativa['plano']
+        turno = dict(c.execute('SELECT * FROM turnos WHERE id=?', (p['turno_id'],)).fetchone())
+        fim = datetime.fromisoformat(dia + 'T' + hora)
+        inicio = fim - timedelta(hours=1)
+        minutos = sum(max(0, (min(b, fim) - max(a, inicio)).total_seconds() / 60)
+                      for a, b in intervalos(c, turno, date.fromisoformat(dia)))
+        metas[hora] = minutos * float(p['operadores']) / float(p['tempo_padrao']) * float(p['eficiencia']) / 100
+        identificadas[hora] = dict(op_id=p['op_id'], numero=p['numero'])
+    return dict(planejado, periodos=metas, meta=sum(metas.values()), ops_por_periodo=identificadas)
 
 
 def metas_entrada(c, fila):
@@ -17,7 +50,7 @@ def metas_entrada(c, fila):
     return metas_programadas(c, entrada)
 
 
-def painel_entrada(c, fid, dia, agora, planejado):
+def painel_entrada(c, fid, dia, agora, planejado, fila=()):
     from painel_tv import resumo
     rows = [dict(r) for r in c.execute('''SELECT e.* FROM entradas_producao e
         JOIN ordens_producao op ON op.id=e.op_id AND op.fabrica_id=e.fabrica_id
@@ -26,6 +59,7 @@ def painel_entrada(c, fid, dia, agora, planejado):
     for row in rows:
         h, minuto = map(int, row['hora'].split(':'))
         grupos[f'{(h + bool(minuto)) % 24:02d}:00'].append(row)
+    planejado = meta_por_op_apontada(c, dia, grupos, planejado, fila)
     if planejado is not None:
         for hora in planejado['periodos']:
             grupos[hora]
@@ -37,7 +71,8 @@ def painel_entrada(c, fid, dia, agora, planejado):
         r.update(meta=meta, pendente=pendente,
                  saldo=None if pendente else r['produzido'] - meta,
                  eficiencia=None if pendente or not meta else round(r['produzido'] / meta * 100, 1))
-        periodos.append(dict(hora=hora, **r))
+        periodos.append(dict(hora=hora, **r,
+                             op_meta=(planejado or {}).get('ops_por_periodo', {}).get(hora)))
     total = resumo(rows)
     meta_dia = planejado['meta'] if planejado is not None else total['meta']
     total.update(meta=meta_dia, saldo=total['produzido']-meta_dia,

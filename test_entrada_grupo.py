@@ -3,10 +3,45 @@ from datetime import datetime
 from unittest.mock import patch
 from test_painel_tv import application, seed, connect
 from metas_op import calcular_fila, planos_fila
-from entrada_grupo import metas_entrada
+from entrada_grupo import metas_entrada, painel_entrada
 
 
 class EntradaGrupoTests(unittest.TestCase):
+    def test_meta_da_op_em_entrada_independente_da_op_prevista(self):
+        c = connect()
+        try:
+            c.execute('DELETE FROM jornada_calendario')
+            c.execute('DELETE FROM turnos')
+            c.execute("INSERT INTO turnos(id,fabrica_id,nome,hora_entrada,hora_saida_almoco,hora_entrada_almoco,hora_saida) VALUES(1,1,'Dia','07:00','12:00','13:30','17:30')")
+            c.execute("UPDATE ordens_producao SET numero='24418' WHERE id=1")
+            c.execute("UPDATE ordens_producao SET numero='24249' WHERE id=2")
+            c.commit()
+            fila = [dict(plano=dict(op_id=oid,numero=numero,data='2026-10-01',turno_id=1,
+                                    operadores=meta,tempo_padrao=60,eficiencia=100))
+                    for oid,numero,meta in [(1,'24418',105),(2,'24249',122)]]
+            previsto = dict(meta=105*8.5,periodos={'08:00':105,'09:00':105,'10:00':105,
+                '11:00':105,'12:00':105,'14:00':52.5,'15:00':105,'16:00':105,'17:00':105,'18:00':52.5})
+            self.client.post('/api/entrada-grupo',json=dict(self.d,op_id=2,data='2026-10-13',quantidade=122,meta=0))
+            resultado=painel_entrada(c,1,'2026-10-13',datetime(2026,10,13,15,10),previsto,fila)
+            horas={p['hora']:p for p in resultado['periodos']}
+            self.assertEqual(horas['08:00']['meta'],122)
+            self.assertEqual(horas['08:00']['saldo'],0)
+            self.assertEqual(horas['08:00']['eficiencia'],100)
+            self.assertEqual(horas['14:00']['meta'],61)
+            self.assertEqual(horas['16:00']['meta'],122)
+            self.assertEqual(horas['16:00']['op_meta']['numero'],'24249')
+            self.assertEqual(previsto['periodos']['08:00'],105)
+            self.assertEqual(resultado['resumo']['meta'],122*9)
+            # Mudança efetivamente apontada altera apenas os períodos posteriores.
+            self.client.post('/api/entrada-grupo',json=dict(self.d,op_id=1,data='2026-10-13',hora='15:00',quantidade=105,meta=0))
+            resultado=painel_entrada(c,1,'2026-10-13',datetime(2026,10,13,15,10),previsto,fila)
+            horas={p['hora']:p for p in resultado['periodos']}
+            self.assertEqual(horas['08:00']['meta'],122)
+            self.assertEqual(horas['15:00']['meta'],105)
+            self.assertEqual(horas['16:00']['meta'],105)
+        finally:
+            c.close()
+
     def setUp(self):
         seed()
         self.client = application.app.test_client()

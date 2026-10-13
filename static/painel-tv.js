@@ -55,7 +55,8 @@
     setText('entrada-contagem', `${n(entrada.resumo.lancamentos)} apontamentos`);
     setHtml('entrada-periodos', times.map(h => {
       const p = periods.get(h), pending = !p || p.pendente;
-      return `<tr class="${pending ? 'pending' : ''}"><th scope="row">${escape(h)}</th><td>${p ? n(p.meta) : '—'}</td><td>${p && (!pending || p.lancamentos) ? n(p.produzido) : '—'}</td><td class="${pending ? '' : p.saldo < 0 ? 'red' : 'green'}">${pending ? '—' : signed(p.saldo)}</td><td class="${pending ? '' : color(p.eficiencia)}">${pending ? '—' : percent(p.eficiencia)}</td></tr>`;
+      const origem = p?.op_meta ? ` title="Meta da OP ${escape(p.op_meta.numero)} apontada na entrada"` : '';
+      return `<tr class="${pending ? 'pending' : ''}"><th scope="row">${escape(h)}</th><td${origem}>${p ? n(p.meta) : '—'}</td><td>${p && (!pending || p.lancamentos) ? n(p.produzido) : '—'}</td><td class="${pending ? '' : p.saldo < 0 ? 'red' : 'green'}">${pending ? '—' : signed(p.saldo)}</td><td class="${pending ? '' : color(p.eficiencia)}">${pending ? '—' : percent(p.eficiencia)}</td></tr>`;
     }).join(''));
     const atual = entrada.acompanhamento;
     setText('entrada-meta', n(entrada.resumo.meta));
