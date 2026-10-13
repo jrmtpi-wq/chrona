@@ -632,39 +632,18 @@ def api_jornada_gerar():
     fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
     turno_id = int(d['turno_id'])
     mes = d['mes']  # formato YYYY-MM
-    include_sab = d.get('include_sabado', False)
-    include_dom = d.get('include_domingo', False)
     c = m.conn()
     turno = c.execute("SELECT * FROM turnos WHERE id=?", (turno_id,)).fetchone()
     if not turno: c.close(); return jsonify({'ok':False,'erro':'Turno não encontrado'})
-    from datetime import date, timedelta
-    import calendar
-    ano, mes_n = map(int, mes.split('-'))
-    dias_mes = calendar.monthrange(ano, mes_n)[1]
-    DIAS_PT = ['Segunda','Terca','Quarta','Quinta','Sexta','Sabado','Domingo']
-    inseridos = 0
-    for dia in range(1, dias_mes+1):
-        dt = date(ano, mes_n, dia)
-        wd = dt.weekday()  # 0=seg, 5=sab, 6=dom
-        if wd == 5 and not include_sab: continue
-        if wd == 6 and not include_dom: continue
-        tipo = 'NORMAL'
-        if wd == 5: tipo = 'SABADO'
-        if wd == 6: tipo = 'DOMINGO'
-        # Sexta usa hora_saida_sexta
-        is_sexta = (wd == 4)
-        hs = turno['hora_saida_sexta'] if (is_sexta and turno['hora_saida_sexta']) else turno['hora_saida']
-        mins = turno['minutos_sexta'] if is_sexta else turno['minutos_normal']
-        try:
-            c.execute("""INSERT OR IGNORE INTO jornada_calendario
-                         (fabrica_id,turno_id,data,dia_semana,tipo,hora_entrada,
-                          hora_saida_almoco,hora_entrada_almoco,hora_saida,minutos_disponiveis)
-                         VALUES (?,?,?,?,?,?,?,?,?,?)""",
-                      (fab_id, turno_id, dt.strftime('%Y-%m-%d'), DIAS_PT[wd],
-                       tipo, turno['hora_entrada'], turno['hora_saida_almoco'],
-                       turno['hora_entrada_almoco'], hs, mins))
-            inseridos += 1
-        except: pass
+    from jornada_config import gerar_calendario
+    if turno['fabrica_id'] not in fab_ids(user) or fab_id != turno['fabrica_id']:
+        c.close()
+        return jsonify(ok=False, erro='Turno não pertence à fábrica selecionada.'), 403
+    try:
+        inseridos = gerar_calendario(c, turno, mes, d)
+    except (ValueError, TypeError) as exc:
+        c.close()
+        return jsonify(ok=False, erro=str(exc)), 400
     c.commit(); c.close()
     return jsonify({'ok':True,'inseridos':inseridos})
 
@@ -673,8 +652,27 @@ def api_jornada_gerar():
 def api_jornada_salvar():
     user = get_user(); d = request.json
     fab_id = int(d.get('fabrica_id') or resolve_fab_id(d, user))
+    from jornada_config import SEM_TRABALHO
+    if d.get('tipo') in SEM_TRABALHO:
+        d['minutos_disponiveis'] = 0
+        d['hora_extra'] = 0
     c = m.conn()
     try:
+        turno = c.execute('SELECT * FROM turnos WHERE id=?', (int(d['turno_id']),)).fetchone()
+        if not turno or turno['fabrica_id'] not in fab_ids(user):
+            c.close()
+            return jsonify(ok=False, erro='Turno não autorizado.'), 403
+        fab_id = turno['fabrica_id']
+        if d.get('id'):
+            registro = c.execute('SELECT * FROM jornada_calendario WHERE id=?', (d['id'],)).fetchone()
+            if not registro or registro['fabrica_id'] not in fab_ids(user):
+                c.close()
+                return jsonify(ok=False, erro='Dia não autorizado.'), 403
+        else:
+            registro = c.execute('SELECT id FROM jornada_calendario WHERE fabrica_id=? AND turno_id=? AND data=?',
+                                 (fab_id, int(d['turno_id']), d['data'])).fetchone()
+            if registro:
+                d['id'] = registro['id']
         if d.get('id'):
             c.execute("""UPDATE jornada_calendario SET tipo=?,hora_entrada=?,
                          hora_saida_almoco=?,hora_entrada_almoco=?,hora_saida=?,
@@ -687,7 +685,7 @@ def api_jornada_salvar():
             from datetime import datetime
             dt = datetime.strptime(d['data'], '%Y-%m-%d')
             DIAS = ['Segunda','Terca','Quarta','Quinta','Sexta','Sabado','Domingo']
-            c.execute("""INSERT OR REPLACE INTO jornada_calendario
+            c.execute("""INSERT INTO jornada_calendario
                          (fabrica_id,turno_id,data,dia_semana,tipo,hora_entrada,
                           hora_saida_almoco,hora_entrada_almoco,hora_saida,
                           minutos_disponiveis,hora_extra,obs)
