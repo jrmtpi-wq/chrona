@@ -780,11 +780,20 @@ function gerarTimes() {
 // ── BALANCEAR AUTOMÁTICO INTELIGENTE ─────────────
 async function balancearAutomatico() {
   if (!CFG.op_id) { toast('Nenhuma OP carregada', 'error'); return; }
-  if (!estado.metaCiclo) { toast('Meta/ciclo inválida — volte à configuração', 'error'); return; }
+  const opAtual = window.__ops.find(o => String(o.id) === String(CFG.op_id));
+  const disponiveis = FUNCIONARIOS.filter(f =>
+    (!opAtual || String(f.fabrica_id) === String(opAtual.fabrica_id)) &&
+    (!grupoAtivo || String(f.grupo_id) === String(grupoAtivo)));
+  if (disponiveis.length < 2) { toast('O grupo precisa ter pelo menos duas operadoras ativas para o Auto.', 'error'); return; }
+  const nTimes = Math.floor(disponiveis.length / 2);
+  const nOperadoras = nTimes * 2;
+  const tempoPeca = estado.operacoes.reduce((s, o) => s + o.tempo_padrao, 0);
+  const metaCiclo = tempoPeca > 0 ? Math.floor(estado.ciclo * nOperadoras / tempoPeca) : 0;
+  if (!metaCiclo) { toast('Confira os tempos e o ciclo: a meta por ciclo ficou zerada.', 'error'); return; }
   try {
     const r = await fetch('/api/balanceamento/automatico', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({op_id: parseInt(CFG.op_id), ciclo: estado.ciclo, meta_ciclo: estado.metaCiclo, operadoras: estado.nOperadoras, times: estado.nTimes, grupo_id: grupoAtivo})
+      body: JSON.stringify({op_id: parseInt(CFG.op_id), ciclo: estado.ciclo, meta_ciclo: metaCiclo, operadoras: nOperadoras, times: nTimes, grupo_id: grupoAtivo})
     }).then(r => r.json());
     if (!r.ok) { toast(r.erro || 'Erro no balanceamento', 'error'); return; }
     estado.times = r.times.map(t => ({
@@ -798,6 +807,8 @@ async function balancearAutomatico() {
       })),
     }));
     estado.nTimes = estado.times.length;
+    estado.nOperadoras = nOperadoras;
+    calcularMetas();
     activeTeamIdx = 0; hiddenTeams = new Set();
     renderAll();
     toast(`✅ ${estado.times.length} times gerados automaticamente!`, 'success');
