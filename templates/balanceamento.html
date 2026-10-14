@@ -196,7 +196,6 @@ function calcularMetas() {
 function montarBalanceamento() {
   const opId = document.getElementById('bal-op').value;
   const turnoId = document.getElementById('bal-turno').value;
-  if (estado.nOperadoras !== estado.nTimes * 2) { toast('Informe duas operadoras por time', 'error'); return; }
   if (!opId) { toast('Selecione uma OP', 'error'); return; }
   if (!turnoId) { toast('Selecione o turno', 'error'); return; }
   const params = new URLSearchParams({
