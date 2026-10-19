@@ -97,6 +97,11 @@
       </div>
     </div>
   </div>
+  <div class="form-group" style="max-width:200px;margin-bottom:12px">
+    <label for="bal-eficiencia">Eficiência (%)</label>
+    <input type="number" id="bal-eficiencia" value="100" min="1" max="100" step="0.1" oninput="calcularMetas()">
+    <div class="hint">Ajusta a meta sem alterar os tempos cadastrados.</div>
+  </div>
   <div style="display:flex;gap:8px">
     <button class="btn btn-light" onclick="calcularMetas()">🔄 Calcular</button>
     <button class="btn btn-success" id="btn-montar" onclick="montarBalanceamento()" disabled>▶ Montar Balanceamento</button>
@@ -145,6 +150,7 @@ async function carregarOP() {
     tempo_padrao: parseFloat(s.tempo_padrao) || 0, equipamento_id: s.equipamento_id,
   }));
 
+  document.getElementById("bal-eficiencia").value = bal?.montagem?.eficiencia ?? 100;
   if (bal && bal.id) {
     if (bal.ciclo_minutos) {
       const cicloSel = document.getElementById('bal-ciclo');
@@ -179,7 +185,10 @@ function calcularMetas() {
 
   const mins = estado.minutos, tp = estado.tempoPeca, ops = estado.nOperadoras, ciclo = estado.ciclo;
   const numCiclos = Math.floor(mins / ciclo);
-  const metaCiclo = tp > 0 ? Math.floor(ciclo * ops / tp) : 0;
+  const eficiencia = Number(document.getElementById('bal-eficiencia').value);
+  const valida = Number.isFinite(eficiencia) && eficiencia >= 1 && eficiencia <= 100;
+  document.getElementById('btn-montar').disabled = !document.getElementById('bal-op').value || !valida;
+  const metaCiclo = tp > 0 && valida ? Math.floor(ciclo * ops * eficiencia / 100 / tp) : 0;
   const metaDia = metaCiclo * numCiclos;
   const opsPorTime = estado.nTimes > 0 ? Math.ceil(estado.operacoes.length / estado.nTimes) : 0;
 
@@ -198,8 +207,9 @@ function montarBalanceamento() {
   const turnoId = document.getElementById('bal-turno').value;
   if (!opId) { toast('Selecione uma OP', 'error'); return; }
   if (!turnoId) { toast('Selecione o turno', 'error'); return; }
+  if (!document.getElementById('bal-eficiencia').reportValidity()) return;
   const params = new URLSearchParams({
-    op_id: opId, turno_id: turnoId,
+    op_id: opId, turno_id: turnoId, eficiencia: document.getElementById('bal-eficiencia').value,
     operadoras: document.getElementById('bal-operadoras').value || 20,
     ciclo: document.getElementById('bal-ciclo').value || 15,
     times: document.getElementById('bal-times').value || 10,

@@ -24,6 +24,16 @@ def payload(resultado, n_times, meta=1):
 
 
 class RegrasTests(unittest.TestCase):
+    def test_eficiencia_validada(self):
+        seq = sequencia([1])
+        r = gerar(seq, pessoas(2), skills(seq, 2), {}, 15, 1, 1)
+        for valor in (0, 101, float('nan'), 'invalido'):
+            d = payload(r, 1); d['eficiencia'] = valor
+            with self.subTest(valor=valor), self.assertRaises(ValueError):
+                validar(d, seq, pessoas(2))
+        d = payload(r, 1); d['eficiencia'] = 80
+        validar(d, seq, pessoas(2))
+
     def test_duplas_capacidade_e_divisao_grande(self):
         seq = sequencia([15])
         r = gerar(seq, pessoas(4), skills(seq, 4), {}, 15, 3, 2)
@@ -149,6 +159,7 @@ class RotasTests(unittest.TestCase):
     def test_preserva_divisoes_atribuicoes_e_parametros(self):
         r = self.auto(); self.assertTrue(r['ok'], r)
         d = payload(r, 2, 3)
+        d['eficiencia'] = 80
         # Conversão da API para os índices zero-based usados na montagem.
         for t in d['times']:
             for op in t['ops']:
@@ -156,6 +167,7 @@ class RotasTests(unittest.TestCase):
         response = self.client.post('/api/balanceamento/salvar', json=d).json
         self.assertTrue(response['ok'], response)
         bal = self.client.get('/api/balanceamento/1').json
+        self.assertEqual(bal['montagem']['eficiencia'], 80)
         c = connect()
         _, seq, _ = application.dados_balanceamento(c, 1, dict(fabrica_id=1, perfil='gestor'), None)
         c.close()

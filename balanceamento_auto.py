@@ -132,6 +132,9 @@ def gerar(seq, pessoas, habilidades, equipamentos, ciclo, meta, n_times):
 
 def validar(d, seq, pessoas):
     """Validação repetida no servidor: não confiar na capacidade exibida na tela."""
+    eficiencia = numero(d.get('eficiencia', 100), 'Eficiência', 1)
+    if eficiencia > 100:
+        raise ValueError('A eficiência deve estar entre 1% e 100%')
     ciclo = numero(d.get('ciclo_minutos'), 'Ciclo', 1)
     if not ciclo.is_integer():
         raise ValueError('O ciclo deve ser informado em minutos inteiros')

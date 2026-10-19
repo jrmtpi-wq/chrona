@@ -21,3 +21,15 @@ function podeAtribuir(ti, oi, idx, qtd, carga, anterior=null) {
   if (ja + qtd > estado.metaCiclo) { toast('Quantidade acima da meta desta operação no ciclo', 'error'); return false; }
   return true;
 }
+
+function ajustarEficiencia(valor) {
+  const eficiencia = Number(valor);
+  if (!Number.isFinite(eficiencia) || eficiencia < 1 || eficiencia > 100) {
+    toast('Informe uma eficiência entre 1% e 100%.', 'error'); renderAll(); return;
+  }
+  estado.eficiencia = eficiencia;
+  estado.metaCiclo = 0;
+  calcularMetas();
+  renderAll();
+  toast('Eficiência atualizada. Gere novamente ou ajuste as atribuições antes de salvar.');
+}

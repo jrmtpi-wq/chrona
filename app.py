@@ -1169,6 +1169,7 @@ def balanceamento_montar():
         funcionarios=[dict(r) for r in funcionarios],
         grupos=[dict(r) for r in grupos],
         cfg={
+            'eficiencia': request.args.get('eficiencia', '100'),
             'op_id': request.args.get('op_id', ''),
             'turno_id': request.args.get('turno_id', ''),
             'operadoras': request.args.get('operadoras', '20'),
@@ -1253,7 +1254,7 @@ def api_balanceamento_salvar():
                                atrib.get('qtd', 0), atrib.get('carga', 0)))
 
         c.execute('UPDATE balanceamento SET montagem_json=? WHERE id=?',
-                  (json.dumps(dict(times=d['times'], turno_id=d.get('turno_id'), grupo_id=d.get('grupo_id'),
+                  (json.dumps(dict(times=d['times'], eficiencia=d.get('eficiencia', 100), turno_id=d.get('turno_id'), grupo_id=d.get('grupo_id'),
                                    roteiro=[r['id'] for r in seq],
                                    operacoes_roteiro=[r['operacao_id'] for r in seq]), ensure_ascii=False), bal_id))
         c.commit(); c.close()
