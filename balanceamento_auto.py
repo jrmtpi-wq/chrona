@@ -55,8 +55,10 @@ def gerar(seq, pessoas, habilidades, equipamentos, ciclo, meta, n_times):
         return next((n for n in proximos if abs(n - tn) <= 2
                      and sum(v == n for v in principais.values()) < 2), None)
 
-    tn = 1
-    for idx, op in enumerate(seq):
+    # Resolve all eligible people before allocating shared work. A person who
+    # alone covers a later operation must keep capacity for its entire target.
+    preparados, reservas = [], {}
+    for op in seq:
         candidatos = [h for h in habilidades.get(op['operacao_id'], []) if h['func_id'] in pessoas]
         fallback = not candidatos
         if fallback:
@@ -66,6 +68,22 @@ def gerar(seq, pessoas, habilidades, equipamentos, ciclo, meta, n_times):
         if not candidatos:
             raise ValueError(f"{op['descricao']}: nenhuma operadora do grupo tem treinamento ou equipamento compatível")
         candidatos = [dict(h, tempo=numero(h['tempo'], 'Tempo da operação', 0.000001)) for h in candidatos]
+        por_pessoa = {}
+        for h in candidatos:
+            fid = h['func_id']
+            if fid not in por_pessoa or h['tempo'] < por_pessoa[fid]['tempo']:
+                por_pessoa[fid] = h
+        candidatos = list(por_pessoa.values())
+        exclusivo = candidatos[0]['func_id'] if len(candidatos) == 1 else None
+        if exclusivo is not None:
+            reservas[exclusivo] = reservas.get(exclusivo, 0) + meta * candidatos[0]['tempo']
+        preparados.append((candidatos, fallback, exclusivo))
+
+    tn = 1
+    for idx, op in enumerate(seq):
+        candidatos, fallback, exclusivo = preparados[idx]
+        if exclusivo is not None:
+            reservas[exclusivo] -= meta * candidatos[0]['tempo']
         restante = meta
         partes = []
         while restante:
@@ -77,7 +95,7 @@ def gerar(seq, pessoas, habilidades, equipamentos, ciclo, meta, n_times):
                     pt = vaga_principal(tn)
                 if pt is None or abs(pt - tn) > 2:
                     continue
-                capacidade = math.floor((limite - cargas.get(fid, 0) + 1e-8) / h['tempo'])
+                capacidade = math.floor((limite - cargas.get(fid, 0) - reservas.get(fid, 0) + 1e-8) / h['tempo'])
                 if capacidade > 0:
                     validos.append((h['tempo'], abs(pt - tn), fid, pt, capacidade, h))
             if not validos:

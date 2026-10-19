@@ -24,6 +24,41 @@ def payload(resultado, n_times, meta=1):
 
 
 class RegrasTests(unittest.TestCase):
+    def test_reserva_exclusiva_e_aproveita_sobra_antes(self):
+        seq = sequencia([.31, .31, .31])
+        hs = skills(seq, 2)
+        hs[2] = [dict(func_id=1, tempo=.31)]
+        r = gerar(seq, pessoas(2), hs, {}, 15, 32, 1)
+        validar(payload(r, 1, 32), seq, pessoas(2))
+        atribuicoes = [a for t in r['times'] for o in t['operadoras']
+                       if o['id'] == 1 for a in o['atribuicoes']]
+        exclusiva = [a for a in atribuicoes if a['op_idx'] == 1]
+        self.assertEqual(len(exclusiva), 1)
+        self.assertEqual(exclusiva[0]['qtd'], 32)
+        self.assertTrue(any(a['op_idx'] != 1 for a in atribuicoes))
+        self.assertLessEqual(sum(a['carga'] for a in atribuicoes), 16)
+
+    def test_aproveita_sobra_depois_da_operacao_exclusiva(self):
+        seq = sequencia([.31, .31])
+        hs = skills(seq, 2)
+        hs[1] = [dict(func_id=1, tempo=.31)]
+        r = gerar(seq, pessoas(2), hs, {}, 15, 32, 1)
+        validar(payload(r, 1, 32), seq, pessoas(2))
+        oper = next(o for o in r['times'][0]['operadoras'] if o['id'] == 1)
+        self.assertEqual([a['op_idx'] for a in oper['atribuicoes']], [0, 1])
+        self.assertEqual(oper['atribuicoes'][0]['qtd'], 32)
+        self.assertEqual(oper['atribuicoes'][1]['qtd'], 19)
+
+    def test_soma_reservas_de_operacoes_exclusivas_da_mesma_pessoa(self):
+        seq = sequencia([8, 5, 5])
+        hs = {1: [dict(func_id=1, tempo=8), dict(func_id=2, tempo=8)],
+              2: [dict(func_id=1, tempo=5)], 3: [dict(func_id=1, tempo=5)]}
+        r = gerar(seq, pessoas(2), hs, {}, 15, 1, 1)
+        validar(payload(r, 1), seq, pessoas(2))
+        atribuicoes = {o['id']: o['atribuicoes'] for o in r['times'][0]['operadoras']}
+        self.assertEqual([a['op_idx'] for a in atribuicoes[1]], [1, 2])
+        self.assertEqual([a['op_idx'] for a in atribuicoes[2]], [0])
+
     def test_eficiencia_validada(self):
         seq = sequencia([1])
         r = gerar(seq, pessoas(2), skills(seq, 2), {}, 15, 1, 1)
