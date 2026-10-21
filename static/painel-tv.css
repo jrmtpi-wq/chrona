@@ -121,3 +121,6 @@ header{position:relative;padding:7px 16px;gap:14px;min-height:52px}
 .origem-table{width:100%;border-collapse:collapse;text-align:left}
 .origem-table th,.origem-table td{padding:9px 6px;border-bottom:1px solid var(--border)}
 .origem-table a{color:var(--orange)}
+
+/* Painel exclusivo de producao final. */
+body .board-layout{grid-template-columns:minmax(0,1fr)}

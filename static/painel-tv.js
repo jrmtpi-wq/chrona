@@ -47,29 +47,6 @@
   let lastSuccess = null;
   let metaContext = null;
   const signed = value => value === null ? '—' : `${arredondarPecas(value) > 0 ? '+' : ''}${n(value)}`;
-  function renderEntrada() {
-    const entrada = data.entrada;
-    if (!entrada) return;
-    const periods = new Map(entrada.periodos.map(p => [p.hora, p]));
-    const defaults = ['08:00','09:00','10:00','11:00','13:30','14:30','15:30','16:30','17:30'];
-    const times = [...new Set([...(entrada.fonte_meta === 'programacao' ? [] : defaults), ...periods.keys()])].sort();
-    setText('entrada-contagem', `${n(entrada.resumo.lancamentos)} apontamentos`);
-    setHtml('entrada-periodos', times.map(h => {
-      const p = periods.get(h), pending = !p || p.pendente;
-      const origem = p?.op_meta ? ` title="Meta da OP ${escape(p.op_meta.numero)} apontada na entrada"` : '';
-      return `<tr class="${pending ? 'pending' : ''}"><th scope="row">${escape(h)}</th><td${origem}>${p ? n(p.meta) : '—'}</td><td>${p && (!pending || p.lancamentos) ? n(p.produzido) : '—'}</td><td class="${pending ? '' : p.saldo < 0 ? 'red' : 'green'}">${pending ? '—' : signed(p.saldo)}</td><td class="${pending ? '' : color(p.eficiencia)}">${pending ? '—' : percent(p.eficiencia)}</td></tr>`;
-    }).join(''));
-    const atual = entrada.acompanhamento;
-    setText('entrada-meta', n(entrada.resumo.meta));
-    setText('entrada-produzido', n(atual.produzido));
-    setText('entrada-saldo', signed(atual.saldo));
-    setText('entrada-eficiencia', percent(atual.eficiencia));
-    setClass('entrada-ef-card', `metric ${color(atual.eficiencia)}`);
-    setText('entrada-total-meta', n(atual.meta));
-    setText('entrada-total-realizado', n(atual.produzido));
-    setText('entrada-total-saldo', signed(atual.saldo));
-    setText('entrada-total-eficiencia', percent(atual.eficiencia));
-  }
   function renderPeriods() {
     if (!data) return;
     const defaults = ['08:00','09:00','10:00','11:00','13:30','14:30','15:30','16:30','17:30'];
@@ -160,7 +137,6 @@
     ).join('') : '<div class="empty">Nenhum período apontado</div>');
     renderOps();
     renderPeriods();
-    renderEntrada();
   }
 
   async function refresh() {
@@ -207,10 +183,6 @@
   function changeFilter() {
     page = 0; hourPage = 0;
     data = null;
-    for (const id of ['entrada-meta','entrada-produzido','entrada-saldo','entrada-eficiencia','entrada-total-meta','entrada-total-realizado','entrada-total-saldo','entrada-total-eficiencia']) $(id).textContent = '—';
-    $('entrada-periodos').innerHTML = '';
-    setText('entrada-contagem', '');
-    setClass('entrada-ef-card', 'metric');
     for (const id of ['produzido','meta','eficiencia','saldo']) $(id).textContent = '—';
     for (const id of ['meta-mes','produzido-mes','eficiencia-mes','total-meta','total-realizado','total-saldo','total-eficiencia']) $(id).textContent = '—';
     $('periodos').innerHTML = '';
