@@ -124,3 +124,44 @@ header{position:relative;padding:7px 16px;gap:14px;min-height:52px}
 
 /* Painel exclusivo de producao final. */
 body .board-layout{grid-template-columns:minmax(0,1fr)}
+
+/* Tabela compacta e resumo mensal lateral para leitura na TV. */
+body:not(.op-mode) .board-layout{grid-template-columns:minmax(0,3fr) minmax(250px,1fr);gap:12px}
+body:not(.op-mode) .board-layout>.monthly{display:flex;flex-direction:column;align-items:stretch;margin:0;padding:16px;gap:12px;min-width:0}
+body:not(.op-mode) .monthly .section-title{display:block;margin:0}
+body:not(.op-mode) .monthly h2{font-size:20px;margin:0 0 6px}
+body:not(.op-mode) .monthly .muted{font-size:12px}
+body:not(.op-mode) .monthly .month-grid{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(3,minmax(0,1fr));flex:1;gap:16px}
+body:not(.op-mode) .monthly .month-grid article{display:flex;flex-direction:column;justify-content:center;padding-left:14px;min-width:0}
+body:not(.op-mode) .monthly .month-grid span{font-size:17px;letter-spacing:0}
+body:not(.op-mode) .monthly .month-grid strong{font-size:clamp(34px,3.6vw,66px);line-height:1.1;margin:8px 0;overflow-wrap:anywhere}
+body:not(.op-mode) .monthly .month-grid small{font-size:12px;line-height:1.25}
+body:not(.op-mode) .flow-pane .board-table{table-layout:fixed;font-size:clamp(24px,3.7vh,42px);font-weight:650;line-height:1.1}
+body:not(.op-mode) .flow-pane .board-table th,body:not(.op-mode) .flow-pane .board-table td{width:auto;padding:3px 6px;text-align:center}
+body:not(.op-mode) .flow-pane .board-table th:first-child{width:18%;text-align:left}
+body:not(.op-mode) .flow-pane .board-table thead{font-size:15px;letter-spacing:0}
+body:not(.op-mode) .flow-pane .board-table thead th{padding:7px 6px}
+body:not(.op-mode) .flow-pane .board-table tfoot{font-size:clamp(23px,3.4vh,38px)}
+body:not(.op-mode) .flow-pane .board-table tfoot th{font-size:14px}
+body:not(.op-mode) .flow-pane .metric>strong{font-size:clamp(30px,4.8vh,52px)}
+body:not(.op-mode) .flow-pane .metric>span{font-size:14px}
+@media(min-width:1001px) and (max-height:650px){
+ body:not(.op-mode){height:auto;min-height:100dvh}
+ body:not(.op-mode) main{flex:none}
+ body:not(.op-mode) .flow-pane{grid-template-rows:auto auto}
+ body:not(.op-mode) .flow-pane .board-hourly{grid-template-rows:auto auto}
+ body:not(.op-mode) .flow-pane .board-table{height:auto}
+}
+@media(max-width:1000px){
+ body:not(.op-mode) .board-layout{grid-template-columns:minmax(0,1fr)}
+ body:not(.op-mode) .monthly .month-grid{grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto}
+ body:not(.op-mode) .monthly .month-grid strong{font-size:clamp(26px,4.5vw,44px)}
+}
+@media(max-width:600px){
+ body:not(.op-mode) .flow-pane .board-table{font-size:18px}
+ body:not(.op-mode) .flow-pane .board-table th,body:not(.op-mode) .flow-pane .board-table td{padding:7px 2px}
+ body:not(.op-mode) .flow-pane .board-table thead{font-size:10px}
+ body:not(.op-mode) .flow-pane .board-table tfoot{font-size:16px}
+ body:not(.op-mode) .flow-pane .board-table tfoot th{font-size:9px}
+ body:not(.op-mode) .monthly .month-grid{grid-template-columns:minmax(0,1fr)}
+}
