@@ -236,6 +236,8 @@ def calcular_encadeado(c, op, turno, dados, anterior=None):
         primeira_minima = avancar(c, turno, datetime.fromisoformat(anterior['saida']), float(dados['ciclo']))
         entrada = max(entrada, recuar(c, turno, primeira_minima,
                                       int(dados['times']) * float(dados['ciclo'])))
+        if dados.get('entrada_manual'):
+            entrada = max(entrada, datetime.fromisoformat(dados['inicio']))
         dados.update(inicio=entrada.isoformat(), data=entrada.date().isoformat())
     return calcular(c, op, turno, dados)
 
@@ -309,7 +311,11 @@ def registrar_metas(app, m, get_user, fab_ids, login_required):
                 raise ValueError('Planejamento original não encontrado.')
             if indice is None:
                 indice = len(planos)
-            if indice == 0:
+            manual = dados.get('entrada_manual', planos[indice].get('entrada_manual', 0) if existente else 0)
+            if manual not in (0, 1, False, True, '0', '1'):
+                raise ValueError('Entrada manual invalida.')
+            dados = dict(dados, entrada_manual=int(manual))
+            if indice == 0 or dados['entrada_manual']:
                 calcular(c, op, dict(turno), dados)
                 if dados.get('referencia_inicio') == 'primeira_peca':
                     primeira = datetime.fromisoformat(dados['inicio'])
@@ -332,14 +338,14 @@ def registrar_metas(app, m, get_user, fab_ids, login_required):
             data_cadastro = chave if existente else resultado['entrada'][:10]
             if dados.get('salvar'):
                 c.execute('''INSERT INTO planejamento_metas_op
-                    (op_id,data,turno_id,tempo_padrao,operadores,times,ciclo,eficiencia,inicio,atualizado_por)
-                    VALUES (?,?,?,?,?,?,?,?,?,?) ON CONFLICT(op_id,data) DO UPDATE SET
+                    (op_id,data,turno_id,tempo_padrao,operadores,times,ciclo,eficiencia,inicio,atualizado_por,entrada_manual)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(op_id,data) DO UPDATE SET
                     turno_id=excluded.turno_id,tempo_padrao=excluded.tempo_padrao,
                     operadores=excluded.operadores,times=excluded.times,ciclo=excluded.ciclo,
-                    eficiencia=excluded.eficiencia,inicio=excluded.inicio,atualizado_por=excluded.atualizado_por''',
+                    eficiencia=excluded.eficiencia,inicio=excluded.inicio,atualizado_por=excluded.atualizado_por,entrada_manual=excluded.entrada_manual''',
                     (op['id'], data_cadastro, turno['id'], float(dados['tempo_padrao']), int(dados['operadores']),
                      int(dados['times']), float(dados['ciclo']), float(dados['eficiencia']),
-                     dados['inicio'] if indice == 0 else resultado['entrada'], user['id']))
+                     dados['inicio'] if indice == 0 or dados['entrada_manual'] else resultado['entrada'], user['id'], dados['entrada_manual']))
                 c.execute('INSERT INTO sequencia_metas_op(op_id,data) VALUES (?,?) ON CONFLICT(op_id,data) DO NOTHING', (op['id'],data_cadastro))
                 c.commit()
                 fila = calcular_fila(c, planos_fila(c, op['fabrica_id']))

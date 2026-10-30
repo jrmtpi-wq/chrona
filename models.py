@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS sequencia_metas_op (
 CREATE TABLE IF NOT EXISTS planejamento_metas_op (
     op_id INTEGER NOT NULL, data TEXT NOT NULL, turno_id INTEGER NOT NULL,
     tempo_padrao REAL NOT NULL, operadores INTEGER NOT NULL, times INTEGER NOT NULL,
-    ciclo REAL NOT NULL, eficiencia REAL NOT NULL, inicio TEXT NOT NULL,
+    ciclo REAL NOT NULL, eficiencia REAL NOT NULL, inicio TEXT NOT NULL, entrada_manual INTEGER NOT NULL DEFAULT 0,
     atualizado_por INTEGER NOT NULL, PRIMARY KEY(op_id,data),
     FOREIGN KEY(op_id) REFERENCES ordens_producao(id), FOREIGN KEY(turno_id) REFERENCES turnos(id)
 );
@@ -986,7 +986,7 @@ CREATE TABLE IF NOT EXISTS despesas_docs (
 CREATE TABLE IF NOT EXISTS planejamento_metas_op (
     op_id INTEGER NOT NULL, data TEXT NOT NULL, turno_id INTEGER NOT NULL,
     tempo_padrao REAL NOT NULL, operadores INTEGER NOT NULL, times INTEGER NOT NULL,
-    ciclo REAL NOT NULL, eficiencia REAL NOT NULL, inicio TEXT NOT NULL,
+    ciclo REAL NOT NULL, eficiencia REAL NOT NULL, inicio TEXT NOT NULL, entrada_manual INTEGER NOT NULL DEFAULT 0,
     atualizado_por INTEGER NOT NULL, PRIMARY KEY(op_id,data),
     FOREIGN KEY(op_id) REFERENCES ordens_producao(id), FOREIGN KEY(turno_id) REFERENCES turnos(id)
 );
@@ -1017,6 +1017,12 @@ def init():
         colunas = {r['name'] for r in c.execute('PRAGMA table_info(balanceamento)').fetchall()}
         if 'montagem_json' not in colunas:
             c.execute('ALTER TABLE balanceamento ADD COLUMN montagem_json TEXT')
+    if PG_MODE:
+        c.execute('ALTER TABLE planejamento_metas_op ADD COLUMN IF NOT EXISTS entrada_manual INTEGER NOT NULL DEFAULT 0')
+    else:
+        colunas = {r['name'] for r in c.execute('PRAGMA table_info(planejamento_metas_op)').fetchall()}
+        if 'entrada_manual' not in colunas:
+            c.execute('ALTER TABLE planejamento_metas_op ADD COLUMN entrada_manual INTEGER NOT NULL DEFAULT 0')
     from metas_op import importar_planejamentos
     importar_planejamentos(c)
     # Migrações: adicionar colunas que podem não existir em bancos antigos

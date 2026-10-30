@@ -42,6 +42,26 @@ class MetasTest(unittest.TestCase):
         norte = self.client.get('/api/painel-producao?data=2026-10-05').json
         self.assertEqual(norte['fila_tv'], [])
 
+    def test_editar_entrada_intermediaria_persiste_e_atualiza_meta_tv(self):
+        self.login(1)
+        primeiro = self.salvar()
+        segundo = self.salvar(op_id=2)
+        original = segundo['data_original']
+        editado = self.salvar(op_id=2, data_original=original, data='2026-10-12',
+                             inicio='2026-10-12T09:00', entrada_manual=1)
+        self.assertEqual(editado['resultado']['entrada'], '2026-10-12T09:00:00')
+        fila = self.client.get('/api/metas-op/fila').json['fila']
+        self.assertEqual(len(fila), 2)
+        self.assertEqual(fila[1]['resultado']['entrada'], '2026-10-12T09:00:00')
+        self.assertEqual(fila[1]['plano']['entrada_manual'], 1)
+        self.assertEqual(fila[1]['plano']['data'], original)
+        dados = self.client.get('/api/painel-producao?data=2026-10-12').json
+        self.assertGreater(dados['meta_dia']['quantidade'], 0)
+        self.assertEqual(next(i for i in dados['fila_tv'] if i['op_id']==2)['entrada'], '2026-10-12T09:00:00')
+        voltou = self.salvar(op_id=2, data_original=original, entrada_manual=0)
+        self.assertLess(voltou['resultado']['entrada'], editado['resultado']['entrada'])
+        self.assertEqual(len(self.client.get('/api/metas-op/fila').json['fila']), 2)
+
     def test_exemplo(self):
         r=calcular(self.c,self.op,self.turno,self.d)
         self.assertAlmostEqual(r['meta_dia'],1313.5135135)

@@ -6,6 +6,8 @@ O ciclo é comum aos times de uma OP, mas pode mudar entre OPs. Os dados são in
 
 **Calcular** mostra uma prévia. **Salvar planejamento** aplica a alteração à fila e à **Gestão à vista**, que consulta automaticamente a programação a cada 15 segundos. Somente gestores e administradores salvam; operadores podem acompanhar a fila e a TV.
 
+Para corrigir uma entrada, clique em **Editar entrada / dados** na sequência programada, informe a **Data de entrada** e a data/hora de **Entrada no primeiro time**, e salve. A opção **Definir data e horário** mantém a entrada desejada ao reabrir. As OPs seguintes em modo automático acompanham a alteração; entradas definidas manualmente respeitam a jornada e o término da entrada da OP anterior. Para voltar ao encadeamento, selecione **Automática pela OP anterior** e salve. A chave do cadastro e os apontamentos permanecem preservados, sem duplicar a OP. A coluna aditiva `entrada_manual` identifica esse modo em SQLite e PostgreSQL.
+
 ## Cálculos
 
 - Taxa por minuto = operadores ÷ tempo padrão × eficiência ÷ 100.
