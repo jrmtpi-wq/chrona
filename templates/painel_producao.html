@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='painel-tv.css') }}">
   <script src="{{ url_for('static', filename='painel-tv.js') }}" defer></script>
 </head>
-<body>
+<body class="tv-focus">
   <header>
     <div class="brand"><span class="brand-mark">C</span><div><strong>CHRONA</strong><small>GESTÃO À VISTA · PRODUÇÃO</small></div></div>
     <div class="context"><span class="board-label">PAINEL DE BORDO</span><strong id="fabrica-nome">Produção da fábrica</strong><span id="dia-legenda">Carregando dados…</span></div>
@@ -22,6 +22,7 @@
     <button id="hoje">Hoje</button>
     <button id="definir-meta" hidden>Definir meta do dia</button>
     <button id="alternar-visao">Ver OPs</button>
+    <button id="alternar-foco" aria-pressed="true">Ver painel completo</button>
     <button id="tela-cheia">Tela cheia</button>
     <span class="refresh-note">Atualiza a cada 15 segundos</span>
   </nav>

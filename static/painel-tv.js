@@ -211,9 +211,23 @@
   $('data').addEventListener('change', () => { selectedDate = $('data').value; changeFilter(); });
   $('hoje').addEventListener('click', () => { selectedDate = ''; changeFilter(); });
   $('alternar-visao').addEventListener('click', () => {
+    document.body.classList.remove('tv-focus');
+    setText('alternar-foco', 'Somente meta e realizado');
+    $('alternar-foco').setAttribute('aria-pressed', 'false');
     const detail = document.body.classList.toggle('op-mode');
     document.querySelectorAll('.detail-view').forEach(e => e.hidden = !detail);
     setText('alternar-visao', detail ? 'Ver painel de bordo' : 'Ver OPs');
+  });
+  $('alternar-foco').addEventListener('click', () => {
+    const focus = document.body.classList.toggle('tv-focus');
+    if (focus) {
+      document.body.classList.remove('op-mode');
+      document.querySelectorAll('.detail-view').forEach(e => e.hidden = true);
+      setText('alternar-visao', 'Ver OPs');
+    }
+    setText('alternar-foco', focus ? 'Ver painel completo' : 'Somente meta e realizado');
+    $('alternar-foco').setAttribute('aria-pressed', String(focus));
+    document.querySelector('.tv-controls').open = false;
   });
   $('definir-meta').addEventListener('click', () => {
     if (!data) return;
@@ -255,6 +269,7 @@
     finally { $('salvar-meta').disabled = false; }
   });
   $('tela-cheia').addEventListener('click', async () => {
+    document.querySelector('.tv-controls').open = false;
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
       else await document.documentElement.requestFullscreen();
