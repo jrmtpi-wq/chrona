@@ -230,3 +230,11 @@ body.tv-reference #aviso:not([hidden]){flex:none;margin:0}
 @media(max-height:700px) and (min-width:901px){body.tv-reference header{padding:10px 20px}body.tv-reference main{padding:0 20px 10px}.reference-metrics article{padding:10px 14px}.reference-metrics strong{font-size:clamp(28px,6.3vh,52px)}.reference-queue td{padding:8px}.reference-dashboard{gap:10px}}
 @media(max-width:900px){body.tv-reference header{padding:12px;gap:10px}body.tv-reference main{padding:0 12px 12px}.reference-metrics{gap:6px}.reference-metrics article{padding:10px 8px;border-left-width:3px}.reference-metrics strong{font-size:clamp(22px,5vw,40px)}body.tv-reference .brand{display:none}.reference-queue table{min-width:760px}.reference-queue{overflow:auto}body.tv-reference .context strong{font-size:24px}}
 body.tv-reference .context{text-align:left}
+
+/* Numeros da producao ampliados para leitura a distancia. */
+body.tv-reference .reference-metrics{height:clamp(180px,34vh,390px)}
+body.tv-reference .reference-metrics article{display:flex;flex-direction:column;justify-content:center;padding:14px 12px;overflow:hidden}
+body.tv-reference .reference-metrics span{font-size:clamp(14px,1.6vw,28px);line-height:1.2;flex:none}
+body.tv-reference .reference-metrics strong{width:100%;max-width:100%;font-size:clamp(32px,11vw,240px);font-weight:850;line-height:1.05;margin-top:8px;white-space:nowrap;overflow-wrap:normal;font-variant-numeric:tabular-nums;letter-spacing:-.035em}
+@media(max-width:900px){body.tv-reference .reference-metrics{height:clamp(130px,25vh,230px)}body.tv-reference .reference-metrics article{padding:10px 6px}body.tv-reference .reference-metrics span{font-size:12px}}
+@media(max-width:600px){body.tv-reference .reference-metrics{grid-template-columns:repeat(2,minmax(0,1fr));height:clamp(260px,45vh,420px);grid-template-rows:repeat(2,minmax(0,1fr))}}

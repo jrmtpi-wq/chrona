@@ -96,12 +96,31 @@
     ).join('') : '<div class="empty">Aguardando apontamentos</div>');
   }
 
+  function ampliarIndicadores() {
+    if (!document.body.classList.contains('tv-reference')) return;
+    document.querySelectorAll('.reference-metrics article').forEach(card => {
+      const number = card.querySelector('strong');
+      if (!number.clientWidth) return;
+      const style = getComputedStyle(card);
+      const space = card.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
+        - card.querySelector('span').offsetHeight - 8;
+      let size = Math.max(20, Math.floor(space / 1.05));
+      number.style.fontSize = `${size}px`;
+      if (number.scrollWidth > number.clientWidth) {
+        size = Math.max(20, Math.floor(size * number.clientWidth / number.scrollWidth));
+        number.style.fontSize = `${size}px`;
+      }
+      while (number.scrollWidth > number.clientWidth && size > 20) number.style.fontSize = `${--size}px`;
+    });
+  }
+
   function renderReference() {
     const atual = data.acompanhamento || data.resumo;
     setText('ref-meta', n(atual.meta));
     setText('ref-realizado', n(atual.produzido));
     setText('ref-saldo', signed(atual.saldo));
     setText('ref-eficiencia', percent(atual.eficiencia));
+    ampliarIndicadores();
     const quando = value => value ? new Date(value).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(',', '') : '?';
     const filas = data.fila_tv || [];
     setHtml('ref-fila', filas.length ? filas.map(item => `<tr>
@@ -258,6 +277,7 @@
     setText('alternar-foco', focus ? 'Ver painel completo' : 'Painel de OPs');
     $('alternar-foco').setAttribute('aria-pressed', String(focus));
     document.querySelector('.tv-controls').open = false;
+    ampliarIndicadores();
   });
   $('definir-meta').addEventListener('click', () => {
     if (!data) return;
@@ -308,6 +328,7 @@
   document.addEventListener('fullscreenchange', () => { $('tela-cheia').textContent = document.fullscreenElement ? 'Sair da tela cheia' : 'Tela cheia'; });
   window.addEventListener('online', refresh);
   window.addEventListener('resize', renderOps);
+  window.addEventListener('resize', ampliarIndicadores);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
   setInterval(() => {
     setText('relogio', time(Date.now()));
