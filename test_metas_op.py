@@ -24,6 +24,24 @@ class MetasTest(unittest.TestCase):
         self.client=application.app.test_client()
     def tearDown(self):
         self.c.close()
+    def test_fila_tv_inclui_proximas_ops_e_preserva_isolamento(self):
+        self.login(1)
+        for op_id in (1, 2):
+            r = self.client.post('/api/metas-op', json=dict(self.d, op_id=op_id, salvar=True))
+            self.assertEqual(r.status_code, 200, r.json)
+        dados = self.client.get('/api/painel-producao?data=2026-10-05').json
+        self.assertEqual([i['op_id'] for i in dados['fila_tv']], [1, 2])
+        self.assertEqual(dados['fila_tv'][0]['referencia'], 'JEANS-01')
+        self.assertEqual(dados['fila_tv'][0]['times'], 12)
+        self.assertGreater(dados['fila_tv'][0]['pacote'], 0)
+        self.assertEqual(dados['fila_tv'][1]['meta'], 0)
+        self.assertEqual(dados['fila_tv'][1]['realizado'], 0)
+        self.assertAlmostEqual(sum(i['meta'] for i in dados['fila_tv']), dados['acompanhamento']['meta'])
+        self.assertAlmostEqual(sum(i['realizado'] for i in dados['fila_tv']), dados['acompanhamento']['produzido'])
+        self.login(2)
+        norte = self.client.get('/api/painel-producao?data=2026-10-05').json
+        self.assertEqual(norte['fila_tv'], [])
+
     def test_exemplo(self):
         r=calcular(self.c,self.op,self.turno,self.d)
         self.assertAlmostEqual(r['meta_dia'],1313.5135135)

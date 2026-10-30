@@ -96,6 +96,25 @@
     ).join('') : '<div class="empty">Aguardando apontamentos</div>');
   }
 
+  function renderReference() {
+    const atual = data.acompanhamento || data.resumo;
+    setText('ref-meta', n(atual.meta));
+    setText('ref-realizado', n(atual.produzido));
+    setText('ref-saldo', signed(atual.saldo));
+    setText('ref-eficiencia', percent(atual.eficiencia));
+    const quando = value => value ? new Date(value).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}).replace(',', '') : '?';
+    const filas = data.fila_tv || [];
+    setHtml('ref-fila', filas.length ? filas.map(item => `<tr>
+      <td><strong>${escape(item.numero)}</strong><small>Fila</small></td>
+      <td><strong>${escape(item.referencia || '?')}</strong><small>${escape(item.descricao || 'OP ' + item.numero)}</small></td>
+      <td class="reference-numbers"><strong>${n(item.meta)} / ${n(item.realizado)}</strong><small>Qtd. ${n(item.quantidade)}</small></td>
+      <td><strong>${escape(quando(item.entrada))}</strong><small>Primeira entrada</small></td>
+      <td><strong>${escape(quando(item.fim_entrada))}</strong><small>Última entrada</small></td>
+      <td><strong>${escape(quando(item.saida))}</strong><small>Última saída</small></td>
+      <td class="reference-numbers"><strong>${n(item.pacote)} un</strong><small>Times: ${n(item.times)}</small></td>
+    </tr>`).join('') : '<tr><td colspan="7">Nenhuma OP programada para esta data ou para os próximos dias.</td></tr>');
+  }
+
   function render() {
     document.body.classList.toggle('has-program',data.fonte_meta === 'programacao');
     const factories = data.fabricas.map(f => `<option value="${Number(f.id)}">${escape(f.nome)}</option>`).join('');
@@ -144,6 +163,7 @@
     ).join('') : '<div class="empty">Nenhum período apontado</div>');
     renderOps();
     renderPeriods();
+    renderReference();
   }
 
   async function refresh() {
@@ -193,6 +213,8 @@
     for (const id of ['produzido','meta','eficiencia','saldo']) $(id).textContent = '—';
     for (const id of ['meta-mes','produzido-mes','eficiencia-mes','total-meta','total-realizado','total-saldo','total-eficiencia']) $(id).textContent = '—';
     $('periodos').innerHTML = '';
+    for (const id of ['ref-meta','ref-realizado','ref-saldo','ref-eficiencia']) setText(id, '?');
+    setHtml('ref-fila', '<tr><td colspan="7">Consultando programação?</td></tr>');
     for (const id of ['tv-meta-dia','tv-realizado-dia','tv-saldo-dia','tv-eficiencia-dia']) setText(id, '—');
     setText('periodos-pagina', '');
     setText('mes-legenda', 'Consultando mês…');
@@ -219,21 +241,21 @@
   $('data').addEventListener('change', () => { selectedDate = $('data').value; changeFilter(); });
   $('hoje').addEventListener('click', () => { selectedDate = ''; changeFilter(); });
   $('alternar-visao').addEventListener('click', () => {
-    document.body.classList.remove('tv-focus');
-    setText('alternar-foco', 'Somente quadro de hor?rios');
+    document.body.classList.remove('tv-reference');
+    setText('alternar-foco', 'Painel de OPs');
     $('alternar-foco').setAttribute('aria-pressed', 'false');
     const detail = document.body.classList.toggle('op-mode');
     document.querySelectorAll('.detail-view').forEach(e => e.hidden = !detail);
     setText('alternar-visao', detail ? 'Ver painel de bordo' : 'Ver OPs');
   });
   $('alternar-foco').addEventListener('click', () => {
-    const focus = document.body.classList.toggle('tv-focus');
+    const focus = document.body.classList.toggle('tv-reference');
     if (focus) {
       document.body.classList.remove('op-mode');
       document.querySelectorAll('.detail-view').forEach(e => e.hidden = true);
       setText('alternar-visao', 'Ver OPs');
     }
-    setText('alternar-foco', focus ? 'Ver painel completo' : 'Somente quadro de hor?rios');
+    setText('alternar-foco', focus ? 'Ver painel completo' : 'Painel de OPs');
     $('alternar-foco').setAttribute('aria-pressed', String(focus));
     document.querySelector('.tv-controls').open = false;
   });

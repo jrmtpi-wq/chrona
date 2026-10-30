@@ -196,6 +196,22 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                 encerrados = [p for p in periodos_planejados if not p['pendente']]
                 acompanhamento = resumo([dict(qtd_produzida=p['produzido'], qtd_projetada=p['meta'])
                                          for p in encerrados])
+            fila_tv = []
+            for item in fila:
+                p, r = item['plano'], item['resultado']
+                if r['saida'][:10] < dia and p['op_id'] not in ops:
+                    continue
+                referencia = c.execute('SELECT r.codigo FROM ordens_producao o LEFT JOIN referencias r ON r.id=o.referencia_id WHERE o.id=? AND o.fabrica_id=?', (p['op_id'], fid)).fetchone()
+                plano_op = metas_programadas(c, [item]).get(dia, {})
+                metas_hora = plano_op.get('periodos', {})
+                meta_agora = sum(v for h, v in metas_hora.items() if dia < agora.date().isoformat() or (dia == agora.date().isoformat() and h <= agora.strftime('%H:%M')))
+                apontados = ops.get(p['op_id'], [])
+                realizado_op = sum(a['qtd_produzida'] or 0 for a in apontados if dia < agora.date().isoformat() or (dia == agora.date().isoformat() and hora_periodo_painel(a['hora'], metas_hora) <= agora.strftime('%H:%M')))
+                fila_tv.append(dict(op_id=p['op_id'], numero=p['numero'], referencia=referencia['codigo'] if referencia else '',
+                                    descricao=p['descricao'] or '', quantidade=p['quantidade_total'],
+                                    meta=meta_agora, realizado=realizado_op, entrada=r['entrada'],
+                                    fim_entrada=r['fim_entrada'], saida=r['saida'], times=int(p['times']),
+                                    pacote=r['meta_hora'] * float(p['ciclo']) / 60))
             realizado_dia = acompanhamento['produzido'] if acompanhamento is not None else totais['produzido']
             result = dict(data=dia, atualizado_em=agora.isoformat(), fabrica_id=fid,
                           entrada=painel_entrada(c, fid, dia, agora, entrada_planejada.get(dia), fila),
@@ -205,7 +221,7 @@ def registrar_painel(app, m, get_user, fab_ids, login_required):
                           fabricas=fabricas, resumo=totais, ops=ordens,
                           pode_editar_meta=user['perfil'] in ('gestor', 'admin') and plano_dia is None,
                           fonte_meta='programacao' if plano_dia is not None else 'lancamentos',
-                          programacao=programacao,
+                          programacao=programacao, fila_tv=fila_tv,
                           meta_dia=dict(quantidade=meta_dia,
                                         atingimento=round(realizado_dia / meta_dia * 100, 1) if meta_dia else None,
                                         faltam=max(0, meta_dia - realizado_dia) if meta_dia else None),

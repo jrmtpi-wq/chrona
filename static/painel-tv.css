@@ -192,3 +192,41 @@ body.tv-focus #aviso:not([hidden]){position:fixed;bottom:10px;left:16px;right:16
 .board-table .eficiencia-dia-label{display:block;font-size:clamp(9px,1.5vh,16px);line-height:1.2;margin-bottom:4px}
 .board-table #tv-eficiencia-dia{font:inherit;font-weight:750}
 body.tv-focus #saida-painel .board-table tfoot .total-dia th{font-weight:800}
+
+/* Modelo de referencia: indicadores no topo e fila de OPs. */
+.reference-dashboard{display:none}
+body.tv-reference{--panel:#202d5b;--border:#34406a;--text:#f4f6ff;--muted:#b5c3e6;background:#10182f;display:flex;flex-direction:column;height:100dvh;min-height:0;overflow:hidden}
+body.tv-reference header{display:flex;align-items:center;flex:none;padding:20px 28px 12px;border:0;background:transparent;gap:20px}
+body.tv-reference .context{order:0;flex:1}
+body.tv-reference .context strong{font-size:clamp(24px,3.5vw,58px);line-height:1.1;color:#fff}
+body.tv-reference .context span{display:none}
+body.tv-reference .clock{order:1;margin:0}
+body.tv-reference .clock strong{font-size:clamp(28px,3.7vw,62px);font-weight:750}
+body.tv-reference .clock span{font-size:10px}
+body.tv-reference .brand{order:2;color:#588cff}
+body.tv-reference .brand small,body.tv-reference .brand-mark{display:none}
+body.tv-reference .brand strong{font-size:20px;letter-spacing:0}
+body.tv-reference .tv-controls{order:3}
+body.tv-reference .tv-controls summary{font-size:10px;opacity:.65;padding:5px 7px}
+body.tv-reference main{display:flex;flex:1;min-height:0;padding:0 28px 20px;gap:8px}
+body.tv-reference main>.board-layout,body.tv-reference #programacao-painel,body.tv-reference .detail-view,body.tv-reference footer{display:none!important}
+body.tv-reference .reference-dashboard{display:flex;flex:1;min-height:0;min-width:0;flex-direction:column;gap:18px}
+.reference-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;flex:none}
+.reference-metrics article{background:linear-gradient(120deg,#233361,#1c2854);border:1px solid #344574;border-left:5px solid #30d9aa;border-radius:6px;padding:14px 18px;min-width:0}
+.reference-metrics article:nth-child(3){border-left-color:#f2bf53}
+.reference-metrics article:nth-child(4){border-left-color:#5b98ff}
+.reference-metrics span{display:block;font-size:clamp(12px,1.3vw,23px);font-weight:600;color:#c5d2f4}
+.reference-metrics strong{display:block;font-size:clamp(26px,4.5vw,80px);font-weight:800;line-height:1.15;margin-top:8px;overflow-wrap:anywhere}
+.reference-queue{flex:1;min-height:0;overflow:auto}
+.reference-queue table{width:100%;border-collapse:collapse;table-layout:fixed}
+.reference-queue th{font-size:clamp(11px,1.25vw,22px);color:#c0cff5;text-align:left;padding:10px 8px;border-bottom:1px solid #344574}
+.reference-queue th:nth-child(2){width:18%}.reference-queue th:nth-child(3){width:15%}
+.reference-queue td{padding:12px 8px;border-bottom:1px solid #29365b;vertical-align:middle;font-size:clamp(12px,1.4vw,25px)}
+.reference-queue tbody tr:nth-child(even){background:#1b274b}
+.reference-queue td strong{display:block;font-weight:750;overflow-wrap:anywhere}
+.reference-queue td small{display:block;margin-top:4px;color:#adbee7;font-size:clamp(9px,.8vw,14px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reference-queue .reference-numbers{text-align:right}
+body.tv-reference #aviso:not([hidden]){flex:none;margin:0}
+@media(max-height:700px) and (min-width:901px){body.tv-reference header{padding:10px 20px}body.tv-reference main{padding:0 20px 10px}.reference-metrics article{padding:10px 14px}.reference-metrics strong{font-size:clamp(28px,6.3vh,52px)}.reference-queue td{padding:8px}.reference-dashboard{gap:10px}}
+@media(max-width:900px){body.tv-reference header{padding:12px;gap:10px}body.tv-reference main{padding:0 12px 12px}.reference-metrics{gap:6px}.reference-metrics article{padding:10px 8px;border-left-width:3px}.reference-metrics strong{font-size:clamp(22px,5vw,40px)}body.tv-reference .brand{display:none}.reference-queue table{min-width:760px}.reference-queue{overflow:auto}body.tv-reference .context strong{font-size:24px}}
+body.tv-reference .context{text-align:left}

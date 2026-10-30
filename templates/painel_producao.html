@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='painel-tv.css') }}">
   <script src="{{ url_for('static', filename='painel-tv.js') }}" defer></script>
 </head>
-<body class="tv-focus">
+<body class="tv-reference">
   <header>
     <div class="brand"><span class="brand-mark">C</span><div><strong>CHRONA</strong><small>GESTÃO À VISTA · PRODUÇÃO</small></div></div>
     <div class="context"><span class="board-label">PAINEL DE BORDO</span><strong id="fabrica-nome">Produção da fábrica</strong><span id="dia-legenda">Carregando dados…</span></div>
@@ -30,6 +30,15 @@
   </header>
   <main>
     <div id="aviso" role="alert" hidden></div>
+    <section class="reference-dashboard" aria-label="Painel de produ??o por OP">
+      <div class="reference-metrics">
+        <article><span>Meta até agora</span><strong id="ref-meta">?</strong></article>
+        <article><span>Realizado hoje</span><strong id="ref-realizado">?</strong></article>
+        <article><span>Saldo</span><strong id="ref-saldo">?</strong></article>
+        <article><span>Eficiência</span><strong id="ref-eficiencia">?</strong></article>
+      </div>
+      <div class="reference-queue"><table><thead><tr><th>Ordem</th><th>Produto</th><th>Meta / Real.</th><th>Início</th><th>Fim</th><th>Saída</th><th>Pacote</th></tr></thead><tbody id="ref-fila"><tr><td colspan="7">Carregando programação?</td></tr></tbody></table></div>
+    </section>
     <div class="board-layout">
     <div class="flow-pane" id="saida-painel">
     <section class="panel board-hourly">
