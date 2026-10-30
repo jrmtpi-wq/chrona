@@ -212,7 +212,7 @@
   $('hoje').addEventListener('click', () => { selectedDate = ''; changeFilter(); });
   $('alternar-visao').addEventListener('click', () => {
     document.body.classList.remove('tv-focus');
-    setText('alternar-foco', 'Somente meta e realizado');
+    setText('alternar-foco', 'Somente quadro de hor?rios');
     $('alternar-foco').setAttribute('aria-pressed', 'false');
     const detail = document.body.classList.toggle('op-mode');
     document.querySelectorAll('.detail-view').forEach(e => e.hidden = !detail);
@@ -225,7 +225,7 @@
       document.querySelectorAll('.detail-view').forEach(e => e.hidden = true);
       setText('alternar-visao', 'Ver OPs');
     }
-    setText('alternar-foco', focus ? 'Ver painel completo' : 'Somente meta e realizado');
+    setText('alternar-foco', focus ? 'Ver painel completo' : 'Somente quadro de hor?rios');
     $('alternar-foco').setAttribute('aria-pressed', String(focus));
     document.querySelector('.tv-controls').open = false;
   });

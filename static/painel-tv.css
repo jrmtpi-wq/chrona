@@ -166,22 +166,23 @@ body:not(.op-mode) .flow-pane .metric>span{font-size:14px}
  body:not(.op-mode) .monthly .month-grid{grid-template-columns:minmax(0,1fr)}
 }
 
-/* TV ampliada: somente a meta e o realizado do dia. */
-body.tv-focus{height:100dvh;min-height:0;overflow:hidden}
+/* TV ampliada: quadro horario completo, com totais. */
+body.tv-focus{display:flex;flex-direction:column;height:100dvh;min-height:0;overflow:hidden}
 body.tv-focus header{position:absolute;inset:0 0 auto;z-index:10;min-height:0;padding:0;border:0;background:none}
 body.tv-focus header>.brand,body.tv-focus header>.context,body.tv-focus header>.clock{display:none}
 body.tv-focus .tv-controls{position:absolute;top:8px;right:8px}
 body.tv-focus .tv-controls summary{font-size:11px;padding:5px 8px;opacity:.55}
 body.tv-focus .tv-controls summary:hover,body.tv-focus .tv-controls summary:focus-visible,body.tv-focus .tv-controls[open] summary{opacity:1}
 body.tv-focus .tv-controls nav{position:fixed;top:42px;left:8px;right:8px}
-body.tv-focus main{flex:1;min-height:0;padding:12px;gap:0}
+body.tv-focus main{display:flex;flex-direction:column;flex:1;min-height:0;padding:40px 12px 12px;gap:0}
 body.tv-focus .board-layout{display:flex;flex:1;min-height:0}
 body.tv-focus #saida-painel{display:flex;flex:1;min-height:0}
-body.tv-focus .board-hourly,body.tv-focus .monthly,body.tv-focus #programacao-painel,body.tv-focus .detail-view,body.tv-focus footer{display:none!important}
-body.tv-focus #saida-painel .metrics{display:grid;flex:1;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:minmax(0,1fr);gap:12px;min-height:0}
-body.tv-focus #saida-painel .metric{justify-content:center;align-items:center;text-align:center;padding:16px;min-width:0}
-body.tv-focus #saida-painel .metric:nth-child(n+3),body.tv-focus #saida-painel .metric small{display:none}
-body.tv-focus #saida-painel .metric>span{font-size:clamp(24px,4vw,76px);line-height:1.2}
-body.tv-focus #saida-painel .metric>strong{font-size:clamp(36px,10vw,220px);line-height:1.15;margin:24px 0 0;max-width:100%;overflow-wrap:anywhere}
+body.tv-focus .monthly,body.tv-focus #programacao-painel,body.tv-focus .detail-view,body.tv-focus footer,body.tv-focus #saida-painel .metrics,body.tv-focus .board-hourly>.section-title{display:none!important}
+body.tv-focus #saida-painel .board-hourly{display:flex;flex:1;min-height:0;padding:8px 12px;overflow:auto}
+body.tv-focus #saida-painel .board-table{height:100%;width:100%;table-layout:fixed;font-size:clamp(18px,4.4vh,52px);line-height:1.1}
+body.tv-focus #saida-painel .board-table th,body.tv-focus #saida-painel .board-table td{padding:4px 6px;text-align:center;overflow-wrap:anywhere}
+body.tv-focus #saida-painel .board-table th:first-child{width:20%;text-align:left}
+body.tv-focus #saida-painel .board-table thead,body.tv-focus #saida-painel .board-table tfoot th{font-size:clamp(14px,2.8vh,30px)}
+body.tv-focus #saida-painel .board-table tfoot{font-size:clamp(18px,4.4vh,52px)}
 body.tv-focus #aviso:not([hidden]){position:fixed;bottom:10px;left:16px;right:16px;z-index:11}
-@media(max-width:600px){body.tv-focus #saida-painel .metrics{grid-template-columns:minmax(0,1fr);grid-template-rows:repeat(2,minmax(0,1fr))}body.tv-focus #saida-painel .metric>strong{font-size:clamp(36px,18vw,100px);margin-top:12px}}
+@media(max-width:600px){body.tv-focus main{padding:40px 4px 4px}body.tv-focus #saida-painel .board-hourly{padding:4px}body.tv-focus #saida-painel .board-table{font-size:15px}body.tv-focus #saida-painel .board-table th,body.tv-focus #saida-painel .board-table td{padding:4px 2px}body.tv-focus #saida-painel .board-table thead,body.tv-focus #saida-painel .board-table tfoot th{font-size:10px}body.tv-focus #saida-painel .board-table tfoot{font-size:15px}}
