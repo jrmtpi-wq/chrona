@@ -223,6 +223,14 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-entrada">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">Editar entrada na fila</div><button class="modal-close" onclick="fecharModal('modal-entrada')">?</button></div>
+    <div class="modal-body"><p id="entrada-contexto"></p><input type="hidden" id="entrada-indice"><label for="entrada-data">Data e hor?rio de entrada</label><input type="datetime-local" id="entrada-data"><p>A primeira pe?a e a sa?da ser?o recalculadas. As OPs seguintes sem entrada manual acompanham a altera??o.</p></div>
+    <div class="modal-footer"><button class="btn btn-light" onclick="fecharModal('modal-entrada')">Cancelar</button><button class="btn btn-light" onclick="confirmarEntrada(true)">Usar sequ?ncia autom?tica</button><button class="btn btn-primary" onclick="confirmarEntrada()">Salvar entrada</button></div>
+  </div>
+</div>
+
 <!-- MODAL ADD OP -->
 <div class="modal-overlay" id="modal-add-op">
   <div class="modal">
@@ -342,7 +350,7 @@ async function salvarEstado(){
       fila: fila.map(i=>({opId:i.opId,opNum:i.opNum,opRef:i.opRef,opDesc:i.opDesc,
         valorUnit:i.valorUnit,qtd:i.qtd,operadores:i.operadores,nTimes:i.nTimes,
         ciclo:i.ciclo,tempoPeca:i.tempoPeca,horasExtra:i.horasExtra||0,obsExtra:i.obsExtra||'',
-        status:i.status||'aguardando',produzido:i.produzido||0,
+        status:i.status||'aguardando',produzido:i.produzido||0,entradaManual:i.entradaManual||null,
         dtSaidaOriginal:i.dtSaidaOriginal||null,saidaCor:i.saidaCor||'verde'}))
     };
     await fetch('/api/fila/estado/salvar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -416,8 +424,10 @@ function avancarTempo(dt, minutos) {
 
 // CONFIG
 function abrirModalConfig(){
-  const agora=new Date();
-  document.getElementById('cfg-dt-inicio').value=`${agora.getFullYear()}-${pad(agora.getMonth()+1)}-${pad(agora.getDate())}T${config.horaEntrada}`;
+  const agora=config.dtInicio ? new Date(config.dtInicio) : new Date();
+  if(config.turnoId)document.getElementById('cfg-sel-turno').value=config.turnoId;
+  turnoSelecionado();
+  document.getElementById('cfg-dt-inicio').value=`${agora.getFullYear()}-${pad(agora.getMonth()+1)}-${pad(agora.getDate())}T${pad(agora.getHours())}:${pad(agora.getMinutes())}`;
   abrirModal('modal-config');
 }
 function turnoSelecionado(){
@@ -539,6 +549,10 @@ function recalcularTudo(){
     const minsTotais=totalCiclos*item.ciclo+(item.horasExtra*60);
     item.metaDia=metaDia;item.ciclosDia=ciclosDia;item.metaCiclo=metaCiclo;
     item.atravessamento=atrav;item.totalCiclos=totalCiclos;
+    if(item.entradaManual){
+      const entrada=new Date(item.entradaManual);
+      if(!Number.isNaN(entrada.getTime()))cur=entrada;
+    }
     item.dtEntrada=new Date(cur);
     item.dtPrimeiraPeca=avancarTempo(cur,atrav);
     item.dtSaida=avancarTempo(cur,minsTotais);
@@ -573,6 +587,27 @@ async function salvarSaidasNaOP(){
   }));
   if(!items.length)return;
   try{ await api('/api/op/atualizar-saida','POST',{items}); }catch(e){}
+}
+
+// Editar a entrada de uma OP, mantendo as demais em sequencia.
+function editarEntrada(i){
+  const item=fila[i];
+  if(!item)return;
+  document.getElementById('entrada-indice').value=i;
+  document.getElementById('entrada-contexto').textContent='OP '+item.opNum;
+  document.getElementById('entrada-data').value=fmtDatetimeLocal(item.dtEntrada)?.replace(' ','T')||'';
+  abrirModal('modal-entrada');
+}
+function confirmarEntrada(automatico=false){
+  const i=Number(document.getElementById('entrada-indice').value),item=fila[i];
+  if(!item)return;
+  const valor=document.getElementById('entrada-data').value;
+  if(!automatico&&(!valor||Number.isNaN(new Date(valor).getTime()))){toast('Informe uma data e horario validos','error');return}
+  item.entradaManual=automatico?null:new Date(valor).toISOString();
+  recalcularTudo();
+  salvarEstado();
+  fecharModal('modal-entrada');
+  toast('Entrada atualizada!');
 }
 
 // RENDER TABELA
@@ -613,7 +648,7 @@ function renderFila(){
       <td>
         <div class="dt-cell">
           <div class="dt-data">${fmtData(item.dtEntrada)}</div>
-          <div class="dt-hora entrada">${fmtHora(item.dtEntrada)}</div>
+          <div class="dt-hora entrada">${fmtHora(item.dtEntrada)}</div><button type="button" class="btn btn-light btn-sm" onclick="editarEntrada(${i})">Editar entrada</button>
         </div>
       </td>
       <td>

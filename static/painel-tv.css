@@ -179,10 +179,16 @@ body.tv-focus .board-layout{display:flex;flex:1;min-height:0}
 body.tv-focus #saida-painel{display:flex;flex:1;min-height:0}
 body.tv-focus .monthly,body.tv-focus #programacao-painel,body.tv-focus .detail-view,body.tv-focus footer,body.tv-focus #saida-painel .metrics,body.tv-focus .board-hourly>.section-title{display:none!important}
 body.tv-focus #saida-painel .board-hourly{display:flex;flex:1;min-height:0;padding:8px 12px;overflow:auto}
-body.tv-focus #saida-painel .board-table{height:100%;width:100%;table-layout:fixed;font-size:clamp(18px,4.4vh,52px);line-height:1.1}
-body.tv-focus #saida-painel .board-table th,body.tv-focus #saida-painel .board-table td{padding:4px 6px;text-align:center;overflow-wrap:anywhere}
+body.tv-focus #saida-painel .board-table{height:100%;width:100%;table-layout:fixed;font-size:clamp(16px,3.6vh,46px);line-height:1.1}
+body.tv-focus #saida-painel .board-table th,body.tv-focus #saida-painel .board-table td{padding:2px 6px;text-align:center;overflow-wrap:anywhere}
 body.tv-focus #saida-painel .board-table th:first-child{width:20%;text-align:left}
 body.tv-focus #saida-painel .board-table thead,body.tv-focus #saida-painel .board-table tfoot th{font-size:clamp(14px,2.8vh,30px)}
-body.tv-focus #saida-painel .board-table tfoot{font-size:clamp(18px,4.4vh,52px)}
+body.tv-focus #saida-painel .board-table tfoot{font-size:clamp(16px,3.6vh,46px)}
 body.tv-focus #aviso:not([hidden]){position:fixed;bottom:10px;left:16px;right:16px;z-index:11}
 @media(max-width:600px){body.tv-focus main{padding:40px 4px 4px}body.tv-focus #saida-painel .board-hourly{padding:4px}body.tv-focus #saida-painel .board-table{font-size:15px}body.tv-focus #saida-painel .board-table th,body.tv-focus #saida-painel .board-table td{padding:4px 2px}body.tv-focus #saida-painel .board-table thead,body.tv-focus #saida-painel .board-table tfoot th{font-size:10px}body.tv-focus #saida-painel .board-table tfoot{font-size:15px}}
+
+/* Total diario sempre identificado dentro do quadro da TV. */
+.board-table .total-dia{background:var(--panel);border-top:3px solid var(--orange)}
+.board-table .eficiencia-dia-label{display:block;font-size:clamp(9px,1.5vh,16px);line-height:1.2;margin-bottom:4px}
+.board-table #tv-eficiencia-dia{font:inherit;font-weight:750}
+body.tv-focus #saida-painel .board-table tfoot .total-dia th{font-weight:800}

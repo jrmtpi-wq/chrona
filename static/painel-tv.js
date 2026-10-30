@@ -65,6 +65,13 @@
     setText('total-realizado', n(total.produzido));
     setText('total-saldo', signed(total.saldo));
     setText('total-eficiencia', percent(total.eficiencia));
+    const metaDia = data.meta_dia.quantidade;
+    const realizadoDia = total.produzido;
+    setText('tv-meta-dia', metaDia === null ? '—' : n(metaDia));
+    setText('tv-realizado-dia', n(realizadoDia));
+    setText('tv-saldo-dia', metaDia === null ? '—' : signed(realizadoDia - metaDia));
+    setText('tv-eficiencia-dia', percent(data.meta_dia.atingimento));
+    setClass('tv-eficiencia-dia', color(data.meta_dia.atingimento));
   }
 
   function renderOps() {
@@ -186,6 +193,7 @@
     for (const id of ['produzido','meta','eficiencia','saldo']) $(id).textContent = '—';
     for (const id of ['meta-mes','produzido-mes','eficiencia-mes','total-meta','total-realizado','total-saldo','total-eficiencia']) $(id).textContent = '—';
     $('periodos').innerHTML = '';
+    for (const id of ['tv-meta-dia','tv-realizado-dia','tv-saldo-dia','tv-eficiencia-dia']) setText(id, '—');
     setText('periodos-pagina', '');
     setText('mes-legenda', 'Consultando mês…');
     setText('mes-nota', '');
